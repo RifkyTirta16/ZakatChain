@@ -12,7 +12,7 @@ Jangan ubah logika API, nama endpoint, atau struktur data.
   Tata letak: 4 kartu angka (total donasi, total distribusi, saldo, anomali terbuka), lalu grafik
   tren (Recharts, warna token) + tabel 5 transaksi terakhir. Aksi utama: "Catat Distribusi" (AMIL)
   atau "Tinjau Anomali" (AUDITOR/ADMIN).
-- [ ] 2. components/Analytics.tsx
+- [x] 2. components/Analytics.tsx
   Tata letak: komponen grafik dipakai Dashboard. Warna dari token, legenda + label sumbu,
   angka kunci besar. Jangan ubah props yang dipakai pemanggilnya.
 - [ ] 3. pages/Campaigns.tsx
