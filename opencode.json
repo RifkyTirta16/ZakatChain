@@ -1,0 +1,7 @@
+cd ~/ZakatChain
+cat > opencode.json << 'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md", "DESIGN.md"]
+}
+EOF

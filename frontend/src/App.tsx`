@@ -1,0 +1,580 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { keccak256, toBytes } from 'viem';
+import { 
+   ArrowDownLeft, 
+   AlertTriangle, 
+   CheckCircle2, 
+   PlusCircle,
+   Search,
+   Filter,
+   ShieldCheck,
+   LogOut,
+   TrendingUp,
+   Globe,
+   Activity,
+   Upload,
+   FileText,
+   X,
+   Zap,
+   Sun,
+   Moon
+} from 'lucide-react';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { publicClient, ZAKAT_CONTRACT_ADDRESS, ZAKAT_ABI } from './web3';
+import Analytics from './components/Analytics';
+import LoginPage from './components/auth/LoginPage';
+import LuxuryCard from './components/LuxuryCard';
+import DistributionMap from './components/DistributionMap';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import PublicVerify from './pages/PublicVerify';
+import { INDONESIA_REGIONS } from './utils/regions';
+
+const API_BASE = 'http://localhost:5000/api';
+
+interface Transaction {
+  id: number;
+  amount: number;
+  donor_name: string;
+  recipient_name: string;
+  category: string;
+  region: string;
+  timestamp: string;
+  proof_url: string;
+  audit_hash: string;
+  is_reconciled: number;
+  anomaly_flag: number;
+  anomaly_reason: string;
+}
+
+const Dashboard = ({ user, token, onLogout }: { user: any, token: string, onLogout: () => void }) => {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  
+  // STATE TEMA - HARUS ADA DI SINI
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [formData, setFormData] = useState({
+    amount: '',
+    donor_name: '',
+    recipient_name: '',
+    category: 'Konsumsi',
+    province: '',
+    city: '',
+  });
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE}/transactions?t=${Date.now()}`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache'
+        }
+      });
+      setTransactions([...response.data]);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatRupiah = (value: string) => {
+    if (!value) return '';
+    const number = parseInt(value.replace(/\D/g, ''), 10);
+    if (isNaN(number)) return '';
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(number);
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    setFormData(prev => ({ ...prev, amount: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      const data = new FormData();
+      data.append('amount', formData.amount);
+      data.append('donor_name', formData.donor_name);
+      data.append('recipient_name', formData.recipient_name);
+      data.append('category', formData.category);
+      data.append('region', `${formData.province}, ${formData.city}`);
+      if (proofFile) {
+        data.append('proof_file', proofFile);
+      }
+
+      await axios.post(`${API_BASE}/transactions`, data, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      setShowAddForm(false);
+      setFormData({ amount: '', donor_name: '', recipient_name: '', category: 'Konsumsi', province: '', city: '' });
+      setProofFile(null);
+      fetchTransactions();
+    } catch (error: any) {
+      alert(`Error: ${error.response?.data?.error || 'Failed to add transaction'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReconcile = async (id: number) => {
+    try {
+      await axios.patch(`${API_BASE}/transactions/${id}/reconcile`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchTransactions();
+    } catch (error) {
+      alert('Error reconciling transaction');
+    }
+  };
+
+  const verifyOnBlockchain = async (hash: string) => {
+    try {
+      const formattedHash = keccak256(toBytes(hash));
+      const data = await publicClient.readContract({
+        address: ZAKAT_CONTRACT_ADDRESS as `0x${string}`,
+        abi: ZAKAT_ABI,
+        functionName: 'verifyReport',
+        args: [formattedHash as `0x${string}`],
+      }) as [boolean, bigint, boolean];
+      
+      const [exists, , revoked] = data;
+      alert(`Blockchain Audit Status: ${exists ? 'Verified' : 'Not Found'} | Revoked: ${revoked ? 'Yes' : 'No'}`);
+    } catch (error) {
+      alert('Blockchain verification failed');
+    }
+  };
+
+  const filteredTransactions = transactions.filter(t => 
+    t.recipient_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    t.region.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const anomalyCount = transactions.filter(t => t.anomaly_flag).length;
+  const reconciledCount = transactions.filter(t => t.is_reconciled).length;
+
+  const themeClasses = {
+    bg: theme === 'dark' ? 'bg-[#121212] text-white' : 'bg-[#F8FAFC] text-slate-900',
+    nav: theme === 'dark' ? 'bg-[#1E1E1E] border-[#2C2C2E]' : 'bg-white border-slate-200',
+    card: theme === 'dark' ? 'bg-[#1E1E1E] border-[#2C2C2E]' : 'bg-white border-slate-200',
+    textSecondary: theme === 'dark' ? 'text-[#98989D]' : 'text-slate-500',
+    input: theme === 'dark' ? 'bg-[#121212] border-[#2C2C2E] text-white' : 'bg-white border-slate-200 text-slate-900',
+    accent: theme === 'dark' ? 'text-[#00E5FF]' : 'text-[#0284C7]',
+    accentBg: theme === 'dark' ? 'bg-[#00E5FF]' : 'bg-[#0284C7]',
+  };
+
+  return (
+    <div className={`min-h-screen ${themeClasses.bg} p-6 transition-colors duration-300 font-inter`}>
+      <header className={`flex justify-between items-center mb-8 border-b ${themeClasses.nav} pb-6`}>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className={`p-2 rounded-full transition-all ${theme === 'dark' ? 'bg-white/10 text-yellow-400' : 'bg-slate-200 text-slate-600'}`}
+            title="Toggle Theme"
+          >
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <div className={`w-10 h-10 ${themeClasses.accentBg} flex items-center justify-center rounded-lg shadow-lg`}>
+            <Zap className="text-black" size={24} />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-bold tracking-tight uppercase italic">
+              Zakat<span className={themeClasses.accent}>Chain</span>
+            </h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-widest border ${user.role === 'ADMIN' ? 'bg-purple-900/30 text-purple-400 border-purple-500/50' : 'bg-blue-900/30 text-blue-400 border-blue-500/50'}`}>
+                {user.role} ACCESS
+              </span>
+              <p className={`${themeClasses.textSecondary} text-[11px] uppercase tracking-widest`}>ID: {user.username}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          {!isConnected ? (
+            <button 
+              onClick={() => connect({ connector: connectors[0] })}
+              className={`text-xs font-bold uppercase tracking-widest ${themeClasses.accentBg} text-black px-6 py-2 rounded-md hover:opacity-80 transition-all duration-300`}
+            >
+              Connect Wallet
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-mono px-3 py-1 rounded-md border ${themeClasses.card} ${themeClasses.accent}`}>
+                {address?.slice(0, 6)}...{address?.slice(-4)}
+              </span>
+              <button 
+                onClick={() => disconnect()}
+                className="text-xs text-gray-500 hover:text-red-500 uppercase tracking-widest font-bold transition-colors"
+              >
+                Disconnect
+              </button>
+            </div>
+          )}
+          <button 
+            onClick={onLogout}
+            className={`flex items-center gap-2 text-xs uppercase tracking-widest font-bold ${themeClasses.textSecondary} hover:text-red-500 transition-colors`}
+          >
+            <LogOut size={16} /> Logout
+          </button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <LuxuryCard 
+          title="Total Distribution" 
+          value={`Rp ${totalAmount.toLocaleString('id-ID')}`} 
+          icon={<ArrowDownLeft size={24} />} 
+          trend="+12.5%"
+          color={theme === 'dark' ? "cyan" : "blue"} 
+        />
+        <LuxuryCard 
+          title="Verified Records" 
+          value={`${reconciledCount} / ${transactions.length}`} 
+          icon={<CheckCircle2 size={24} />} 
+          trend="+5.2%"
+          color="green" 
+        />
+        <LuxuryCard 
+          title="Anomalies" 
+          value={anomalyCount.toString()} 
+          icon={<AlertTriangle size={24} />} 
+          trend="-2.1%"
+          color="red" 
+        />
+        <LuxuryCard 
+          title="Network Status" 
+          value="Mainnet-L" 
+          icon={<Activity size={24} />} 
+          color="blue" 
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+        <div className={`lg:col-span-8 luxury-panel p-6 rounded-xl ${themeClasses.card} border`}>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold uppercase tracking-tight text-white flex items-center gap-2">
+              <TrendingUp size={20} className={themeClasses.accent} /> Distribution Analytics
+            </h2>
+          </div>
+          <Analytics data={transactions} />
+        </div>
+        <div className={`lg:col-span-4 luxury-panel p-6 rounded-xl ${themeClasses.card} border`}>
+          <h2 className="text-xl font-semibold uppercase tracking-tight text-white mb-6 flex items-center gap-2">
+            <Globe size={20} className={themeClasses.accent} /> Distribution Map
+          </h2>
+          <DistributionMap data={transactions} />
+        </div>
+      </div>
+
+      <div className="mb-6 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${themeClasses.textSecondary}`} size={20} />
+          <input 
+            type="text" 
+            placeholder="SEARCH RECIPIENT OR REGION..." 
+            className={`w-full pl-10 pr-4 py-3 ${themeClasses.input} rounded-md border focus:border-[#00E5FF] outline-none transition-all uppercase text-xs tracking-widest`}
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        {user.role === 'USER' && (
+          <button 
+            onClick={() => setShowAddForm(true)}
+            className={`flex items-center gap-2 px-6 py-3 ${themeClasses.accentBg} text-black font-bold uppercase tracking-widest transition-all duration-300 rounded-md hover:opacity-80`}
+          >
+            <PlusCircle size={20} />
+            Add Transaction
+          </button>
+        )}
+        <button className={`flex items-center gap-2 px-6 py-3 bg-transparent border ${themeClasses.card} ${themeClasses.textSecondary} hover:text-white hover:border-gray-600 transition-all uppercase text-xs font-bold tracking-widest rounded-md`}>
+          <Filter size={18} />
+          Filters
+        </button>
+      </div>
+
+      <div className={`luxury-panel overflow-hidden rounded-xl ${themeClasses.card} border`}>
+        <table className="w-full text-left border-collapse">
+          <thead className={`bg-opacity-50 ${theme === 'dark' ? 'bg-[#121212]' : 'bg-slate-100'} border-b border-[#2C2C2E]`}>
+            <tr className={`text-[10px] tracking-[0.2em] font-bold uppercase ${themeClasses.textSecondary}`}>
+              <th className="px-6 py-4">Recipient / Region</th>
+              <th className="px-6 py-4">Amount</th>
+              <th className="px-6 py-4">Audit Status</th>
+              <th className="px-6 py-4 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#2C2C2E]">
+            {loading ? (
+              <tr className="animate-pulse">
+                <td colSpan={4} className="px-6 py-20 text-center text-gray-500 uppercase tracking-widest text-xs">
+                  Loading encrypted data...
+                </td>
+              </tr>
+            ) : filteredTransactions.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-6 py-20 text-center text-gray-500 uppercase tracking-widest text-xs">
+                  No records found in registry
+                </td>
+              </tr>
+            ) : (
+              filteredTransactions.map((t) => (
+                <tr key={t.id} className={`hover:bg-[#252525] transition-all group ${theme === 'light' ? 'hover:bg-slate-100' : ''}`}>
+                  <td className="px-6 py-4">
+                    <div className="font-semibold text-current uppercase tracking-tight">{t.recipient_name}</div>
+                    <div className={`text-[10px] ${themeClasses.textSecondary} uppercase tracking-widest`}>{t.region} • {t.category}</div>
+                  </td>
+                  <td className="px-6 py-4 font-mono text-sm font-bold text-current">
+                    Rp {t.amount.toLocaleString('id-ID')}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      {t.anomaly_flag ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-tighter text-[#FF453A] bg-red-500/10 px-2 py-1 rounded-md border border-red-500/30">
+                          <AlertTriangle size={12} /> {t.anomaly_reason}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-tighter text-[#32D74B] bg-green-500/10 px-2 py-1 rounded-md border border-green-500/30">
+                          <CheckCircle2 size={12} /> Normal
+                        </span>
+                      )}
+                      {t.is_reconciled ? (
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-emerald-600 px-2 py-1 rounded-md border border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.4)] animate-pulse">Verified</span>
+                      ) : (
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${themeClasses.textSecondary} bg-gray-500/10 px-2 py-1 rounded-md border border-gray-500/30`}>Pending</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right flex justify-end gap-3">
+                    {user.role === 'ADMIN' && !t.is_reconciled && (
+                      <button 
+                        onClick={() => handleReconcile(t.id)}
+                        className={`text-[10px] uppercase tracking-widest font-bold ${themeClasses.accent} hover:text-white transition-colors`}
+                      >
+                        Verify
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => verifyOnBlockchain(t.audit_hash)}
+                      className={`p-2 transition-all ${
+                        t.is_reconciled 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]' 
+                        : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
+                      }`}
+                      title="Verify on Blockchain"
+                    >
+                      <ShieldCheck size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className={`bg-[#1E1E1E] border ${theme === 'dark' ? 'border-[#00E5FF]' : 'border-[#0284C7]'} p-8 max-w-md w-full shadow-2xl relative rounded-xl`}>
+            <div className={`absolute top-0 left-0 w-full h-1 ${theme === 'dark' ? 'bg-[#00E5FF]' : 'bg-[#0284C7]'} rounded-t-xl`}></div>
+            <h2 className="text-2xl font-semibold uppercase tracking-tighter italic text-white mb-6">New Distribution Record</h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="relative">
+                <label className={`block text-[10px] uppercase tracking-widest ${themeClasses.textSecondary} font-bold mb-1`}>Nominal (Rp)</label>
+                <div className="relative">
+                  <span className={`absolute left-4 top-1/2 -translate-y-1/2 ${themeClasses.textSecondary} font-bold text-xs`}>Rp</span>
+                  <input 
+                    type="text" required inputMode="numeric"
+                    className={`w-full pl-10 pr-4 py-3 ${themeClasses.input} border focus:border-[#00E5FF] outline-none transition-all font-mono rounded-md`}
+                    value={formatRupiah(formData.amount)}
+                    onChange={handleAmountChange}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-5">
+                <div>
+                  <label className={`block text-[10px] uppercase tracking-widest ${themeClasses.textSecondary} font-bold mb-1`}>Recipient Name</label>
+                  <input 
+                    type="text" required 
+                    className={`w-full px-4 py-3 ${themeClasses.input} border focus:border-[#00E5FF] outline-none transition-all rounded-md`}
+                    value={formData.recipient_name}
+                    onChange={e => setFormData({...formData, recipient_name: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-[10px] uppercase tracking-widest ${themeClasses.textSecondary} font-bold mb-1`}>Donor Name (Optional)</label>
+                  <input 
+                    type="text" 
+                    className={`w-full px-4 py-3 ${themeClasses.input} border focus:border-[#00E5FF] outline-none transition-all rounded-md`}
+                    value={formData.donor_name}
+                    onChange={e => setFormData({...formData, donor_name: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-[10px] uppercase tracking-widest ${themeClasses.textSecondary} font-bold mb-1`}>Category</label>
+                  <select 
+                    className={`w-full px-4 py-3 ${themeClasses.input} border focus:border-[#00E5FF] outline-none transition-all rounded-md`}
+                    value={formData.category}
+                    onChange={e => setFormData({...formData, category: e.target.value})}
+                  >
+                    <option value="Konsumsi">Konsumsi</option>
+                    <option value="Kesehatan">Kesehatan</option>
+                    <option value="Pendidikan">Pendidikan</option>
+                    <option value="Modal Usaha">Modal Usaha</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-[10px] uppercase tracking-widest ${themeClasses.textSecondary} font-bold mb-1`}>Province</label>
+                  <select 
+                    required
+                    className={`w-full px-4 py-3 ${themeClasses.input} border focus:border-[#00E5FF] outline-none transition-all rounded-md`}
+                    value={formData.province}
+                    onChange={e => setFormData({...formData, province: e.target.value, city: ''})}
+                  >
+                    <option value="">Select Province</option>
+                    {Object.keys(INDONESIA_REGIONS).map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className={`block text-[10px] uppercase tracking-widest ${themeClasses.textSecondary} font-bold mb-1`}>City/Regency</label>
+                  <select 
+                    required disabled={!formData.province}
+                    className={`w-full px-4 py-3 ${themeClasses.input} border focus:border-[#00E5FF] outline-none transition-all rounded-md disabled:opacity-50`}
+                    value={formData.city}
+                    onChange={e => setFormData({...formData, city: e.target.value})}
+                  >
+                    <option value="">Select City</option>
+                    {formData.province && INDONESIA_REGIONS[formData.province as keyof typeof INDONESIA_REGIONS]?.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className={`block text-[10px] uppercase tracking-widest ${themeClasses.textSecondary} font-bold mb-1`}>Proof of Delivery</label>
+                <div 
+                  className={`border-2 border-dashed transition-all p-6 text-center cursor-pointer relative ${proofFile ? 'border-[#00E5FF] bg-white/5' : 'border-[#2C2C2E] hover:border-gray-600'} ${isSubmitting ? 'pointer-events-none opacity-50' : ''} rounded-xl`}
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                >
+                  <input 
+                    id="file-upload" type="file" 
+                    className="hidden" 
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    onChange={e => setProofFile(e.target.files?.[0] || null)}
+                  />
+                  {proofFile ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-2 text-white font-bold text-xs uppercase tracking-widest">
+                        <FileText size={16} className="text-[#00E5FF]" /> {proofFile.name}
+                      </div>
+                      <div className={`text-[10px] ${themeClasses.textSecondary} uppercase`}>{(proofFile.size / 1024).toFixed(1)} KB</div>
+                      <button 
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setProofFile(null); }}
+                        className="absolute top-2 right-2 p-1 text-gray-500 hover:text-red-500 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={`flex flex-col items-center gap-2 ${themeClasses.textSecondary}`}>
+                      <Upload size={24} className="text-[#00E5FF]" />
+                      <span className="text-[10px] uppercase tracking-widest font-bold">Upload Proof (JPG, PNG, PDF)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-4 pt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setShowAddForm(false)}
+                  className={`flex-1 py-3 border border-[#2C2C2E] ${themeClasses.textSecondary} uppercase text-xs font-bold tracking-widest hover:bg-white/5 transition-all rounded-md`}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className={`flex-1 py-3 text-black font-black uppercase tracking-widest transition-all shadow-lg shadow-cyan-500/20 ${isSubmitting ? 'bg-gray-600 cursor-not-allowed' : 'bg-[#00E5FF] hover:bg-[#00B8CC]'}`}
+                >
+                  {isSubmitting ? 'Processing...' : 'Confirm'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const App = () => {
+  const [user, setUser] = useState<any>(null);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('zakat_user');
+    const storedToken = localStorage.getItem('zakat_token');
+    if (storedUser && storedToken) {
+      setUser(JSON.parse(storedUser));
+      setToken(storedToken);
+    }
+  }, []);
+
+  const handleLoginSuccess = (user: any, token: string) => {
+    setUser(user);
+    setToken(token);
+    localStorage.setItem('zakat_user', JSON.stringify(user));
+    localStorage.setItem('zakat_token', token);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('zakat_user');
+    localStorage.removeItem('zakat_token');
+  };
+
+  if (!user) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Dashboard user={user} token={token!} onLogout={handleLogout} />} />
+        <Route path="/verify" element={<PublicVerify />} />
+      </Routes>
+    </Router>
+  );
+};
+
+export default App;

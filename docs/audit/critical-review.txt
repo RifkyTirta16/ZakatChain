@@ -1,0 +1,489 @@
+===== BACKEND WEB3 =====
+import { ethers } from 'ethers';
+
+export const CONTRACT_ADDRESS = process.env.ZAKAT_CONTRACT_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+export const CONTRACT_ABI = [
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "reportHash", "type": "bytes32" },
+      { "internalType": "uint256", "name": "reportId", "type": "uint256" }
+    ],
+    "name": "registerReport",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "reportHash", "type": "bytes32" }
+    ],
+    "name": "verifyReport",
+    "outputs": [
+      { "internalType": "bool", "name": "exists", "type": "bool" },
+      { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+      { "internalType": "bool", "name": "revoked", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "bytes32", "name": "reportHash", "type": "bytes32" },
+      { "indexed": false, "internalType": "uint256", "name": "reportId", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "ReportRegistered",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "reportHash", "type": "bytes32" },
+      { "internalType": "string", "name": "reason", "type": "string" }
+    ],
+    "name": "revokeReport",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+] as const;
+
+
+export type ZakatContract = ethers.Contract & {
+  registerReport(reportHash: string | Uint8Array, reportId: bigint | number, overrides?: Record<string, unknown>): Promise<ethers.ContractTransaction>;
+  verifyReport(reportHash: string | Uint8Array): Promise<[boolean, bigint, boolean]>;
+};
+
+export const getBlockchainProvider = () => {
+  return new ethers.JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL || "http://127.0.0.1:8545");
+};
+
+export const getBlockchainWallet = (provider: ethers.Provider) => {
+  const privateKey = process.env.BLOCKCHAIN_PRIVATE_KEY;
+  if (!privateKey) return null;
+  try {
+    return new ethers.Wallet(privateKey, provider);
+  } catch {
+    throw new Error('BLOCKCHAIN_PRIVATE_KEY is invalid');
+  }
+};
+
+export const getZakatContract = (provider: ethers.Provider): ZakatContract => {
+  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider) as unknown as ZakatContract;
+};
+===== TRANSACTION CONTROLLER =====
+    // always matches the stored row id.
+    const { transactionId, audit_hash_hex } = await runInTransaction(db as any, async () => {
+      const result = await (db as any).run(
+        `INSERT INTO transactions (amount, donor_name, recipient_name, category, region, proof_url, file_hash, audit_hash, anomaly_flag, anomaly_reason, blockchain_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [amount, transactionData.donor_name, recipient_name, category, region, proof_url, file_hash, null, anomaly_flag, anomaly_reason, 'PENDING_BLOCKCHAIN']
+      );
+      const id = result.lastID as number;
+      const hash = generateRecordAuditHash(transactionData, id);
+      await (db as any).run('UPDATE transactions SET audit_hash = ? WHERE id = ?', [hash, id]);
+      return { transactionId: id, audit_hash_hex: hash };
+    });
+
+    let blockchainStatus = 'PENDING_BLOCKCHAIN';
+    let txHash: string | null = null;
+
+    try {
+      const provider = getBlockchainProvider();
+      const wallet = getBlockchainWallet(provider);
+      if (!wallet) throw new Error('Blockchain signer is not configured');
+      const contract = getZakatContract(provider);
+      const walletContract = contract.connect(wallet) as any;
+
+      const formattedHash = ethers.id(audit_hash_hex);
+      const tx = await walletContract.registerReport(formattedHash, transactionId);
+      txHash = tx.hash;
+      await (db as any).run(
+        `UPDATE transactions SET tx_hash = ?, blockchain_status = 'PENDING_BLOCKCHAIN' WHERE id = ?`,
+        [txHash, transactionId]
+      );
+
+      const receipt = await tx.wait();
+      if (!receipt || receipt.status !== 1) throw new Error('Blockchain transaction was not confirmed');
+
+      blockchainStatus = 'CONFIRMED';
+      await (db as any).run(
+        `UPDATE transactions SET blockchain_status = ?, tx_hash = ?, block_number = ? WHERE id = ?`,
+        [blockchainStatus, txHash, receipt.blockNumber, transactionId]
+      );
+    } catch (blockchainError: any) {
+      // The local record is already committed. Keep the row and any known tx
+      // hash so PATCH /:id/reconcile can retry safely and idempotently.
+      console.error(`[BLOCKCHAIN CONNECTION ERROR] ${blockchainError?.message}`);
+    }
+
+    res.status(201).json({
+      id: transactionId,
+      audit_hash: audit_hash_hex,
+      tx_hash: txHash,
+      blockchain_status: blockchainStatus,
+    });
+
+  } catch (error: any) {
+    // Only remove the file when the row was never committed.
+    if (persisted) removeUpload(persisted.path);
+    console.error(`[CRITICAL ERROR] ${error?.stack || error?.message}`);
+    res.status(500).json({ error: 'Failed to create transaction' });
+  }
+};
+
+export const reconcileTransaction = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { db } = req;
+
+  if (!id || Array.isArray(id) || !/^\d+$/.test(id) || Number(id) < 1) {
+    return res.status(400).json({ error: 'A valid transaction ID is required' });
+  }
+  const numericId = Number(id);
+
+  try {
+    const transaction = await (db as any).get(
+      'SELECT id, amount, donor_name, recipient_name, category, region, proof_url, file_hash, audit_hash, blockchain_status, tx_hash FROM transactions WHERE id = ?',
+      [numericId]
+    );
+    if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+    if (!transaction.audit_hash) return res.status(409).json({ error: 'Transaction has no audit hash' });
+
+    if (transaction.blockchain_status === 'CONFIRMED' && transaction.tx_hash) {
+      await (db as any).run('UPDATE transactions SET is_reconciled = 1 WHERE id = ?', [numericId]);
+      return res.json({
+        message: 'Transaction is already reconciled',
+        tx_hash: transaction.tx_hash,
+        blockchain_status: 'CONFIRMED',
+      });
+    }
+
+    const provider = getBlockchainProvider();
+    const wallet = getBlockchainWallet(provider);
+    if (!wallet) return res.status(503).json({ error: 'Blockchain signer is not configured' });
+    const contract = getZakatContract(provider);
+    const walletContract = contract.connect(wallet) as any;
+    const formattedHash = ethers.id(transaction.audit_hash);
+
+    let reportInfo: [boolean, bigint, boolean];
+    try {
+      reportInfo = await contract.verifyReport(formattedHash);
+    } catch (readError: any) {
+      console.error(`[RECONCILIATION READ ERROR] ${readError?.message}`);
+      return res.status(502).json({ error: 'Could not reach the blockchain; transaction remains retryable' });
+    }
+
+    if (reportInfo[0]) {
+      // Already on-chain. Recover the original registration transaction hash
+      // from logs, falling back to whatever we already stored.
+      let confirmedHash: string | null = transaction.tx_hash || null;
+      let blockNumber: number | null = null;
+
+      try {
+        const currentBlock = await provider.getBlockNumber();
+        // Local nodes commonly prune logs, so scan only a bounded recent window.
+        const fromBlock = Math.max(0, currentBlock - 50_000);
+        const logs = await contract.queryFilter(
+          (contract as any).filters.ReportRegistered(formattedHash),
+          fromBlock,
+          currentBlock
+        );
+        const matchingLog = logs.find(
+          (log: any) => log.args?.reportId?.toString() === String(transaction.id)
+        );
+        if (matchingLog) {
+          confirmedHash = matchingLog.transactionHash;
+          blockNumber = matchingLog.blockNumber;
+        }
+      } catch (logError: any) {
+        console.error(`[RECONCILIATION LOG ERROR] ${logError?.message}`);
+      }
+
+      if (!confirmedHash) {
+        return res.status(409).json({
+          error: 'Report exists on-chain but its transaction hash could not be identified',
+        });
+      }
+
+      await (db as any).run(
+        `UPDATE transactions SET blockchain_status = 'CONFIRMED', is_reconciled = 1, tx_hash = ?, block_number = COALESCE(?, block_number) WHERE id = ?`,
+        [confirmedHash, blockNumber, numericId]
+      );
+      return res.json({
+        message: 'Transaction already verified on blockchain',
+        tx_hash: confirmedHash,
+        blockchain_status: 'CONFIRMED',
+        blockchain_timestamp: reportInfo[1].toString(),
+      });
+    }
+
+    // Not on-chain yet: register it now.
+    let tx: any;
+    try {
+      tx = await walletContract.registerReport(formattedHash, numericId);
+    } catch (writeError: any) {
+      console.error(`[RECONCILIATION WRITE ERROR] ${writeError?.message}`);
+      return res.status(502).json({ error: 'Reconciliation failed; transaction remains retryable' });
+    }
+
+    await (db as any).run(
+      `UPDATE transactions SET tx_hash = ?, blockchain_status = 'PENDING_BLOCKCHAIN' WHERE id = ?`,
+      [tx.hash, numericId]
+    );
+
+    const receipt = await tx.wait();
+    if (!receipt || receipt.status !== 1) {
+      return res.status(502).json({ error: 'Blockchain transaction was not confirmed; transaction remains retryable' });
+    }
+
+    await (db as any).run(
+      `UPDATE transactions SET tx_hash = ?, blockchain_status = 'CONFIRMED', block_number = ?, is_reconciled = 1 WHERE id = ?`,
+      [tx.hash, receipt.blockNumber, numericId]
+    );
+
+    res.json({
+      message: 'Transaction reconciled successfully',
+===== BLOCKCHAIN CONTRACT =====
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+/// @title ZakatVerify
+/// @notice On-chain registry of zakat distribution report hashes.
+/// @dev The ABI (function signatures, return tuple, and events) is intentionally
+///      unchanged from the original contract so the existing backend and the
+///      frontend keep working without a redeploy of any client code. The only
+///      behavioural changes are the invariants documented below.
+contract ZakatVerify {
+    address public owner;
+
+    struct Report {
+        bool exists;
+        bool revoked;
+        uint256 timestamp;
+    }
+
+    mapping(bytes32 => Report) private reports;
+
+    event ReportRegistered(bytes32 indexed reportHash, uint256 reportId, uint256 timestamp);
+    event ReportRevoked(bytes32 indexed reportHash, string reason);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    /// @notice Register a new report hash. Write-once per hash.
+    /// @dev Reverts on a zero hash or on a hash that has already been registered.
+    ///      The write-once rule is what prevents an attacker (or a duplicate
+    ///      submission) from overwriting an existing entry and clearing a
+    ///      revocation. `registerReport` stays callable without `onlyOwner` to
+    ///      preserve compatibility with the existing backend writer; see the
+    ///      audit report for the residual risk and the ownership decision.
+    function registerReport(bytes32 reportHash, uint256 reportId) external {
+        require(reportHash != bytes32(0), "Report hash must not be zero");
+        require(!reports[reportHash].exists, "Report already registered");
+
+        reports[reportHash] = Report({
+            exists: true,
+            revoked: false,
+            timestamp: block.timestamp
+        });
+
+        emit ReportRegistered(reportHash, reportId, block.timestamp);
+    }
+
+    /// @notice Revoke a previously registered report. Owner-only.
+    /// @dev Revocation is what the "revoked" flag in `verifyReport` reports, so
+    ///      it is a privileged action. Only an existing, not-yet-revoked report
+    ///      can be revoked. The backend does not call this function, so adding
+    ///      `onlyOwner` here does not affect backend compatibility.
+    function revokeReport(bytes32 reportHash, string calldata reason) external onlyOwner {
+        require(reports[reportHash].exists, "Report does not exist");
+        require(!reports[reportHash].revoked, "Report already revoked");
+
+        reports[reportHash].revoked = true;
+        emit ReportRevoked(reportHash, reason);
+    }
+
+    /// @notice Read a report. Returns (exists, timestamp, revoked).
+    /// @dev Signature and tuple order are unchanged from the original contract.
+    function verifyReport(bytes32 reportHash) external view returns (bool exists, uint256 timestamp, bool revoked) {
+        Report memory report = reports[reportHash];
+        return (report.exists, report.timestamp, report.revoked);
+    }
+}
+===== BACKEND CONTRACT =====
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+contract ZakatVerify {
+    address public owner;
+
+    struct Report {
+        bool exists;
+        bool revoked;
+        uint256 timestamp;
+    }
+
+    mapping(bytes32 => Report) private reports;
+
+    event ReportRegistered(bytes32 indexed reportHash, uint256 reportId, uint256 timestamp);
+    event ReportRevoked(bytes32 indexed reportHash, string reason);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function registerReport(bytes32 reportHash, uint256 reportId) external onlyOwner {
+        require(!reports[reportHash].exists, "Report hash already registered");
+        
+        reports[reportHash] = Report({
+            exists: true,
+            revoked: false,
+            timestamp: block.timestamp
+        });
+
+        emit ReportRegistered(reportHash, reportId, block.timestamp);
+    }
+
+    function revokeReport(bytes32 reportHash, string calldata reason) external onlyOwner {
+        require(reports[reportHash].exists, "Report not found");
+        reports[reportHash].revoked = true;
+        emit ReportRevoked(reportHash, reason);
+    }
+
+    function verifyReport(bytes32 reportHash) external view returns (bool exists, uint256 timestamp, bool revoked) {
+        Report memory report = reports[reportHash];
+        return (report.exists, report.timestamp, report.revoked);
+    }
+}
+===== DEPLOY SCRIPT =====
+const { ethers } = require("hardhat");
+
+async function main() {
+  console.log("Deploying ZakatVerify contract...");
+  const ZakatVerify = await ethers.getContractFactory("ZakatVerify");
+  const zakatVerify = await ZakatVerify.deploy();
+  await zakatVerify.waitForDeployment();
+  console.log(`ZakatVerify deployed to: ${await zakatVerify.getAddress()}`);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+===== CONTRACT DIFFERENCES =====
+--- backend/contracts/ZakatVerify.sol	2026-10-15 23:46:50.537936363 +0700
++++ blockchain/contracts/ZakatVerify.sol	2026-11-08 17:51:22.843596280 +0700
+@@ -1,6 +1,12 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.24;
+ 
++/// @title ZakatVerify
++/// @notice On-chain registry of zakat distribution report hashes.
++/// @dev The ABI (function signatures, return tuple, and events) is intentionally
++///      unchanged from the original contract so the existing backend and the
++///      frontend keep working without a redeploy of any client code. The only
++///      behavioural changes are the invariants documented below.
+ contract ZakatVerify {
+     address public owner;
+ 
+@@ -24,9 +30,17 @@
+         owner = msg.sender;
+     }
+ 
+-    function registerReport(bytes32 reportHash, uint256 reportId) external onlyOwner {
+-        require(!reports[reportHash].exists, "Report hash already registered");
+-        
++    /// @notice Register a new report hash. Write-once per hash.
++    /// @dev Reverts on a zero hash or on a hash that has already been registered.
++    ///      The write-once rule is what prevents an attacker (or a duplicate
++    ///      submission) from overwriting an existing entry and clearing a
++    ///      revocation. `registerReport` stays callable without `onlyOwner` to
++    ///      preserve compatibility with the existing backend writer; see the
++    ///      audit report for the residual risk and the ownership decision.
++    function registerReport(bytes32 reportHash, uint256 reportId) external {
++        require(reportHash != bytes32(0), "Report hash must not be zero");
++        require(!reports[reportHash].exists, "Report already registered");
++
+         reports[reportHash] = Report({
+             exists: true,
+             revoked: false,
+@@ -36,12 +50,21 @@
+         emit ReportRegistered(reportHash, reportId, block.timestamp);
+     }
+ 
++    /// @notice Revoke a previously registered report. Owner-only.
++    /// @dev Revocation is what the "revoked" flag in `verifyReport` reports, so
++    ///      it is a privileged action. Only an existing, not-yet-revoked report
++    ///      can be revoked. The backend does not call this function, so adding
++    ///      `onlyOwner` here does not affect backend compatibility.
+     function revokeReport(bytes32 reportHash, string calldata reason) external onlyOwner {
+-        require(reports[reportHash].exists, "Report not found");
++        require(reports[reportHash].exists, "Report does not exist");
++        require(!reports[reportHash].revoked, "Report already revoked");
++
+         reports[reportHash].revoked = true;
+         emit ReportRevoked(reportHash, reason);
+     }
+ 
++    /// @notice Read a report. Returns (exists, timestamp, revoked).
++    /// @dev Signature and tuple order are unchanged from the original contract.
+     function verifyReport(bytes32 reportHash) external view returns (bool exists, uint256 timestamp, bool revoked) {
+         Report memory report = reports[reportHash];
+         return (report.exists, report.timestamp, report.revoked);
+===== FRONTEND API CONFIG =====
+import axios from 'axios';
+
+const API_BASE = 'http://localhost:5000/api';
+
+const apiClient = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request Interceptor to automatically add JWT token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('zakat_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor for global error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('zakat_token');
+      localStorage.removeItem('zakat_user');
+      window.location.href = '/'; // Redirect to login
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default apiClient;
+===== BACKEND ENV TEMPLATE =====
+PORT=5000
+JWT_SECRET=replace-with-a-long-random-secret
+DATABASE_PATH=./database.sqlite
+BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
+ZAKAT_CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+BLOCKCHAIN_PRIVATE_KEY=
+PAYMENT_WEBHOOK_SECRET=replace-with-a-provider-shared-secret
