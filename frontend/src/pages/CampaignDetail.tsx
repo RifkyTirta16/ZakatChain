@@ -1,155 +1,258 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CreditCard, Clock, Info } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { ArrowLeft, Clock, Heart, Info, QrCode } from 'lucide-react';
 import apiClient from '../utils/api';
+import { formatIDR, formatDateTime } from '../utils/format';
+import { Badge, Button, Card, EmptyState, ErrorState, Skeleton } from '../components/ui';
+
+interface Donation {
+  id: number;
+  amount: number;
+  status: string;
+  timestamp: string;
+}
+
+interface CampaignDetailData {
+  id: number;
+  title: string;
+  description: string | null;
+  target_amount: number;
+  status: string;
+  deadline: string | null;
+  total_confirmed: number;
+  donation_count: number;
+  donations: Donation[];
+}
+
+interface PaymentSession {
+  paymentData: {
+    session_id: string;
+    qris_url: string;
+  };
+}
+
+const fetchCampaignDetail = async (id: string): Promise<CampaignDetailData> => {
+  const { data } = await apiClient.get(`/campaigns/${id}`);
+  return data;
+};
+
+const generatePayment = async (id: string, amount: string): Promise<PaymentSession> => {
+  const { data } = await apiClient.post('/payment/generate', {
+    campaign_id: id,
+    amount: parseFloat(amount),
+  });
+  return data;
+};
+
+const DONATION_TONE: Record<string, 'success' | 'sky' | 'coral'> = {
+  CONFIRMED: 'success',
+  PENDING: 'sky',
+};
+
+const DONATION_LABEL: Record<string, string> = {
+  CONFIRMED: 'Terkonfirmasi',
+  PENDING: 'Menunggu',
+};
 
 const CampaignDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [campaign, setCampaign] = useState<any>(null);
   const [amount, setAmount] = useState('');
-  const [paymentResult, setPaymentResult] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [paymentResult, setPaymentResult] = useState<PaymentSession | null>(null);
+  const [paymentError, setPaymentError] = useState('');
 
-  useEffect(() => {
-    const fetchDetail = async () => {
-      try {
-        const response = await apiClient.get(`/campaigns/${id}`);
-        setCampaign(response.data);
-      } catch (err) {
-        console.error('Failed to fetch campaign detail');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDetail();
-  }, [id]);
+  const query = useQuery({
+    queryKey: ['campaign', id],
+    queryFn: () => fetchCampaignDetail(id as string),
+    enabled: Boolean(id),
+  });
 
-  const handleDonate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await apiClient.post('/payment/generate', {
-        campaign_id: id,
-        amount: parseFloat(amount),
-      });
-      setPaymentResult(response.data);
-    } catch (err: any) {
-      alert('Payment generation failed');
-    }
-  };
+  const paymentMutation = useMutation({
+    mutationFn: () => generatePayment(id as string, amount),
+    onSuccess: (data) => setPaymentResult(data),
+    onError: (error: unknown) => {
+      const e = error as { response?: { status?: number } };
+      setPaymentError(
+        e.response?.status === 401
+          ? 'Silakan masuk terlebih dahulu untuk berdonasi.'
+          : 'Gagal membuat pembayaran. Periksa koneksi dan coba lagi.'
+      );
+    },
+  });
 
-  if (loading) return <div className="min-h-screen bg-wattvision-bg flex items-center justify-center text-wattvision-primary font-mono animate-pulse">Loading Intelligence...</div>;
-  if (!campaign) return <div className="min-h-screen bg-wattvision-bg flex items-center justify-center text-wattvision-alert font-mono">Campaign Not Found</div>;
+  if (query.isError) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <ErrorState
+          message="Gagal memuat detail kampanye. Periksa koneksi ke server."
+          retry={() => query.refetch()}
+        />
+      </div>
+    );
+  }
+
+  if (query.isPending) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <Card>
+          <Skeleton lines={8} className="w-full rounded-xl" />
+        </Card>
+      </div>
+    );
+  }
+
+  const campaign = query.data;
+  if (!campaign) {
+    return (
+      <Card>
+        <EmptyState
+          icon={<Heart size={40} className="text-primary" />}
+          title="Kampanye tidak ditemukan"
+          description="Kampanye mungkin telah dihapus atau tautan tidak valid."
+          action={<Button onClick={() => navigate('/campaigns')}>Lihat semua kampanye</Button>}
+        />
+      </Card>
+    );
+  }
+
+  const target = Number(campaign.target_amount) || 0;
+  const progress = target > 0 ? Math.min(100, ((Number(campaign.total_confirmed) || 0) / target) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-wattvision-bg p-8 text-wattvision-textMain font-sans">
-      <button 
+    <div className="max-w-5xl mx-auto space-y-6">
+      <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-wattvision-textSecondary hover:text-white transition-colors mb-8 text-xs uppercase tracking-widest font-bold"
+        className="inline-flex items-center min-h-[44px] gap-2 text-sm font-bold text-primary-dark/70 hover:text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full px-3"
       >
-        <ArrowLeft size={14} /> Back to Campaigns
+        <ArrowLeft size={14} /> Kembali ke kampanye
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <div className="lg:col-span-7 space-y-8">
-          <div className="bg-wattvision-surface border border-wattvision-border p-8 rounded-3xl shadow-xl">
-            <h1 className="text-4xl font-bold uppercase italic tracking-tight mb-4">{campaign.title}</h1>
-            <p className="text-wattvision-textSecondary leading-relaxed mb-8">{campaign.description}</p>
-            
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 bg-wattvision-bg rounded-2xl border border-wattvision-border">
-                <p className="text-wattvision-textSecondary text-[10px] uppercase tracking-widest mb-1">Target</p>
-                <p className="text-lg font-bold font-mono">Rp {campaign.target_amount?.toLocaleString('id-ID')}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3 space-y-6">
+          <Card>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <h1 className="text-2xl font-extrabold text-primary-dark">{campaign.title}</h1>
+              <Badge tone={campaign.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                {campaign.status === 'ACTIVE' ? 'Aktif' : campaign.status}
+              </Badge>
+            </div>
+            <p className="text-primary-dark/70 leading-relaxed mb-6">
+              {campaign.description || 'Tanpa deskripsi.'}
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-cream rounded-xl">
+                <p className="text-xs text-primary-dark/70 mb-1">Target</p>
+                <p className="text-base font-extrabold text-primary-dark">{formatIDR(target)}</p>
               </div>
-              <div className="p-4 bg-wattvision-bg rounded-2xl border border-wattvision-border">
-                <p className="text-wattvision-textSecondary text-[10px] uppercase tracking-widest mb-1">Confirmed</p>
-                <p className="text-lg font-bold font-mono text-wattvision-success">Rp {campaign.total_confirmed?.toLocaleString('id-ID')}</p>
-              </div>
-              <div className="p-4 bg-wattvision-bg rounded-2xl border border-wattvision-border">
-                <p className="text-wattvision-textSecondary text-[10px] uppercase tracking-widest mb-1">Progress</p>
-                <p className="text-lg font-bold font-mono text-wattvision-primary">
-                  {((campaign.total_confirmed / campaign.target_amount) * 100).toFixed(1)}%
+              <div className="p-4 bg-cream rounded-xl">
+                <p className="text-xs text-primary-dark/70 mb-1">Terkonfirmasi</p>
+                <p className="text-base font-extrabold text-primary-dark">
+                  {formatIDR(Number(campaign.total_confirmed))}
                 </p>
               </div>
+              <div className="p-4 bg-cream rounded-xl">
+                <p className="text-xs text-primary-dark/70 mb-1">Progress</p>
+                <p className="text-base font-extrabold text-primary-dark">{progress.toFixed(1)}%</p>
+              </div>
             </div>
-          </div>
+            <div className="mt-4 h-2 rounded-full bg-primary-bg overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
+            </div>
+          </Card>
 
-          <div className="bg-wattvision-surface border border-wattvision-border p-8 rounded-3xl shadow-xl">
-            <h3 className="text-sm font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
-              <Clock size={16} className="text-wattvision-primary" /> Donation History
-            </h3>
-            <div className="space-y-3">
-              {campaign.donations.length === 0 ? (
-                <p className="text-wattvision-textSecondary text-xs italic uppercase tracking-widest">No confirmed donations yet</p>
-              ) : (
-                campaign.donations.map((d: any, i: number) => (
-                  <div key={i} className="flex justify-between items-center p-4 bg-wattvision-bg rounded-2xl border border-wattvision-border">
+          <Card>
+            <h2 className="text-sm font-bold text-primary-dark mb-4 flex items-center gap-2">
+              <Clock size={16} className="text-primary" /> Riwayat donasi
+            </h2>
+            {campaign.donations.length === 0 ? (
+              <EmptyState
+                icon={<Heart size={32} className="text-primary" />}
+                title="Belum ada donasi terkonfirmasi"
+                description="Jadilah yang pertama mendukung kampanye ini."
+              />
+            ) : (
+              <div className="space-y-3">
+                {campaign.donations.map((d) => (
+                  <div
+                    key={d.id}
+                    className="flex justify-between items-center p-4 bg-cream rounded-xl text-sm"
+                  >
                     <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${d.status === 'CONFIRMED' ? 'bg-wattvision-success' : 'bg-wattvision-alert'}`} />
-                      <span className="text-xs font-mono uppercase">{d.status}</span>
+                      <Badge tone={DONATION_TONE[d.status] ?? 'sky'}>
+                        {DONATION_LABEL[d.status] ?? d.status}
+                      </Badge>
+                      <span className="text-xs text-primary-dark/70">{formatDateTime(d.timestamp)}</span>
                     </div>
-                    <span className="text-sm font-bold font-mono">Rp {d.amount?.toLocaleString('id-ID')}</span>
+                    <span className="font-bold text-primary-dark">{formatIDR(Number(d.amount))}</span>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
 
-        <div className="lg:col-span-5">
-          <div className="bg-wattvision-surface border border-wattvision-border p-8 rounded-3xl shadow-xl sticky top-8">
-            <h3 className="text-xl font-bold uppercase italic mb-6">Contribute <span className="text-wattvision-primary">Now</span></h3>
-            
+        <div className="lg:col-span-2">
+          <Card className="lg:sticky lg:top-24">
+            <h2 className="text-lg font-extrabold text-primary-dark mb-4">Donasi Sekarang</h2>
+
             {!paymentResult ? (
-              <form onSubmit={handleDonate} className="space-y-6">
-                <div>
-                  <label className="text-wattvision-textSecondary text-[10px] uppercase tracking-widest mb-2 block">Donation Amount (IDR)</label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-wattvision-textSecondary" size={18} />
-                    <input 
-                      type="number" 
-                      className="w-full bg-wattvision-bg border border-wattvision-border pl-12 pr-4 py-4 rounded-2xl text-lg font-mono focus:outline-none focus:border-wattvision-primary transition-all"
-                      placeholder="0"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                <button 
-                  type="submit"
-                  className="w-full bg-wattvision-primary text-black py-4 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-500/20"
-                >
-                  Generate QRIS Payment
-                </button>
+              <form
+                onSubmit={(e) => { e.preventDefault(); setPaymentError(''); paymentMutation.mutate(); }}
+                className="space-y-4"
+              >
+                <label className="block text-sm font-medium text-primary-dark">
+                  Nominal donasi (Rp)
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    required
+                    className="mt-2 w-full min-h-[44px] rounded-xl bg-cream border border-primary-bg px-4 py-3 text-base text-primary-dark placeholder-primary-dark/50 outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="0"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </label>
+                {paymentError && (
+                  <p role="alert" className="rounded-xl border border-danger/40 bg-danger/5 p-3 text-sm text-danger">
+                    {paymentError}
+                  </p>
+                )}
+                <Button type="submit" className="w-full" loading={paymentMutation.isPending}>
+                  <QrCode size={16} className="mr-2" /> Generate QRIS Payment
+                </Button>
               </form>
             ) : (
-              <div className="text-center space-y-6 animate-in fade-in zoom-in-95">
-                <div className="p-6 bg-white rounded-3xl inline-block shadow-xl">
-                  {/* In sandbox, we just show a placeholder QR. In production, this would be the actual provider image */}
-                  <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-center p-4 text-xs uppercase tracking-tighter">
-                    QRIS SANDBOX CODE<br/>{paymentResult.paymentData.paymentReference}
+              <div className="space-y-4 text-center">
+                <div className="p-6 bg-white rounded-2xl inline-block shadow-card">
+                  <div className="w-48 h-48 bg-cream rounded-lg flex items-center justify-center text-primary-dark/70 font-bold text-center p-4 text-xs break-all">
+                    {paymentResult.paymentData.qris_url}
                   </div>
                 </div>
                 <div>
-                  <p className="text-wattvision-textSecondary text-xs uppercase tracking-widest mb-1">Payment Reference</p>
-                  <p className="text-sm font-mono font-bold">{paymentResult.paymentData.paymentReference}</p>
-                </div>
-                <div className="p-4 bg-wattvision-bg border border-wattvision-border rounded-2xl flex items-center gap-3 text-left">
-                  <Info size={18} className="text-wattvision-primary shrink-0" />
-                  <p className="text-[11px] text-wattvision-textSecondary leading-relaxed">
-                    Please scan the QR code using any banking app. Your donation will be confirmed automatically once the payment is processed.
+                  <p className="text-xs text-primary-dark/70 mb-1">Referensi pembayaran</p>
+                  <p className="text-sm font-bold text-primary-dark">
+                    {paymentResult.paymentData.session_id}
                   </p>
                 </div>
-                <button 
+                <div className="p-4 bg-cream rounded-xl flex items-center gap-3 text-left">
+                  <Info size={18} className="text-primary shrink-0" />
+                  <p className="text-xs text-primary-dark/70 leading-relaxed">
+                    Pindai kode pembayaran dengan aplikasi perbankan apa pun. Donasi Anda akan
+                    terkonfirmasi otomatis setelah pembayaran diproses.
+                  </p>
+                </div>
+                <button
                   onClick={() => setPaymentResult(null)}
-                  className="text-wattvision-textSecondary text-xs uppercase tracking-widest hover:text-white transition-colors"
+                  className="text-sm font-medium text-primary-dark/70 hover:text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full px-3 min-h-[44px]"
                 >
-                  Cancel and Go Back
+                  Batalkan dan kembali
                 </button>
               </div>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

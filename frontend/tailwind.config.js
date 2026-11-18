@@ -16,9 +16,22 @@ export default {
     surface: '#EFF8F7',
     success: '#27AE60',
     danger:  '#E74C3C',
+    wattvision: {
+      bg: '#121212',
+      surface: '#1E1E1E',
+      primary: '#00E5FF',
+      alert: '#FF453A',
+      success: '#32D74B',
+      textMain: '#FFFFFF',
+      textSecondary: '#98989D',
+      border: '#2C2C2E',
+      alertBg: '#3A1C1C',
+      hover: '#252525',
+    },
   },
   fontFamily: {
     sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+    mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'SFMono-Regular'],
   },
   borderRadius: { sm: '8px', md: '12px', lg: '16px', xl: '24px' },
   boxShadow: {

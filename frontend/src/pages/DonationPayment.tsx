@@ -1,186 +1,236 @@
-import { useState, useEffect } from 'react';
-import { CreditCard, QrCode, CheckCircle, Clock, AlertCircle, Info, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { CreditCard, QrCode, CheckCircle, Clock, Info, ArrowRight, AlertCircle } from 'lucide-react';
 import apiClient from '../utils/api';
+import { formatIDR, formatDateTime } from '../utils/format';
+import { Button, Card, ErrorState, Skeleton } from '../components/ui';
+
+interface PaymentSession {
+  status: string;
+  paymentData: {
+    session_id: string;
+    qris_url: string;
+    amount: number;
+    expires_at: string;
+  };
+}
+
+interface PaymentStatus {
+  session_id: string;
+  status: 'PAID' | 'PENDING' | 'FAILED' | 'EXPIRED';
+  amount: number;
+}
+
+const createSession = async (form: { amount: string; donor_name: string; program_id: string }): Promise<PaymentSession> => {
+  const { data } = await apiClient.post('/payments/session', form);
+  return data;
+};
+
+const fetchStatus = async (sessionId: string): Promise<PaymentStatus> => {
+  const { data } = await apiClient.get(`/payments/status/${sessionId}`);
+  return data;
+};
+
+const PROGRAMS = [
+  { value: 'general', label: 'Umum (General)' },
+  { value: 'education', label: 'Pendidikan' },
+  { value: 'health', label: 'Kesehatan' },
+  { value: 'emergency', label: 'Bencana Alam' },
+];
 
 const DonationPayment = () => {
   const [step, setStep] = useState<'amount' | 'payment' | 'success'>('amount');
   const [formData, setFormData] = useState({ amount: '', donor_name: '', program_id: 'general' });
-  const [paymentData, setPaymentData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [paymentData, setPaymentData] = useState<PaymentSession | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCreateSession = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.post('/payments/session', formData);
-      setPaymentData(response.data);
+  const statusQuery = useQuery({
+    queryKey: ['payment-status', paymentData?.paymentData.session_id],
+    queryFn: () => fetchStatus(paymentData?.paymentData.session_id as string),
+    enabled: step === 'payment' && Boolean(paymentData),
+    refetchInterval: 5000,
+  });
+
+  // Status: PAID menutup wizard (render-phase update, bersyarat agar tidak berulang);
+  // FAILED/EXPIRED wajib terlihat, bukan diam dipolling.
+  if (statusQuery.data?.status === 'PAID' && step === 'payment') {
+    setStep('success');
+  }
+
+  const sessionMutation = useMutation({
+    mutationFn: () => createSession(formData),
+    onSuccess: (data) => {
+      setPaymentData(data);
       setStep('payment');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Gagal membuat sesi pembayaran');
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setError(e.response?.data?.error || 'Gagal membuat sesi pembayaran');
+    },
+  });
 
-  const pollPaymentStatus = async () => {
-    if (!paymentData?.session_id) return;
-    try {
-      const response = await apiClient.get(`/payments/status/${paymentData.session_id}`);
-      if (response.data.status === 'PAID') {
-        setStep('success');
-      }
-    } catch (err) {
-      console.error('Polling error', err);
-    }
-  };
-
-  useEffect(() => {
-    let interval: any;
-    if (step === 'payment') {
-      interval = setInterval(pollPaymentStatus, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [step, paymentData]);
-
-  return (
-    <div className="min-h-screen bg-wattvision-bg p-8 text-wattvision-textMain font-sans flex items-center justify-center">
-      <div className="max-w-md w-full bg-wattvision-surface border border-wattvision-border p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-wattvision-primary to-transparent" />
-
-        {step === 'amount' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-wattvision-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-wattvision-primary/20 shadow-lg shadow-cyan-500/10">
-                <CreditCard className="text-wattvision-primary" size={32} />
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight uppercase italic mb-2">
-                Donasi <span className="text-wattvision-primary">Zakat</span>
-              </h2>
-              <p className="text-wattvision-textSecondary text-xs uppercase tracking-widest font-medium">Secure Blockchain Donation</p>
+  if (step === 'success' && paymentData) {
+    return (
+      <div className="max-w-md mx-auto">
+        <Card>
+          <div className="text-center space-y-6">
+            <div className="w-20 h-20 bg-success/15 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle className="text-success" size={48} />
             </div>
-
-            {error && (
-              <div className="p-3 bg-wattvision-alertBg text-wattvision-alert border border-wattvision-alert/20 rounded-xl flex items-center gap-2 text-xs font-medium">
-                <AlertCircle size={14} /> {error}
+            <div className="space-y-2">
+              <h1 className="text-2xl font-extrabold text-primary-dark">Pembayaran Berhasil!</h1>
+              <p className="text-primary-dark/70 text-sm">
+                Terima kasih {formData.donor_name || 'Sahabat'}, donasi Anda telah tercatat dalam
+                sistem dan akan segera disalurkan.
+              </p>
+            </div>
+            <div className="bg-cream p-5 rounded-xl text-sm text-left space-y-3">
+              <div className="flex justify-between items-center gap-4">
+                <span className="text-primary-dark/70">Session ID</span>
+                <span className="text-primary-dark break-all">{paymentData.paymentData.session_id}</span>
               </div>
-            )}
-
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="block text-[10px] uppercase tracking-widest text-wattvision-textSecondary font-bold ml-1">Nama Donatur</label>
-                <input 
-                  type="text" 
-                  className="w-full bg-wattvision-bg border border-wattvision-border rounded-xl p-3 focus:outline-none focus:border-wattvision-primary transition-colors text-sm"
-                  placeholder="Nama lengkap Anda"
-                  value={formData.donor_name}
-                  onChange={e => setFormData({...formData, donor_name: e.target.value})}
-                />
+              <div className="flex justify-between items-center gap-4">
+                <span className="text-primary-dark/70">Nominal</span>
+                <span className="text-primary-dark font-bold">{formatIDR(paymentData.paymentData.amount)}</span>
               </div>
-              <div className="space-y-1">
-                <label className="block text-[10px] uppercase tracking-widest text-wattvision-textSecondary font-bold ml-1">Nominal (Rp)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-wattvision-textSecondary font-mono text-xs">Rp</span>
-                  <input 
-                    type="number" 
-                    className="w-full bg-wattvision-bg border border-wattvision-border rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-wattvision-primary transition-colors font-mono text-sm"
-                    placeholder="0"
-                    value={formData.amount}
-                    onChange={e => setFormData({...formData, amount: e.target.value})}
-                  />
+            </div>
+            <Button variant="secondary" className="w-full" onClick={() => { setStep('amount'); setPaymentData(null); }}>
+              Donasi lagi
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === 'payment' && paymentData) {
+    const session = paymentData.paymentData;
+    const failed = statusQuery.data?.status === 'FAILED' || statusQuery.data?.status === 'EXPIRED';
+    return (
+      <div className="max-w-md mx-auto">
+        <Card>
+          {failed ? (
+            <ErrorState
+              message={
+                statusQuery.data?.status === 'EXPIRED'
+                  ? 'Sesi pembayaran telah kedaluwarsa. Silakan buat sesi baru.'
+                  : 'Pembayaran gagal diproses. Silakan coba lagi atau buat sesi baru.'
+              }
+              retry={() => { setStep('amount'); setPaymentData(null); }}
+            />
+          ) : (
+            <div className="text-center space-y-5">
+              <div className="flex justify-center items-center gap-2 text-primary mb-4">
+                <QrCode size={24} />
+                <span className="font-bold text-sm text-primary-dark">Pembayaran QRIS</span>
+              </div>
+
+              {statusQuery.isPending ? (
+                <Skeleton lines={8} className="w-full rounded-xl" />
+              ) : (
+                <div className="bg-white p-4 rounded-2xl inline-block mx-auto shadow-card">
+                  <div className="w-52 h-52 bg-cream rounded-lg flex items-center justify-center text-primary-dark/70 font-bold text-center p-4 text-xs break-all">
+                    {session.qris_url}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <p className="text-2xl font-extrabold text-primary-dark">{formatIDR(session.amount)}</p>
+                <div className="flex items-center justify-center gap-2 text-xs text-primary-dark/70">
+                  <Clock size={12} />
+                  <span>Berlaku hingga: {formatDateTime(session.expires_at)}</span>
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="block text-[10px] uppercase tracking-widest text-wattvision-textSecondary font-bold ml-1">Program Zakat</label>
-                <select 
-                  className="w-full bg-wattvision-bg border border-wattvision-border rounded-xl p-3 focus:outline-none focus:border-wattvision-primary transition-colors text-sm"
-                  value={formData.program_id}
-                  onChange={e => setFormData({...formData, program_id: e.target.value})}
-                >
-                  <option value="general">Umum (General)</option>
-                  <option value="education">Pendidikan</option>
-                  <option value="health">Kesehatan</option>
-                  <option value="emergency">Bencana Alam</option>
-                </select>
+
+              <div className="p-5 bg-cream rounded-xl text-sm text-left space-y-3">
+                <p className="font-bold flex items-center gap-2 text-primary-dark text-sm">
+                  <Info size={14} /> Instruksi Pembayaran
+                </p>
+                <ul className="space-y-2 text-primary-dark/70 list-decimal list-inside">
+                  <li>Pindai kode QRIS menggunakan aplikasi pembayaran (GOPAY, OVO, Dana, dll)</li>
+                  <li>Pastikan nominal sesuai dengan yang tertera</li>
+                  <li>Sistem akan memverifikasi pembayaran secara otomatis</li>
+                </ul>
               </div>
-            </div>
 
-            <button 
-              onClick={handleCreateSession}
-              disabled={loading || !formData.amount || !formData.donor_name}
-              className="w-full bg-wattvision-primary text-black font-bold py-4 rounded-2xl hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 uppercase tracking-widest text-xs"
-            >
-              {loading ? 'Processing...' : (
-                <>
-                  Lanjutkan Pembayaran <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </div>
-        )}
-
-        {step === 'payment' && paymentData && (
-          <div className="text-center space-y-6 animate-in zoom-in-95 duration-300">
-            <div className="flex justify-center items-center gap-2 text-wattvision-primary mb-4">
-              <QrCode size={24} />
-              <span className="font-bold uppercase tracking-widest text-xs">QRIS Payment Gateway</span>
-            </div>
-            
-            <div className="bg-white p-4 rounded-3xl inline-block mx-auto shadow-xl">
-              <img src={paymentData.qris_url} alt="QRIS" className="w-56 h-56" />
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-2xl font-bold font-mono text-wattvision-primary">Rp {Number(paymentData.amount).toLocaleString()}</p>
-              <div className="flex items-center justify-center gap-2 text-[10px] text-wattvision-textSecondary uppercase tracking-tighter">
-                <Clock size={12} />
-                <span>Berlaku hingga: {new Date(paymentData.expires_at).toLocaleTimeString()}</span>
-              </div>
-            </div>
-
-            <div className="p-5 bg-wattvision-bg rounded-2xl border border-wattvision-border text-xs text-left space-y-3">
-              <p className="font-bold flex items-center gap-2 text-wattvision-primary uppercase tracking-widest text-[10px]">
-                <Info size={14} /> Instruksi Pembayaran:
-              </p>
-              <ul className="space-y-2 text-wattvision-textSecondary list-decimal list-inside font-medium">
-                <li>Scan QRIS di atas menggunakan aplikasi pembayaran (GOPAY, OVO, Dana, dll)</li>
-                <li>Pastikan nominal sesuai dengan yang tertera</li>
-                <li>Sistem akan memverifikasi pembayaran secara otomatis</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {step === 'success' && (
-          <div className="text-center space-y-6 animate-in fade-in scale-in-95">
-            <div className="w-20 h-20 bg-wattvision-success/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-wattvision-success/30">
-              <CheckCircle className="text-wattvision-success" size={48} />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tight uppercase italic">Pembayaran <span className="text-wattvision-success">Berhasil!</span></h2>
-              <p className="text-wattvision-textSecondary text-sm px-4">
-                Terima kasih {formData.donor_name}, donasi Anda telah tercatat dalam sistem dan akan segera disalurkan.
+              <p className="text-xs text-primary-dark/70 flex items-center justify-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-gold animate-pulse" />
+                Menunggu konfirmasi pembayaran...
               </p>
             </div>
-            <div className="bg-wattvision-bg p-5 rounded-2xl border border-wattvision-border font-mono text-xs text-left space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-wattvision-textSecondary uppercase tracking-widest">Session ID:</span>
-                <span className="text-wattvision-textMain break-all ml-4">{paymentData.session_id}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-wattvision-textSecondary uppercase tracking-widest">Nominal:</span>
-                <span className="text-wattvision-primary font-bold">Rp {Number(paymentData.amount).toLocaleString()}</span>
-              </div>
-            </div>
-            <button 
-              onClick={() => setStep('amount')}
-              className="w-full bg-wattvision-surface border border-wattvision-border py-4 rounded-2xl hover:bg-wattvision-hover transition-colors uppercase tracking-widest text-xs font-bold"
-            >
-              Kembali ke Beranda
-            </button>
-          </div>
-        )}
+          )}
+        </Card>
       </div>
+    );
+  }
+
+  return (
+    <div className="max-w-md mx-auto">
+      <Card>
+        <div className="space-y-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-primary-bg rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="text-primary" size={30} />
+            </div>
+            <h1 className="text-2xl font-extrabold text-primary-dark mb-1">Donasi Zakat</h1>
+            <p className="text-primary-dark/70 text-sm">Donasi transparan tercatat on-chain.</p>
+          </div>
+
+          {error && (
+            <div role="alert" className="p-3 bg-coral/10 border border-coral/30 rounded-xl flex items-center gap-2 text-sm text-coral-dark">
+              <AlertCircle size={14} /> {error}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-primary-dark">
+              Nama donatur
+              <input
+                type="text"
+                className="mt-2 w-full min-h-[44px] rounded-xl bg-cream border border-primary-bg px-4 py-3 text-sm text-primary-dark placeholder-primary-dark/50 outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Nama lengkap Anda"
+                value={formData.donor_name}
+                onChange={(e) => setFormData({ ...formData, donor_name: e.target.value })}
+              />
+            </label>
+            <label className="block text-sm font-medium text-primary-dark">
+              Nominal (Rp)
+              <input
+                type="number"
+                min="1"
+                step="1"
+                required
+                className="mt-2 w-full min-h-[44px] rounded-xl bg-cream border border-primary-bg px-4 py-3 text-sm text-primary-dark placeholder-primary-dark/50 outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="0"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              />
+            </label>
+            <label className="block text-sm font-medium text-primary-dark">
+              Program zakat
+              <select
+                className="mt-2 w-full min-h-[44px] rounded-xl bg-cream border border-primary-bg px-4 py-3 text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary/20"
+                value={formData.program_id}
+                onChange={(e) => setFormData({ ...formData, program_id: e.target.value })}
+              >
+                {PROGRAMS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <Button
+            className="w-full"
+            disabled={!formData.amount || !formData.donor_name}
+            loading={sessionMutation.isPending}
+            onClick={() => sessionMutation.mutate()}
+          >
+            Lanjutkan Pembayaran <ArrowRight size={16} className="ml-2" />
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 };

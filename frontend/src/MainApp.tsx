@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Zap, LogOut } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import PovertyMapping from './pages/PovertyMapping';
 import OnChainExplorer from './pages/OnChainExplorer';
@@ -11,84 +10,13 @@ import PublicVerify from './pages/PublicVerify';
 import Campaigns from './pages/Campaigns';
 import CampaignDetail from './pages/CampaignDetail';
 import EvidenceGraph from './pages/EvidenceGraph';
-
-interface SessionUser {
-  id?: number;
-  username?: string;
-  role?: string;
-}
-
-const Navigation = ({ user, onLogout }: { user: SessionUser; onLogout: () => void }) => {
-  const location = useLocation();
-
-  const navItems = [
-    { name: 'Dashboard', path: '/' },
-    { name: 'Pemetaan Wilayah', path: '/mapping' },
-    { name: 'Campaigns', path: '/campaigns' },
-    { name: 'Evidence Graph', path: '/graph' },
-    { name: 'Explorer', path: '/explorer' },
-    { name: 'Donasi', path: '/donate' },
-    { name: 'Input Distribusi', path: '/new-record' },
-    { name: 'Verifikasi', path: '/verify' },
-  ];
-
-  return (
-    <nav className="bg-wattvision-surface border-b border-wattvision-border px-4 md:px-6 py-3 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-wattvision-primary rounded-lg flex items-center justify-center text-black shadow-lg shadow-cyan-500/20">
-              <Zap size={18} />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-lg tracking-tighter uppercase italic leading-none">
-                Zakat<span className="text-wattvision-primary">Chain</span>
-              </span>
-              <span className="text-[9px] text-wattvision-textSecondary uppercase tracking-widest font-medium">
-                Institutional Audit System
-              </span>
-            </div>
-          </Link>
-          <button
-            onClick={onLogout}
-            className="flex md:hidden items-center gap-2 text-xs uppercase tracking-widest font-bold text-wattvision-textSecondary hover:text-white transition-colors"
-          >
-            <LogOut size={16} /> Keluar
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0 -mx-1 px-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-widest transition-all duration-200 whitespace-nowrap ${
-                location.pathname === item.path
-                  ? 'bg-wattvision-primary text-black'
-                  : 'text-wattvision-textSecondary hover:bg-wattvision-border hover:text-white'
-              }`}
-            >
-              {item.name}
-            </Link>
-          ))}
-          <div className="hidden md:flex items-center gap-3 ml-2 pl-4 border-l border-wattvision-border">
-            <div className="text-right leading-tight">
-              <p className="text-[11px] font-bold text-white">{user.username || 'Pengguna'}</p>
-              <p className="text-[9px] uppercase tracking-widest text-wattvision-textSecondary font-mono">{user.role || ''}</p>
-            </div>
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-wattvision-textSecondary hover:text-white transition-colors"
-              aria-label="Keluar"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-};
+import RoleLayout from './components/layout/RoleLayout';
+import RequireRole from './components/layout/RequireRole';
+import { rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
+import DonorHome from './pages/home/DonorHome';
+import AmilHome from './pages/home/AmilHome';
+import AuditorHome from './pages/home/AuditorHome';
+import AdminHome from './pages/home/AdminHome';
 
 const MainApp = () => {
   const [user, setUser] = useState<SessionUser | null>(() => {
@@ -117,30 +45,78 @@ const MainApp = () => {
     localStorage.removeItem('zakat_token');
   };
 
-  if (!user) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  const redirectAfterLogin = sessionStorage.getItem('zakat_redirect');
+  if (user && redirectAfterLogin) {
+    sessionStorage.removeItem('zakat_redirect');
+    return (
+      <Router>
+        <Navigate to={redirectAfterLogin} replace />
+      </Router>
+    );
   }
+
+  if (!user) {
+    return (
+      <Router>
+        <LoginPage onLoginSuccess={handleLoginSuccess} />
+      </Router>
+    );
+  }
+
+  const role = toRole(user.role);
+  const Home =
+    role === 'AMIL' ? AmilHome
+    : role === 'AUDITOR' ? AuditorHome
+    : role === 'ADMIN' ? AdminHome
+    : DonorHome;
+
+  const guarded = (path: string, element: React.ReactNode) => (
+    <RequireRole user={user} roles={rolesForPath(path)}>{element}</RequireRole>
+  );
 
   return (
     <Router>
-      <div className="min-h-screen bg-wattvision-bg text-wattvision-textMain font-sans">
-        <Navigation user={user} onLogout={handleLogout} />
-        <main className="p-4 md:p-6 max-w-7xl mx-auto">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/mapping" element={<PovertyMapping />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route path="/campaigns/:id" element={<CampaignDetail />} />
-            <Route path="/graph" element={<EvidenceGraph />} />
-            <Route path="/explorer" element={<OnChainExplorer />} />
-            <Route path="/donate" element={<DonationPayment />} />
-            <Route path="/new-record" element={<NewDistributionRecord />} />
-            <Route path="/verify" element={<PublicVerify />} />
-          </Routes>
-        </main>
-      </div>
+      <RoleLayout user={user} onLogout={handleLogout}>
+        <Routes>
+          <Route path="/" element={<Home user={user} />} />
+          <Route path="/campaigns" element={guarded('/campaigns', <Campaigns />)} />
+          <Route path="/campaigns/:id" element={guarded('/campaigns', <CampaignDetail />)} />
+          <Route path="/donate" element={guarded('/donate', <DonationPayment />)} />
+          <Route path="/verify" element={guarded('/verify', <PublicVerify />)} />
+          <Route path="/new-record" element={guarded('/new-record', <NewDistributionRecord />)} />
+          <Route path="/mapping" element={guarded('/mapping', <PovertyMapping />)} />
+          <Route path="/explorer" element={guarded('/explorer', <OnChainExplorer />)} />
+          <Route path="/graph" element={guarded('/graph', <EvidenceGraph />)} />
+          <Route path="/dashboard" element={guarded('/', <Dashboard />)} />
+          <Route
+            path="/anomalies"
+            element={guarded('/anomalies', <PlaceholderPage title="Anomali" />)}
+          />
+          <Route
+            path="/proofs"
+            element={guarded('/proofs', <PlaceholderPage title="Verifikasi Bukti" />)}
+          />
+          <Route
+            path="/reconciliation"
+            element={guarded('/reconciliation', <PlaceholderPage title="Rekonsiliasi" />)}
+          />
+          <Route path="/audit" element={guarded('/audit', <PlaceholderPage title="Log Audit" />)} />
+          <Route path="/export" element={guarded('/export', <PlaceholderPage title="Ekspor" />)} />
+          <Route path="*" element={<PlaceholderPage title="Halaman" />} />
+        </Routes>
+      </RoleLayout>
     </Router>
   );
 };
+
+const PlaceholderPage = ({ title }: { title: string }) => (
+  <div className="max-w-md mx-auto text-center py-16">
+    <h1 className="text-2xl font-extrabold text-primary-dark mb-2">{title}</h1>
+    <p className="text-primary-dark/70">
+      Menu ini ada di konfigurasi peran Anda; halaman kerjanya akan menyambung ke backend
+      pada iterasi berikutnya.
+    </p>
+  </div>
+);
 
 export default MainApp;

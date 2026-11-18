@@ -8,7 +8,7 @@ Uang via utils/format.ts. Tanpa hex/URL hardcode. Bungkus halaman dengan
 Jangan mencampur kelas wattvision-* dan token baru di satu halaman.
 Jangan ubah logika API, nama endpoint, atau struktur data.
 
-- [ ] 1. pages/Dashboard.tsx
+- [x] 1. pages/Dashboard.tsx
   Tata letak: 4 kartu angka (total donasi, total distribusi, saldo, anomali terbuka), lalu grafik
   tren (Recharts, warna token) + tabel 5 transaksi terakhir. Aksi utama: "Catat Distribusi" (AMIL)
   atau "Tinjau Anomali" (AUDITOR/ADMIN).
