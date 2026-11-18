@@ -15,7 +15,7 @@ Jangan ubah logika API, nama endpoint, atau struktur data.
 - [x] 2. components/Analytics.tsx
   Tata letak: komponen grafik dipakai Dashboard. Warna dari token, legenda + label sumbu,
   angka kunci besar. Jangan ubah props yang dipakai pemanggilnya.
-- [ ] 3. pages/Campaigns.tsx
+- [x] 3. pages/Campaigns.tsx
   Tata letak: grid kartu (judul, progress bar target, sisa hari, tombol "Donasi" gold),
   filter status di atas. Garis aksen kiri kartu sesuai status kampanye.
 - [ ] 4. pages/CampaignDetail.tsx

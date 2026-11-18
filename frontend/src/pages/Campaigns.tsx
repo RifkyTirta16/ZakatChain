@@ -25,6 +25,14 @@ interface SessionUser {
 
 /** Dihitung sekali di level modul agar tidak ada pemanggilan Date saat render. */
 const TODAY = new Date().toISOString().slice(0, 10);
+const NOW_MS = Date.now();
+
+const daysLeft = (deadline: string | null): number | null => {
+  if (!deadline) return null;
+  const diff = Date.parse(deadline) - NOW_MS;
+  if (Number.isNaN(diff)) return null;
+  return Math.ceil(diff / 86400000);
+};
 
 const STATUS_TONE: Record<string, 'success' | 'neutral'> = {
   ACTIVE: 'success',
@@ -44,6 +52,7 @@ const progressPercent = (campaign: Campaign): number => {
 
 const Campaigns = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('');
   const [formError, setFormError] = useState('');
   const [form, setForm] = useState({ title: '', description: '', target_amount: '', deadline: '' });
   const navigate = useNavigate();
@@ -83,6 +92,10 @@ const Campaigns = () => {
   });
 
   const campaigns = query.data ?? [];
+  const statusOptions = Array.from(new Set(campaigns.map((c) => c.status)));
+  const visibleCampaigns = filterStatus
+    ? campaigns.filter((c) => c.status === filterStatus)
+    : campaigns;
 
   if (query.isError) {
     return (
@@ -106,6 +119,16 @@ const Campaigns = () => {
             Pilih kampanye dan salurkan donasi Anda.
           </p>
         </div>
+        <select
+          className="min-h-[44px] rounded-xl bg-cream border border-primary-bg px-3 py-2 text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary/20"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="">Semua Status</option>
+          {statusOptions.map((st) => (
+            <option key={st} value={st}>{st === 'ACTIVE' ? 'Aktif' : st}</option>
+          ))}
+        </select>
         {canCreateCampaign && (
           <Button onClick={() => { setFormError(''); setIsCreateOpen(true); }}>
             <Plus size={16} className="mr-2" /> Buat Kampanye
@@ -132,10 +155,20 @@ const Campaigns = () => {
             }
           />
         </Card>
+      ) : visibleCampaigns.length === 0 ? (
+        <Card>
+          <EmptyState
+            title="Tidak ada kampanye yang cocok"
+            description="Coba pilih status lain pada filter di atas."
+            action={<Button onClick={() => setFilterStatus('')}>Reset filter</Button>}
+          />
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {campaigns.map((campaign) => (
-            <Card key={campaign.id} className="flex flex-col">
+          {visibleCampaigns.map((campaign) => {
+          const remaining = daysLeft(campaign.deadline);
+          return (
+          <Card key={campaign.id} variant={campaign.status === 'ACTIVE' ? 'default' : 'highlight'} className="flex flex-col">
               <div className="flex justify-between items-start mb-3">
                 <div className="w-10 h-10 rounded-xl bg-primary-bg flex items-center justify-center text-primary">
                   <Heart size={20} />
@@ -169,18 +202,23 @@ const Campaigns = () => {
                 </div>
                 {campaign.deadline && (
                   <p className="text-xs text-primary-dark/70">
-                    Batas waktu: {formatDateKey(campaign.deadline)}
+                    {remaining === null
+                      ? `Batas waktu: ${formatDateKey(campaign.deadline)}`
+                      : remaining > 0
+                        ? `Sisa ${remaining} hari`
+                        : 'Pendaftaran telah berakhir'}
                   </p>
                 )}
                 <button
                   onClick={() => navigate(`/campaigns/${campaign.id}`)}
                   className="w-full inline-flex items-center justify-center min-h-[44px] rounded-full bg-gradient-to-br from-gold to-gold-light text-primary-dark font-bold text-sm shadow-gold-glow outline-none focus-visible:ring-2 focus-visible:ring-primary transition-transform active:scale-95"
                 >
-                  Lihat Detail <ArrowRight size={14} className="ml-2" />
+                  Donasi <ArrowRight size={14} className="ml-2" />
                 </button>
               </div>
             </Card>
-          ))}
+          );
+        })}
         </div>
       )}
 
