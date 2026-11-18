@@ -1,7 +1,8 @@
-cd ~/ZakatChain
-cat > opencode.json << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": ["AGENTS.md", "DESIGN.md"]
+  "instructions": [
+    "DESIGN.md",
+    "agent-memory/ACTIVE_TASK.md",
+    "agent-memory/KNOWN_ISSUES.md"
+  ]
 }
-EOF

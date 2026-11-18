@@ -182,3 +182,30 @@ Prinsip: kode dibaca jauh lebih sering daripada ditulis. Sederhana > pintar.
   Gunakan Git. Dokumen duplikat dilarang: satu topik = satu file.
 - Jangan membuat folder atau workspace baru tanpa persetujuan.
 - Laporkan bila ukuran repo (tanpa node_modules/.git) melebihi 100 MB.
+
+## 15. Ukuran repo
+Ukuran normal repo tanpa node_modules ≈ 15 MB. node_modules (±1,9 GB, 4 folder)
+bukan bagian kode: jangan dibaca, jangan di-index, jangan dihapus tanpa izin.
+Jangan mencoba "mengecilkan" repo dengan menghapus file sumber.
+
+## 16. Sintaks JSX
+- Komentar di dalam JSX HARUS berbentuk {/* teks */}. Penutup "*/}" wajib.
+- Setelah membuat atau mengubah file .tsx, langsung jalankan: cd frontend && npx tsc -b 2>&1 | head -20
+- Jika error yang sama muncul 2 kali, BERHENTI. Tampilkan baris penyebabnya dan tanya saya. Jangan mengulang perbaikan yang sama.
+
+## 17. Aturan dari sesi sebelumnya (WAJIB)
+- Satu tugas per sesi. Kerjakan HANYA yang diminta. Jangan menyentuh file di luar rencana.
+- Tailwind: tulis class UTUH. Dilarang text-${x}, shadow-${x}, bg-${x} (tidak terdeteksi build).
+- Komentar JSX hanya berbentuk {/* teks */}. Setelah mengubah .tsx langsung jalankan tsc -b.
+- tailwind.config.js: hanya GABUNGKAN ke theme.extend. Tidak ada theme.dark (bukan kunci Tailwind).
+  Palet wattvision (10 kunci: alert, alertBg, bg, border, hover, primary, success, surface,
+  textMain, textSecondary) + fontFamily.mono JANGAN dihapus selama
+  `grep -rc "wattvision-" frontend/src` masih > 0.
+- frontend/src/utils/status.ts: JANGAN diubah (BadgeTone lama success|warning|danger|neutral
+  dipakai halaman lama). Pemetaan status baru ada di frontend/src/components/ui/badgeStatus.ts.
+- JANGAN membuat Design.preview.tsx atau route /_design.
+- JANGAN menimpa opencode.json.
+- Verifikasi frontend: cd frontend && npx tsc -b 2>&1 | head -20 && npm run build 2>&1 | grep -v "^\s*at " | tail -15
+- 7 warning lint lama (Campaigns.tsx dkk) bukan tugasmu kecuali diminta.
+- Error yang sama muncul 2 kali: BERHENTI, tempel error apa adanya, tanya saya.
+- Setelah selesai: git status --short dan laporkan semua file yang berubah.
