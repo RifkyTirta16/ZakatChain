@@ -71,3 +71,28 @@ Layout desktop (12 kolom, gap 24px):
 - Baris 4: Aktivitas transaksi (7 kolom) + Transparansi blockchain (5 kolom)
 - Baris 5: Peta distribusi (12 kolom, tinggi 380px, daftar wilayah teratas di sisi kanan peta)
 Mobile: satu kolom berurutan 1 sampai 8, KPI grid 2x2, kampanye carousel.
+
+## DONASI LENGKAP DI HALAMAN UTAMA (menggantikan "Quick Donation" sederhana)
+Seluruh alur donasi terjadi di route "/" tanpa pindah halaman.
+Komponen: components/dashboard/DonationDrawer.tsx (panel geser), dipicu dari:
+(a) QuickDonation di hero, (b) tombol Donasi pada tiap kartu kampanye (no. 4).
+State kampanye terpilih dan nominal diangkat ke DonorHome.tsx (atau context kecil).
+
+Langkah di drawer:
+1. Pilih kampanye (dropdown/kartu kecil dengan progress), nominal cepat
+   (Rp 50.000, 100.000, 250.000, Lainnya) atau input bebas. Validasi inline Bahasa Indonesia
+   (minimal sesuai aturan backend; cari di validation.ts, jangan menebak).
+2. Ringkasan: kampanye, nominal, catatan jujur "Donasi tercatat setelah pembayaran terkonfirmasi.
+   On-chain hanya membuktikan hash, bukan penerimaan di lapangan".
+3. Tombol "Lanjut bayar" (gold) memanggil pembuatan sesi pembayaran YANG SUDAH ADA
+   (POST /payments/session; jangan ubah endpoint atau payload) lalu menampilkan instruksi/kode
+   pembayaran persis seperti yang dikembalikan backend/PaymentModal sekarang.
+4. Pemantauan status: polling GET /payments/status/:sessionId tiap 3 detik, maksimal 5 menit,
+   berhenti saat status akhir. JourneyTracker menampilkan posisi. Ada tombol "Periksa sekarang".
+5. Selesai: ucapan terima kasih singkat, tombol "Donasi lagi" dan "Tutup".
+   Setelah sukses: invalidate query donasi, KPI, dan aktivitas supaya data halaman utama langsung segar.
+Keadaan khusus: belum login -> ajakan masuk, kembali ke "/" dengan pilihan tersimpan di sessionStorage
+(hanya kampanye dan nominal, tanpa data sensitif). Gagal/kedaluwarsa -> pesan jelas + "Coba lagi".
+Aksesibilitas: drawer memakai role="dialog", fokus terkunci, Escape menutup, fokus kembali ke pemicu.
+Jangan ubah: alur backend, webhook, nama endpoint, PaymentModal.tsx (dipakai sebagai referensi
+atau dibungkus ulang), pages/DonationPayment.tsx (tetap ada sebagai tautan langsung).
