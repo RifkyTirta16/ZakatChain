@@ -56,3 +56,18 @@ aritmetika murni, beri keterangan "perkiraan proporsi, bukan pelacakan per donas
 DILARANG: klaim dana donasi tertentu sudah diterima penerima tertentu, memakai kata
 "sudah sampai/diterima", atau menampilkan data pribadi penerima. Gunakan kata
 "tercatat", "terverifikasi hash", "tersalurkan menurut catatan".
+
+## DASHBOARD UTAMA (route "/") dengan Visual v2
+Semua 8 komponen berada di SATU halaman: frontend/src/pages/home/DonorHome.tsx
+(dirender untuk semua role di "/"). Urutan 1-8 tidak berubah.
+Tambahan per role (di atas komponen 1, hanya untuk ADMIN/AUDITOR/AMIL):
+ActionPanel "Perlu tindakan" (bukti menunggu review, anomali terbuka, rekonsiliasi terakhir > 7 hari).
+Admin/Auditor/Amil tetap melihat 8 komponen di bawahnya, tapi data "personal" (1, 5) berisi
+ringkasan sistem, bukan donasi pribadi.
+Layout desktop (12 kolom, gap 24px): 
+- Baris 1: Hero (1 + Quick Donation di dalam hero, kolom kanan 5/12)
+- Baris 2: KPI 4 kartu (3 kolom masing-masing)
+- Baris 3: Kampanye populer (8 kolom) + Dampak sosial (4 kolom)
+- Baris 4: Aktivitas transaksi (7 kolom) + Transparansi blockchain (5 kolom)
+- Baris 5: Peta distribusi (12 kolom, tinggi 380px, daftar wilayah teratas di sisi kanan peta)
+Mobile: satu kolom berurutan 1 sampai 8, KPI grid 2x2, kampanye carousel.
