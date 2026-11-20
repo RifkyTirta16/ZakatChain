@@ -4,7 +4,7 @@ Wajib loading (Skeleton), kosong (EmptyState + aksi), error (ErrorState + coba l
 Teks Bahasa Indonesia, responsif 640/768/1024, status via ui/badgeStatus.ts, uang via utils/format.ts.
 Latar bg-canvas. Jangan campur kelas wattvision-* dan token baru. Jangan ubah logika API/endpoint.
 
-- [ ] 1. pages/Campaigns.tsx: grid kartu (judul, progress, sisa hari, tombol Donasi yang membuka
+- [x] 1. pages/Campaigns.tsx: grid kartu (judul, progress, sisa hari, tombol Donasi yang membuka
   DonationDrawer atau mengarah ke "/" bila drawer hanya ada di sana), filter status di atas.
 - [ ] 2. pages/CampaignDetail.tsx: kiri deskripsi + riwayat donasi, kanan lengket progress + tombol Donasi.
 - [ ] 3. pages/DonationPayment.tsx: tetap sebagai tautan langsung, wizard 3 langkah. Alur sesi tidak diubah.

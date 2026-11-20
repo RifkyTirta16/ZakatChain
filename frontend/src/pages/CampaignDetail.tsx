@@ -140,26 +140,6 @@ const CampaignDetail = () => {
             <p className="text-primary-dark/70 leading-relaxed mb-6">
               {campaign.description || 'Tanpa deskripsi.'}
             </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 bg-cream rounded-xl">
-                <p className="text-xs text-primary-dark/70 mb-1">Target</p>
-                <p className="text-base font-extrabold text-primary-dark">{formatIDR(target)}</p>
-              </div>
-              <div className="p-4 bg-cream rounded-xl">
-                <p className="text-xs text-primary-dark/70 mb-1">Terkonfirmasi</p>
-                <p className="text-base font-extrabold text-primary-dark">
-                  {formatIDR(Number(campaign.total_confirmed))}
-                </p>
-              </div>
-              <div className="p-4 bg-cream rounded-xl">
-                <p className="text-xs text-primary-dark/70 mb-1">Progress</p>
-                <p className="text-base font-extrabold text-primary-dark">{progress.toFixed(1)}%</p>
-              </div>
-            </div>
-            <div className="mt-4 h-2 rounded-full bg-primary-bg overflow-hidden">
-              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
-            </div>
           </Card>
 
           <Card>
@@ -196,6 +176,17 @@ const CampaignDetail = () => {
         <div className="lg:col-span-2">
           <Card className="lg:sticky lg:top-24">
             <h2 className="text-lg font-extrabold text-primary-dark mb-4">Donasi Sekarang</h2>
+
+            <div className="mb-4">
+              <div className="flex justify-between items-center text-sm mb-2">
+                <span className="font-bold text-primary-dark">{formatIDR(Number(campaign.total_confirmed))}</span>
+                <span className="text-primary-dark/70">Target {formatIDR(target)}</span>
+              </div>
+              <div className="h-2 rounded-full bg-primary-bg overflow-hidden">
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
+              </div>
+              <p className="text-xs text-primary-dark/70 mt-1">Progress {progress.toFixed(1)}%</p>
+            </div>
 
             {!paymentResult ? (
               <form
