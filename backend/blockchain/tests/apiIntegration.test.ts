@@ -168,7 +168,15 @@ test('integration: frontend payment routes exist and return the expected shape',
 test('integration: distribution upload flows end to end and rejects bad files', async () => {
   const server = await startServer();
   try {
-    const token = await loginAs(server.base, 'amil01', 'supersecret1');
+    let token = await loginAs(server.base, 'amil01', 'supersecret1');
+
+    // POST /api/transactions is AMIL/ADMIN only; promote via the same DB the app uses.
+    const { initDb } = await import('../models/db.js');
+    const promoteDb = await initDb(process.env.DATABASE_PATH as string);
+    await promoteDb.run("UPDATE users SET role = 'AMIL' WHERE username = 'amil01'");
+    await promoteDb.close();
+    const amilLogin = await request(server.base, 'POST', '/api/auth/login', { json: { username: 'amil01', password: 'supersecret1' } });
+    token = amilLogin.body.token;
 
     const form = new FormData();
     form.append('amount', '500000');
@@ -218,6 +226,43 @@ test('integration: distribution upload flows end to end and rejects bad files', 
     assert.equal(invalid.body.error, 'Validation failed');
     assert.ok(Array.isArray(invalid.body.details));
     assert.ok(invalid.body.details.length > 0);
+  } finally {
+    await server.close();
+  }
+});
+
+test('integration: POST /api/transactions allows AMIL, rejects USER with 403 and anonymous with 401', async () => {
+  const server = await startServer();
+  try {
+    const distributionForm = () => {
+      const form = new FormData();
+      form.append('amount', '500000');
+      form.append('recipient_name', 'Budi Santoso');
+      form.append('category', 'Konsumsi');
+      form.append('region', 'Jawa Barat, Bandung');
+      return form;
+    };
+
+    // Anonymous: 401 before any role check.
+    const anonymous = await request(server.base, 'POST', '/api/transactions', { form: distributionForm() });
+    assert.equal(anonymous.status, 401);
+
+    // Registered user (role USER): authenticated but forbidden.
+    const userToken = await loginAs(server.base, 'donorRole', 'supersecret1');
+    const asUser = await request(server.base, 'POST', '/api/transactions', { token: userToken, form: distributionForm() });
+    assert.equal(asUser.status, 403);
+
+    // AMIL: allowed to create distribution records.
+    const { initDb } = await import('../models/db.js');
+    const promoteDb = await initDb(process.env.DATABASE_PATH as string);
+    await promoteDb.run("UPDATE users SET role = 'AMIL' WHERE username = 'donorRole'");
+    await promoteDb.close();
+    const amilLogin = await request(server.base, 'POST', '/api/auth/login', { json: { username: 'donorRole', password: 'supersecret1' } });
+    const amilToken = amilLogin.body.token;
+
+    const asAmil = await request(server.base, 'POST', '/api/transactions', { token: amilToken, form: distributionForm() });
+    assert.equal(asAmil.status, 201, asAmil.text);
+    assert.equal(asAmil.body.blockchain_status, 'PENDING_BLOCKCHAIN');
   } finally {
     await server.close();
   }

@@ -74,7 +74,7 @@ Role: USER, ADMIN, AMIL, AUDITOR. Login memakai USERNAME. Register selalu membua
 - ADMIN+AUDITOR: anomalies (GET, scan, resolve), audit logs, proofs/verify/:id,
   reconciliation/history, export/csv
 - ADMIN: reconciliation/run, transactions/:id/reconcile
-- USER+ADMIN: POST /transactions (upload bukti)
+- AMIL+ADMIN: POST /transactions (upload bukti)
 - Donasi per donor: authorizeSelfOr(ADMIN, AUDITOR) pada /donations/donor/:donor_id
 Endpoint baru WAJIB punya authenticate + authorize yang sesuai. Default: paling ketat.
 

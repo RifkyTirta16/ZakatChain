@@ -26,16 +26,20 @@ contract ZakatVerify {
     }
 
     function registerReport(bytes32 reportHash, uint256 reportId) public {
-        require(msg.sender == owner, "Only owner can register");
-        require(!reports[reportHash].exists, "Report already exists");
+        require(reportHash != bytes32(0), "Report hash must not be zero");
+        require(!reports[reportHash].exists, "Report already registered");
+        require(msg.sender == owner, "Only owner can call this function");
         reports[reportHash] = Report(true, false, block.timestamp);
         emit ReportRegistered(reportHash, reportId, block.timestamp);
     }
 
     function revokeReport(bytes32 reportHash, string memory reason) public {
-        require(msg.sender == owner, "Only owner can revoke");
+        require(msg.sender == owner, "Only owner can call this function");
         require(reports[reportHash].exists, "Report does not exist");
-        reports[reportHash] = Report(false, true, block.timestamp);
+        require(!reports[reportHash].revoked, "Report already revoked");
+        // Keep `exists` true and preserve the original timestamp: revocation
+        // marks the record, it must not erase it or reopen re-registration.
+        reports[reportHash].revoked = true;
         emit ReportRevoked(reportHash, reason);
     }
 

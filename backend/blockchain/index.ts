@@ -21,6 +21,7 @@ import donationRoutes from './routes/donationRoutes.js';
 import campaignRoutes from './routes/campaignRoutes.js';
 import { createPaymentSession } from './controllers/paymentController.js';
 import { authenticate } from './middleware/auth.js';
+import { rateLimit, AUTH_LIMIT } from './middleware/rateLimit.js';
 
 const backendEnvPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env');
 dotenv.config({ path: backendEnvPath });
@@ -46,6 +47,10 @@ app.use(cors({
   },
   credentials: true,
 }));
+
+// Rate limit global: 100 permintaan per 15 menit per IP. Rute auth lebih ketat.
+app.use(rateLimit());
+app.use('/api/auth', rateLimit({ limit: AUTH_LIMIT }), authRoutes);
 app.use(express.json({
   limit: '1mb',
   verify: (req, _res, buffer) => {
@@ -92,7 +97,6 @@ app.use(async (req, res, next) => {
   }
 });
 
-app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/anomalies', anomalyRoutes);
 app.use('/api/payments', paymentRoutes);

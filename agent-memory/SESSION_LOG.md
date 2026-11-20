@@ -1,5 +1,37 @@
 # Session Log
 
+## 2026-11-20 - Redesain Penuh Semua Item REDESIGN_TRACKER.md (Item 1 s/d 11) Selesai
+- Item 1 (`pages/Campaigns.tsx`): Katalog kampanye Visual v2, Card rounded-2xl shadow-card, progress bar, nominal formatIDR, sisa hari daysLeft, DonationDrawer terintegrasi. Commit `76a4b41`.
+- Item 2 (`pages/CampaignDetail.tsx`): Layout 2 kolom Visual v2, ON_CHAIN_NOTE, riwayat donasi ber-badge, sticky progress & preset nominal, QRIS generator. Commit `0787718`.
+- Item 3 (`pages/DonationPayment.tsx`): 3-step wizard (Nominal -> QRIS -> Selesai), preset nominal buttons, copy feedback, auto-polling. Commit `5ffbe54`.
+- Item 4 (`components/PaymentModal.tsx`): Modal rounded-3xl, escape key listener, ringkasan nominal, status badges, backdrop dismiss. Commit `efc396d`.
+- Item 5 (`pages/NewDistributionRecord.tsx`): Form satu kolom, file upload live preview image & PDF indicator, pre-submission summary, inline validation. Commit `b8d7bad`.
+- Item 6 (`pages/PublicVerify.tsx`): Input hash/ID besar, query param auto-search (?hash=/?id=), kartu hasil verifikasi, detail kriptografis, ON_CHAIN_NOTE. Commit `e3f7e14`.
+- Item 7 (`pages/OnChainExplorer.tsx`): Explorer bukti on-chain, status filter dropdown, tabel shortHash dengan tombol salin ("Tersalin"), detail verifikasi expand/collapse, ON_CHAIN_NOTE. Commit `c77db3a`.
+- Item 8 (`pages/EvidenceGraph.tsx`): Graf SVG dengan dot grid, pewarnaan node token (teal, green, gold, coral), panel detail node kanan, ON_CHAIN_NOTE. Commit `065bd9b`.
+- Item 9 (`pages/PovertyMapping.tsx`): Peta Leaflet penuh, skala warna token (#EF6C4A, #FFD23F, #2BA8A2), panel statistik & gap wilayah, modal impor kemiskinan. Commit `173477a`.
+- Item 10 (`components/auth/LoginPage.tsx`): Kartu login centered, username input, banner error token, tombol submit emas tunggal. Commit `935d006`.
+- Item 11 (`components/Analytics.tsx`): Warna token resmi (#2BA8A2, #FFD23F, #EF6C4A, #5DADE2), Recharts BarChart & Donut (PieChart), kartu ringkasan, sumbu terformat, legend, tooltip formatIDR. Commit `fffcd2b`.
+- Verifikasi akhir: `cd frontend && npx tsc -b` bersih (0 error), `npm run lint` 0 warnings 0 errors (65 files), `npm run build` sukses (built in 1.35s).
+
+## 2026-11-20 - Redesain Pages/Campaigns.tsx (Item 1 REDESIGN_TRACKER.md)
+- Campaigns.tsx: Redesain sesuai Visual v2 (bg-[#F6F8F8], Card rounded-2xl shadow-card, progress bar, nominal formatIDR, sisa hari daysLeft). Tombol Donasi membuka DonationDrawer langsung; modal Buat Kampanye disempurnakan dengan token styling.
+- REDESIGN_TRACKER.md: Item 1 dicentang.
+- Git: commit 76a4b41 "feat(ui): redesign Campaigns".
+- Verifikasi: npx tsc -b bersih (0 error); npm run build sukses (built in 1.55s); oxlint 0 warnings 0 errors.
+
+## 2026-11-20 - Tambah ActionPanel "Perlu tindakan" & Panel Status Sistem di Baris 0
+- DonorHome.tsx: ActionPanel dipasang di baris 0 dengan data dinamis untuk ADMIN, AUDITOR, AMIL (bukti menunggu review via /transactions, anomali terbuka via /dashboard/stats, rekonsiliasi > 7 hari via /reconciliation/history). Tersembunyi untuk USER/publik.
+- Panel Status Sistem: Khusus role ADMIN, menampilkan pemeriksaan infrastruktur deskriptif berbasis networkStatus dashboardController (arti Degraded: RPC connected tapi bytecode kontrak kosong, atau RPC unreachable/timeout).
+- useDashboardData.ts: Transaction interface dilengkapi field proof_status?: string | null.
+- Verifikasi: cd frontend && npx tsc -b bersih (0 error); npm run build sukses (built in 1.45s); oxlint 0 warnings 0 errors.
+
+## 2026-11-20 - Tambah komponen 7 (Transparansi blockchain) dan 8 (Dampak sosial)
+- ChainPanel.tsx: 5 transaksi on-chain terbaru (tx_hash, shortHash, tombol salin dengan umpan balik "Tersalin", Badge status, nomor blok, form cek keabsahan ke /verify, ON_CHAIN_NOTE wajib).
+- ImpactPanel.tsx: metrik agregat riil (total tersalurkan tercatat, wilayah terjangkau, bukti terverifikasi hash), visualisasi donut Recharts (PieChart) distribusi per kategori dengan warna token (teal/gold/coral/sky), legenda, label, serta ON_CHAIN_NOTE wajib (tanpa klaim penerimaan di lapangan).
+- DonorHome.tsx: slot placeholder 7 dan 8 digantikan komponen riil ChainPanel & ImpactPanel; helper PlaceholderSlot dihapus.
+- Verifikasi: cd frontend && npx tsc -b bersih (0 error); npm run build sukses (built in 1.67s); npm run lint (oxlint) 0 warnings 0 errors.
+
 ## 2026-11-12
 
 - Performed initial current-source audit and reconciled root docs dated 2026-11-08.
@@ -9,3 +41,78 @@
 - Backend tests 67/67 and typecheck clean; frontend build passes; lint warnings remain; blockchain test discovery remains broken.
 - Next focus: proof privacy/access policy, CORS/rate limits, and executable contract tests.
 - Auth follow-up: live API reproduced HTTP 503 due to absent `.env` files. Made dotenv path backend-module-relative. Nodemon crash loop was fixed: missing `JWT_SECRET` now warns while server starts; verified `/health` 200 and protected route 503 on port 5017. Backend tests 67/67 and typecheck pass. Operator must configure a unique secret in `backend/.env` and restart to enable auth; no secret was generated or exposed.
+- 2026-11-18 chore/slim-backend-deps: hapus 17 devDependencies Hardhat/TypeChain/chai/mocha/ts-node dari backend (tanpa import di backend/blockchain, grep word-boundary exit 1). dependencies runtime tak berubah; ethers/dotenv/tsx/typescript tetap. Verifikasi: npm test 68/68, /health 200, node_modules 513M->98M. Backup: /tmp/package.json.bak.
+- 2026-11-18 fix/amil-create-transaction: POST /api/transactions kini AMIL+ADMIN (semula USER+ADMIN). Tes lama "distribution upload" dipromosikan ke AMIL; +1 tes regresi integrasi (AMIL 201, USER 403, anonim 401). npm test 69/69; curl terbukti. AGENTS.md bag.4 + DECISIONS.md diperbarui.
+- 2026-11-18 docs/audit/HARDHAT_CONSOLIDATION.md (RENCANA saja, tidak ada file dipindah/dihapus): blockchain/ kanonik (18/18 tes), contracts/ = ZakatAuditRegistry (string key, no ACL, no tests, no consumers), backend/contracts/ kosong. Temuan: ABI frontend out-of-sync (reportId string vs uint256, tanpa revokeReport); fallback address hardcode sama di kedua sisi. Rencana 7 langkah bertahap + keputusan yang menunggu user.
+- 2026-11-18 chore/chain-config: frontend chain config env-driven (VITE_API_URL/VITE_RPC_URL/VITE_CHAIN_ID, default Hardhat 31337 lokal); wagmi tidak lagi default Mainnet/Sepolia; frontend/.env.example dibuat. Verifikasi: tsc -b bersih, build sukses (bundle +230kB: definisi chain sepolia/mainnet terbawa via map), backend npm test 69/69. ARCHITECTURE.md diperbarui.
+- 2026-11-18 ui/ component fixes (branch chore/chain-config): hapus kelas mati (skeleton/prose/gold-gradient/coral-gradient/bg-danger-50/text-muted-foreground/bg-gray-200), interpolasi Tailwind Skeleton diganti style inline, focus-visible ring untuk Input/Select/ErrorState button, min-h-[44px] semua elemen interaktif, Input/Select dapat label+id terhubung (useId). Verifikasi: tsc -b bersih, build sukses.
+- 2026-11-18 badgeStatus.ts: pemetaan status bukti -> {tone,label} per DESIGN.md (8 status backend, fallback Diajukan) + konstanta ON_CHAIN_NOTE; export di ui/index.ts. utils/status.ts TIDAK disentuh. Verifikasi: tsc -b bersih, build sukses.
+
+## 2026-11-18 - Role-based workspace shells (frontend)
+- Created: components/layout/navConfig.ts (menu per role), RequireRole.tsx (redirect login + 403 ramah), RoleLayout.tsx; shells/ShellFrame.tsx (shared sidebar chrome, 3 tema: teal AMIL, slate AUDITOR compact, primary-dark ADMIN) + 4 wrappers; shells/PublicShell.tsx (navbar atas untuk DONOR/publik); pages/home/{DonorHome,AmilHome,AuditorHome,AdminHome}.tsx (dummy data).
+- MainApp.tsx: inline Navigation lama diganti RoleLayout; "/" = home per role; semua route dibungkus RequireRole(rolesForPath); redirect pasca-login ke sessionStorage 'zakat_redirect'; placeholder utk /anomalies /proofs /reconciliation /audit /export (belum ada halaman).
+- Verifikasi: npx tsc -b bersih; npm run build sukses; oxlint hanya 7 warning lama (tanpa temuan baru).
+- Catatan: menu AMIL "Donasi Saya" USER memakai /donate; AuditorHome dst masih data dummy.
+
+## 2026-11-18 - Home per role disambungkan ke data backend nyata
+- DonorHome: GET /donations/donor/:id (user.id dari login, authController.ts:76) - total terkonfirmasi via formatIDR, riwayat 5 terakhir, EmptyState -> /campaigns.
+- AmilHome: GET /transactions - antrean terbuka/perlu perbaikan, badge via proofBadge, aksi utama /new-record.
+- AuditorHome: GET /anomalies + /transactions - anomali terbuka (kartu coral), pending review, hash on-chain, ON_CHAIN_NOTE, aksi /anomalies.
+- AdminHome: GET /dashboard/stats + /reconciliation/history - kpi, networkStatus ( Healthy/Degraded/Unknown), status rekonsiliasi BALANCED/DEFICIT (reconciliationController.ts:31).
+- Semua: TanStack Query, Skeleton/EmptyState/ErrorState+retry, tanpa endpoint baru, tanpa menyentuh backend/shell/halaman lain. tsc bersih, build sukses, oxlint 7 warning lama saja.
+
+## 2026-11-18 - Redesign pages/Campaigns.tsx ke sistem token DESIGN.md
+- useEffect+useState -> useQuery(['campaigns']) + useMutation utk create; logika API sama (GET/POST /campaigns, payload sama).
+- Semua kelas wattvision-* dan hex/radial-gradient inline dihapus; pakai Card/Badge/Button/EmptyState/ErrorState/Skeleton + token gold/primary/cream/danger.
+- 3 state: Skeleton grid, EmptyState(+muat ulang), ErrorState(+coba lagi); aksi utama tunggal "Lihat Detail" (gold); Buat Kampanye = sekunder ADMIN/AMIL.
+- Perbaikan samping: bug template literal di className badge (baris 99 lama), Date saat render dipindah ke konstanta modul TODAY; ui/Input dipakai dgn hati-hati (tak meneruskan required/min/step -> input native bergaya token utk form).
+- Verifikasi: tsc bersih, build sukses, oxlint 0 warning di Campaigns.tsx (sebelumnya 2), 5 warning lama di file lain.
+
+## 2026-11-18 - Redesign pages/CampaignDetail.tsx ke sistem token DESIGN.md
+- useEffect+useState(any) -> useQuery(['campaign', id]) + useMutation; endpoint sama: GET /campaigns/:id, POST /payment/generate (payload sama).
+- Semua wattvision-* + alert() dihapus -> Card/Badge/Button/EmptyState/ErrorState/Skeleton + token; 3 state lengkap; aksi utama tunggal Generate QRIS (gold, loading state).
+- BUG LAMA DIPERBAIKI: kode lama membaca paymentData.paymentReference yang TIDAK ADA di respons (paymentController.ts:36-48) -> QR menampilkan "undefined". Kini pakai qris_url utk kotak QR + session_id sbg referensi. Endpoint/payload TIDAK berubah.
+- alert('Payment generation failed') -> pesan inline ramah (bedakan 401 "silakan masuk").
+- Verifikasi: tsc bersih, build sukses, oxlint 0 warning di CampaignDetail (sebelumnya 2); 3 warning lama tersisa di file lain (PaymentModal x2, DonationPayment).
+
+## 2026-11-18 - Redesign pages/DonationPayment.tsx ke sistem token DESIGN.md
+- useState+useEffect polling -> useQuery(['payment-status']) refetchInterval 5000 (enabled saat step payment) + useMutation utk sesi; endpoint sama: POST /payments/session, GET /payments/status/:id.
+- Semua wattvision-* dihapus -> Card/Button/ErrorState/Skeleton + token; 3 langkah wizard; aksi utama tunggal Lanjutkan Pembayaran (gold, loading).
+- PERBAIKAN: polling lama abaikan FAILED/EXPIRED (poll diam selamanya); kini ErrorState + tombol buat sesi baru (status client PAID/PENDING/FAILED/EXPIRED, paymentController.ts:21-28). Img src qris_url (URL teks, bukan gambar) -> kotak payload teks seperti CampaignDetail.
+- Catatan lint: setStep render-phase conditional dipilih (useEffect versi memicu set-state-in-effect); legal & bersyarat.
+- Verifikasi: tsc bersih, build sukses, oxlint 0 warning di DonationPayment (sebelumnya 1); 2 warning lama tersisa (PaymentModal x2).
+
+## 2026-11-18 - Fix 2 lint warning lama di PaymentModal.tsx
+- Optional catch binding: "catch (error)" -> "catch" (2 lokus, baris 29 & 45) - parameter tidak dipakai; perilaku tidak berubah.
+- OXLint kini NOL warning seluruh frontend (7 warning lama selesai akumulasi: Campaigns x2, CampaignDetail x2, DonationPayment x1, PaymentModal x2).
+- Verifikasi: tsc bersih, build sukses, lint bersih.
+- Catatan: PaymentModal masih gaya lama (hex hardcode #101010/#D4AF37, axios langsung bukan utils/api, alert()) - kandidat redesign berikutnya bila diminta.
+
+## 2026-11-18 - Redesign components/PaymentModal.tsx ke sistem token DESIGN.md
+- axios langsung + hardcode URL "http://localhost:5000/api" -> utils/api.ts (endpoint sama: POST /payments/create, GET /payments/verify/:paymentId).
+- Hex #101010/#D4AF37/#FFD76A, gold-bg, gray-*, img src qrCodeUrl -> Card/Button/Badge + token cream/gold/primary; alert() -> pesan error inline.
+- Tipe PaymentSession; status IDLE/PROCESSING/PAID/FAILED dipertahankan; verifikasi manual "Saya sudah bayar" sama.
+- CATATAN: PaymentModal TIDAK dipakai di manapun (grep tanpa hasil) - komponen orphan; penghapusan butuh keputusan user (AGENTS.md 12).
+- Verifikasi: tsc bersih, build sukses, lint nol warning; grep hex/wattvision/alert/axios = 0.
+
+## 2026-11-18 - Redesign Dashboard.tsx (tracker item 1) + commit
+- REDESIGN_TRACKER.md item 1 dicentang; Dashboard ditulis ulang: 4 kartu (donasi/distribusi/saldo/anomali), AreaChart+PieChart warna token (konstanta CHART dari DESIGN.md), tabel transaksi + filter dipertahankan, status via proofBadge (bukan blockchainTone), Skeleton/EmptyState/ErrorState ui/, aksi utama per role (AMIL Catat Distribusi -> /new-record; AUDITOR/ADMIN Tinjau Anomali -> /anomalies).
+- Logika data TIDAK diubah: useQuery dashboard-stats & dashboard-transactions (30s), semua useMemo, endpoint.
+- Duplikasi blok Status Integrasi + Metodologi (2x di file lama) dirapikan jadi 1x di kolom samping.
+- Verifikasi: tsc bersih, build sukses, lint 0 warning, grep hex lama/wattvision = 0.
+- COMMIT 52e5a05 "feat(ui): redesign Dashboard" pada branch redesign/all-pages (git add frontend tracker sesuai perintah user; ikut menyertakan file frontend lintas tugas: shell role, ui/, home/, redesign Campaigns/CampaignDetail/DonationPayment/PaymentModal - 36 file). Scan secret staged diff: bersih.
+- BERHENTI sesuai instruksi; item berikutnya tracker: 2. components/Analytics.tsx.
+
+## 2026-11-18 - Redesign Analytics.tsx (tracker item 2) + commit
+- Bar (Rp) + Pie (%) ditulis ulang: warna token via CHART (DESIGN.md), Legend + label sumbu, 3 angka kunci (total, jumlah kategori, kategori terbesar), EmptyState saat data kosong (state baru; lama tidak punya).
+- props `data` dipertahankan; tipe any[] -> {category?: string|null; amount: number}[]; agregasi reduce dipertahankan (useMemo).
+- CATATAN: komponen ORPHAN - tidak diimpor halaman manapun (Dashboard baru punya grafik inline sendiri). Penghapusan/pemasangan = keputusan user.
+- Verifikasi: tsc bersih, build sukses, lint 0 warning. COMMIT a6a6ea7 "feat(ui): redesign Analytics" (2 file). Scan secret staged: bersih.
+- BERHENTI; item berikutnya tracker: 3. pages/Campaigns.tsx - SUDAH di-redesign di sesi sebelumnya (tinggal dicentang + disesuaikan tracker saat gilirannya).
+
+## 2026-11-18 - Tracker item 3 Campaigns.tsx (penyesuaian ke tracker) + commit
+- Halaman sudah diredesain sebelumnya; disesuaikan dgn tata letak tracker: filter status di header (client-side, opsi dinamis dr data), sisa hari dr deadline (daysLeft, NOW di level modul utk purity), garis aksen kiri via Card variant (ACTIVE default, lainnya highlight), tombol aksi "Donasi" (gold, ke /campaigns/:id).
+- Tambah EmptyState utk hasil filter kosong + tombol reset filter. API & logika data tidak berubah.
+- Verifikasi: tsc bersih, build sukses, lint 0 warning.
+- COMMIT "feat(ui): redesign Campaigns" (Campaigns.tsx + tracker). Scan secret: tidak ada perubahan sensitif.
+- BERHENTI; item berikutnya: 4. pages/CampaignDetail.tsx - juga sudah diredesain; verifikasi kesesuaian tracker saat gilirannya.

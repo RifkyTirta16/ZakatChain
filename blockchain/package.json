@@ -1,9 +1,9 @@
 {
   "name": "ya",
   "version": "1.0.0",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
-    "test": "npx hardhat test"
+    "test": "NODE_OPTIONS=\"--require ts-node/register/transpile-only\" npx hardhat test"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.2",
