@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
 import {
   BrowserRouter as Router,
   Link,
@@ -9,40 +9,47 @@ import {
 import RoleLayout from './components/layout/RoleLayout';
 import RequireRole from './components/layout/RequireRole';
 import { rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
-import { Button, Card } from './components/ui';
+import { Button, Card, Skeleton } from './components/ui';
 
-// Auth & Public Pages
+// Eager Auth & Landing
 import LoginPage from './components/auth/LoginPage';
 import RegisterPage from './components/auth/RegisterPage';
 import LandingPage from './pages/public/LandingPage';
-import ZakatCalculatorPage from './pages/public/ZakatCalculatorPage';
-import PublicTransparencyPage from './pages/public/PublicTransparencyPage';
-import PublicVerify from './pages/PublicVerify';
-import Campaigns from './pages/Campaigns';
-import CampaignDetail from './pages/CampaignDetail';
 
-// Role Home Dashboards
-import DonorHome from './pages/home/DonorHome';
-import AmilHome from './pages/home/AmilHome';
-import AuditorHome from './pages/home/AuditorHome';
-import AdminHome from './pages/home/AdminHome';
+// Lazy-loaded pages for smaller initial bundle
+const ZakatCalculatorPage = lazy(() => import('./pages/public/ZakatCalculatorPage'));
+const PublicTransparencyPage = lazy(() => import('./pages/public/PublicTransparencyPage'));
+const PublicVerify = lazy(() => import('./pages/PublicVerify'));
+const Campaigns = lazy(() => import('./pages/Campaigns'));
+const CampaignDetail = lazy(() => import('./pages/CampaignDetail'));
 
-// Muzakki, Amil, Auditor & Admin Workspace Pages
-import DonationPayment from './pages/DonationPayment';
-import MyDonationsPage from './pages/muzakki/MyDonationsPage';
-import NewDistributionRecord from './pages/NewDistributionRecord';
-import PovertyMapping from './pages/PovertyMapping';
-import OnChainExplorer from './pages/OnChainExplorer';
-import EvidenceGraph from './pages/EvidenceGraph';
-import AnomaliesPage from './pages/anomalies/AnomaliesPage';
-import ProofsPage from './pages/proofs/ProofsPage';
-import ReconciliationPage from './pages/reconciliation/ReconciliationPage';
-import AuditPage from './pages/audit/AuditPage';
-import ExportPage from './pages/export/ExportPage';
-import Dashboard from './pages/Dashboard';
-import NetworkMonitorPage from './pages/admin/NetworkMonitorPage';
-import RolesPermissionsPage from './pages/admin/RolesPermissionsPage';
-import ProfilePage from './pages/shared/ProfilePage';
+const DonorHome = lazy(() => import('./pages/home/DonorHome'));
+const AmilHome = lazy(() => import('./pages/home/AmilHome'));
+const AuditorHome = lazy(() => import('./pages/home/AuditorHome'));
+const AdminHome = lazy(() => import('./pages/home/AdminHome'));
+
+const DonationPayment = lazy(() => import('./pages/DonationPayment'));
+const MyDonationsPage = lazy(() => import('./pages/muzakki/MyDonationsPage'));
+const NewDistributionRecord = lazy(() => import('./pages/NewDistributionRecord'));
+const PovertyMapping = lazy(() => import('./pages/PovertyMapping'));
+const OnChainExplorer = lazy(() => import('./pages/OnChainExplorer'));
+const EvidenceGraph = lazy(() => import('./pages/EvidenceGraph'));
+const AnomaliesPage = lazy(() => import('./pages/anomalies/AnomaliesPage'));
+const ProofsPage = lazy(() => import('./pages/proofs/ProofsPage'));
+const ReconciliationPage = lazy(() => import('./pages/reconciliation/ReconciliationPage'));
+const AuditPage = lazy(() => import('./pages/audit/AuditPage'));
+const ExportPage = lazy(() => import('./pages/export/ExportPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const NetworkMonitorPage = lazy(() => import('./pages/admin/NetworkMonitorPage'));
+const RolesPermissionsPage = lazy(() => import('./pages/admin/RolesPermissionsPage'));
+const ProfilePage = lazy(() => import('./pages/shared/ProfilePage'));
+
+const RouteFallback = () => (
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
+    <Skeleton lines={3} />
+    <Skeleton lines={8} />
+  </div>
+);
 
 const NotFoundPage = ({ isAuthenticated }: { isAuthenticated: boolean }) => (
   <div className="max-w-md mx-auto py-16 px-4">
@@ -108,23 +115,27 @@ const MainApp = () => {
     sessionStorage.removeItem('zakat_redirect');
   };
 
+  const withSuspense = (element: ReactNode) => (
+    <Suspense fallback={<RouteFallback />}>{element}</Suspense>
+  );
+
   const guarded = (path: string, element: ReactNode) => (
     <RoleLayout user={user} onLogout={handleLogout}>
       <RequireRole user={user} roles={rolesForPath(path)}>
-        {element}
+        {withSuspense(element)}
       </RequireRole>
     </RoleLayout>
   );
 
   const publicOrWorkspace = (element: ReactNode) => (
     <RoleLayout user={user} onLogout={handleLogout} forcePublicShell={!user}>
-      {element}
+      {withSuspense(element)}
     </RoleLayout>
   );
 
   const alwaysPublic = (element: ReactNode) => (
     <RoleLayout user={user} onLogout={handleLogout} forcePublicShell>
-      {element}
+      {withSuspense(element)}
     </RoleLayout>
   );
 
@@ -182,6 +193,7 @@ const MainApp = () => {
         <Route path="/mapping" element={guarded('/mapping', <PovertyMapping />)} />
         <Route path="/explorer" element={guarded('/explorer', <OnChainExplorer />)} />
         <Route path="/graph" element={guarded('/graph', <EvidenceGraph />)} />
+        <Route path="/analytics" element={guarded('/analytics', <Dashboard />)} />
 
         {/* Auditor & Oversight Workspace */}
         <Route path="/anomalies" element={guarded('/anomalies', <AnomaliesPage />)} />
@@ -193,7 +205,6 @@ const MainApp = () => {
         {/* Administrator Monitoring & Governance */}
         <Route path="/network" element={guarded('/network', <NetworkMonitorPage />)} />
         <Route path="/roles" element={guarded('/roles', <RolesPermissionsPage />)} />
-        <Route path="/analytics" element={guarded('/explorer', <Dashboard />)} />
 
         {/* Shared Profile */}
         <Route

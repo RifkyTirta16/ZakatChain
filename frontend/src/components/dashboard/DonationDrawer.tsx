@@ -141,6 +141,19 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
     });
   };
 
+  const sandboxConfirm = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.post(`/payments/sandbox/confirm/${encodeURIComponent(id)}`);
+    },
+    onSuccess: () => {
+      void statusQuery.refetch();
+      void queryClient.invalidateQueries({ queryKey: ['public-transparency'] });
+    },
+    onError: () => {
+      setError('Gagal mengonfirmasi pembayaran sandbox.');
+    },
+  });
+
   const handlePayAgain = () => {
     setStep('pilih');
     setPaymentData(null);
@@ -405,6 +418,16 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
                 <Button variant="secondary" onClick={() => void statusQuery.refetch()} className="w-full">
                   Periksa Status Sekarang
                 </Button>
+                {import.meta.env.DEV && (
+                  <Button
+                    variant="gold"
+                    loading={sandboxConfirm.isPending}
+                    onClick={() => sandboxConfirm.mutate(paymentData.paymentData.session_id)}
+                    className="w-full"
+                  >
+                    Simulasikan Bayar (Sandbox)
+                  </Button>
+                )}
               </div>
             )}
           </div>

@@ -41,18 +41,6 @@ export default {
         surface: '#F8F7F2',
         success: '#047857',
         danger: '#DC2626',
-        wattvision: {
-          bg: '#121212',
-          surface: '#1E1E1E',
-          primary: '#00E5FF',
-          alert: '#FF453A',
-          success: '#32D74B',
-          textMain: '#FFFFFF',
-          textSecondary: '#98989D',
-          border: '#2C2C2E',
-          alertBg: '#3A1C1C',
-          hover: '#252525',
-        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],

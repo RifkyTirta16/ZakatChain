@@ -1,12 +1,9 @@
 import { useMemo } from 'react';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Card, EmptyState, ON_CHAIN_NOTE, Skeleton } from '../../components/ui';
+import { usePublicTransparency } from '../../components/ethereum';
 import { formatIDR, formatNumber } from '../../utils/format';
-import {
-  useDashboardStats,
-  useRegionStats,
-  useTransactions,
-} from './hooks/useDashboardData';
+import { useRegionStats } from './hooks/useDashboardData';
 
 const CATEGORY_COLORS: Record<string, string> = {
   Konsumsi: '#047857',
@@ -19,43 +16,29 @@ const CATEGORY_COLORS: Record<string, string> = {
 const DEFAULT_COLORS = ['#047857', '#C9A45C', '#064E3B', '#0284C7', '#64748B'];
 
 export const ImpactPanel = () => {
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const { data: transactions, isLoading: txLoading } = useTransactions();
-  const { data: regions, isLoading: regionsLoading } = useRegionStats();
+  const transparency = usePublicTransparency();
+  const regions = useRegionStats();
 
-  const isLoading = statsLoading || txLoading || regionsLoading;
-
-  const totalDistributed = stats?.kpis.totalDistributed ?? 0;
-  const verifiedReports =
-    stats?.kpis.verifiedReports ??
-    (transactions ?? []).filter((t) => t.blockchain_status === 'CONFIRMED').length;
+  const isLoading = transparency.isPending || regions.isLoading;
+  const kpis = transparency.data?.kpis;
+  const totalDistributed = kpis?.totalDistributed ?? 0;
+  const verifiedReports = kpis?.verifiedReports ?? 0;
 
   const regionCount = useMemo(() => {
-    if (regions && regions.length > 0) return regions.length;
-    const distinct = new Set((transactions ?? []).map((t) => t.region).filter(Boolean));
+    if (regions.data && regions.data.length > 0) return regions.data.length;
+    const distinct = new Set(
+      (transparency.data?.recentTransactions ?? []).map((t) => t.region).filter(Boolean),
+    );
     return distinct.size;
-  }, [regions, transactions]);
+  }, [regions.data, transparency.data?.recentTransactions]);
 
   const categoryData = useMemo(() => {
-    const map = new Map<string, number>();
-    (transactions ?? []).forEach((t) => {
-      const cat = t.category?.trim() || 'Lainnya';
-      map.set(cat, (map.get(cat) || 0) + Number(t.amount || 0));
-    });
-
-    const list = Array.from(map.entries()).map(([category, total]) => ({ category, total }));
-    if (list.length > 0) return list;
-
-    if (stats?.categoryDistribution && stats.categoryDistribution.length > 0) {
-      return (stats.categoryDistribution as Array<{ category?: string; total?: number }>).map(
-        (item) => ({
-          category: String(item.category || 'Lainnya'),
-          total: Number(item.total || 0),
-        }),
-      );
-    }
-    return [];
-  }, [transactions, stats]);
+    const raw = transparency.data?.categoryDistribution ?? [];
+    return raw.map((item) => ({
+      category: String(item.category || 'Lainnya'),
+      total: Number(item.total || 0),
+    }));
+  }, [transparency.data?.categoryDistribution]);
 
   if (isLoading) {
     return (

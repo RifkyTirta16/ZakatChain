@@ -2,18 +2,17 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Check, Copy, Search } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, ON_CHAIN_NOTE, Skeleton, proofBadge } from '../../components/ui';
-import { EthereumLogo, NetworkBadge } from '../../components/ethereum';
+import { EthereumLogo, NetworkBadge, usePublicTransparency } from '../../components/ethereum';
 import { shortHash } from '../../utils/format';
-import { useTransactions } from './hooks/useDashboardData';
 
 export const ChainPanel = () => {
   const navigate = useNavigate();
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [verifyInput, setVerifyInput] = useState('');
 
-  const { data: transactions, isLoading } = useTransactions();
+  const { data, isPending } = usePublicTransparency();
 
-  const confirmed = (transactions ?? [])
+  const confirmed = (data?.recentTransactions ?? [])
     .filter((t) => Boolean(t.tx_hash || t.audit_hash))
     .slice(0, 5);
 
@@ -30,7 +29,7 @@ export const ChainPanel = () => {
     navigate(`/verify?query=${encodeURIComponent(q)}`);
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <Card>
         <Skeleton lines={5} />
@@ -73,7 +72,7 @@ export const ChainPanel = () => {
         ) : (
           <div className="divide-y divide-slate-100">
             {confirmed.map((t) => {
-              const hash = t.tx_hash || '';
+              const hash = t.tx_hash || t.audit_hash || '';
               const isCopied = Boolean(hash && copiedHash === hash);
               const badge = proofBadge(t.blockchain_status ?? 'PENDING');
               return (
@@ -92,7 +91,7 @@ export const ChainPanel = () => {
                       <button
                         type="button"
                         onClick={() => handleCopy(hash)}
-                        aria-label="Salin tx hash"
+                        aria-label="Salin hash"
                         className="p-1 rounded text-slate-400 hover:text-primary hover:bg-slate-100 shrink-0"
                       >
                         {isCopied ? <Check size={13} className="text-primary" /> : <Copy size={13} />}

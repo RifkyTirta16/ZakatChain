@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   Check,
@@ -44,6 +44,7 @@ const ZAKAT_TYPES = [
 
 const DonationPayment = () => {
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const initialAmount = searchParams.get('amount') ?? '';
 
   const [step, setStep] = useState<'form' | 'review' | 'payment' | 'success'>('form');
@@ -95,6 +96,23 @@ const DonationPayment = () => {
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { error?: string } } };
       setError(e.response?.data?.error || 'Gagal membuat sesi pembayaran.');
+    },
+  });
+
+  const sandboxConfirmMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      await apiClient.post(`/payments/sandbox/confirm/${encodeURIComponent(sessionId)}`);
+    },
+    onSuccess: () => {
+      void statusQuery.refetch();
+      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      void queryClient.invalidateQueries({ queryKey: ['public-transparency'] });
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setError(e.response?.data?.error || 'Gagal mengonfirmasi pembayaran sandbox.');
     },
   });
 
@@ -241,8 +259,8 @@ const DonationPayment = () => {
           </div>
 
           {!selectedCampaignId && (
-            <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
-              Catatan: Pembayaran tanpa memilih program spesifik dicatat pada sesi pembayaran (`payments`), bukan pada daftar donasi kampanye.
+            <div className="rounded-xl bg-mint border border-primary/20 p-3 text-xs text-forest">
+              Pembayaran Zakat Umum akan tercatat langsung di riwayat donasi pribadi Anda (`/my-donations`).
             </div>
           )}
 
@@ -321,6 +339,16 @@ const DonationPayment = () => {
             <Button variant="secondary" onClick={() => void statusQuery.refetch()} className="sm:flex-1">
               <RefreshCw size={15} /> Cek Status
             </Button>
+            {import.meta.env.DEV && liveStatus === 'PENDING' && (
+              <Button
+                variant="gold"
+                loading={sandboxConfirmMutation.isPending}
+                onClick={() => sandboxConfirmMutation.mutate(paymentData.paymentData.session_id)}
+                className="sm:flex-1"
+              >
+                <CheckCircle2 size={15} /> Simulasikan Bayar (Sandbox)
+              </Button>
+            )}
             <Button
               variant="ghost"
               onClick={() => {

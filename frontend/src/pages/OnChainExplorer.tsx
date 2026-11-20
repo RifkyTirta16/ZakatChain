@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, Check, Copy, ExternalLink, Filter, Search } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, Copy, ExternalLink, Filter, RefreshCw, Search } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatDateTime, formatIDR, shortHash } from '../utils/format';
-import { Badge, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, SectionHeader, Skeleton, proofBadge } from '../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, SectionHeader, Skeleton, proofBadge } from '../components/ui';
 import { EthereumLogo, NetworkBadge, explorerBaseForChain, useNetworkInfo } from '../components/ethereum';
 
 interface Transaction {
@@ -48,6 +48,16 @@ const OnChainExplorer = () => {
   const [selectedDetail, setSelectedDetail] = useState<VerificationDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+  const [reconcilingId, setReconcilingId] = useState<number | null>(null);
+  const [reconcileMsg, setReconcileMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  let isAdmin = false;
+  try {
+    const raw = localStorage.getItem('zakat_user');
+    isAdmin = raw ? (JSON.parse(raw) as { role?: string }).role === 'ADMIN' : false;
+  } catch {
+    isAdmin = false;
+  }
 
   const { data: transactions, isLoading, isError, refetch } = useQuery<Transaction[]>({
     queryKey: ['explorer-transactions'],
@@ -78,6 +88,29 @@ const OnChainExplorer = () => {
       setDetailError(e.response?.data?.error || 'Gagal memverifikasi catatan on-chain.');
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const retryOnChain = async (id: number) => {
+    setReconcilingId(id);
+    setReconcileMsg(null);
+    try {
+      const { data } = await apiClient.patch<{ message?: string; tx_hash?: string }>(
+        `/transactions/${id}/reconcile`,
+      );
+      setReconcileMsg({
+        type: 'ok',
+        text: `Transaksi #${id} berhasil direkonsiliasi ke Ethereum (${shortHash(data.tx_hash, 8, 6)}).`,
+      });
+      void refetch();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      setReconcileMsg({
+        type: 'err',
+        text: e.response?.data?.error || `Gagal mengirim transaksi #${id} ke Ethereum.`,
+      });
+    } finally {
+      setReconcilingId(null);
     }
   };
 
@@ -153,6 +186,24 @@ const OnChainExplorer = () => {
           </div>
         </div>
       </div>
+
+      {reconcileMsg && (
+        <div
+          role={reconcileMsg.type === 'err' ? 'alert' : 'status'}
+          className={`p-3.5 rounded-xl border text-xs sm:text-sm flex items-center gap-2 font-medium ${
+            reconcileMsg.type === 'ok'
+              ? 'bg-mint border-primary/25 text-forest'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          {reconcileMsg.type === 'ok' ? (
+            <CheckCircle2 size={16} className="text-primary shrink-0" />
+          ) : (
+            <AlertCircle size={16} className="text-danger shrink-0" />
+          )}
+          <span>{reconcileMsg.text}</span>
+        </div>
+      )}
 
       {detailLoading && (
         <Card>
@@ -252,13 +303,14 @@ const OnChainExplorer = () => {
                   <th className="py-3.5 px-4">Kategori & Wilayah</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">Blok</th>
-                  <th className="py-3.5 px-4 text-right">Verifikasi</th>
+                  <th className="py-3.5 px-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((t) => {
                   const isCopiedTx = copiedHash === t.tx_hash;
                   const isCopiedAudit = copiedHash === t.audit_hash;
+                  const isPendingChain = !t.tx_hash || t.blockchain_status !== 'CONFIRMED';
                   return (
                     <tr key={t.id} className="hover:bg-cream/60">
                       <td className="py-3.5 px-4 font-mono font-bold text-forest-dark">#{t.id}</td>
@@ -310,7 +362,18 @@ const OnChainExplorer = () => {
                       <td className="py-3.5 px-4 font-mono text-xs text-slate-600">
                         {t.block_number ? `#${t.block_number}` : '-'}
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-2">
+                        {isAdmin && isPendingChain && (
+                          <Button
+                            size="sm"
+                            variant="gold"
+                            loading={reconcilingId === t.id}
+                            disabled={reconcilingId !== null}
+                            onClick={() => void retryOnChain(t.id)}
+                          >
+                            <RefreshCw size={11} /> Catat ke Ethereum
+                          </Button>
+                        )}
                         <button
                           type="button"
                           onClick={() => void verifyItem(t)}

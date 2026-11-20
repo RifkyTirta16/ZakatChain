@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  BarChart3,
   Boxes,
   Calculator,
   ClipboardList,
@@ -66,6 +67,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Pemetaan Kemiskinan', path: '/mapping', icon: Map, group: 'Operasional Amil', roles: ['AMIL', 'AUDITOR', 'ADMIN'] },
 
   // Explorer & Graph (AMIL, AUDITOR, ADMIN - matches backend GET /transactions & /donations)
+  { label: 'Analitik Penyaluran', path: '/analytics', icon: BarChart3, group: 'Transparansi & Audit', roles: ['AMIL', 'AUDITOR', 'ADMIN'] },
   { label: 'Blockchain Explorer', path: '/explorer', icon: Boxes, group: 'Transparansi & Audit', roles: ['AMIL', 'AUDITOR', 'ADMIN'] },
   { label: 'Evidence Graph', path: '/graph', icon: Share2, group: 'Transparansi & Audit', roles: ['AMIL', 'AUDITOR', 'ADMIN'] },
 
