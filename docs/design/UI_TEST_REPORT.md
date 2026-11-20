@@ -6,10 +6,10 @@
 | Check | Scope | Command | Result |
 |---|---|---|---|
 | Backend TypeScript | `backend/` | `cd backend && npx tsc --noEmit -p .` | Pass (0 errors) |
-| Backend Test Suite | `backend/blockchain/tests/*.test.ts` | `cd backend && npm test` | **74 / 74 pass** (includes `publicTransparency`, RBAC, sandbox, CORS 403, JWT role allowlist, `ALLOW_PUBLIC_REGISTRATION`, & contract guard tests) |
+| Backend Test Suite | `backend/blockchain/tests/*.test.ts` | `cd backend && npm test` | **75 / 75 pass** (includes `publicTransparency`, RBAC, sandbox scan-to-pay, mustahik CRUD, multi-region trace, revoke RBAC, & CORS tests) |
 | Smart Contract Suite | `blockchain/test/ZakatVerify.test.ts` | `cd blockchain && npm test` | **18 / 18 passing** |
 | Frontend TypeScript | `frontend/src/` | `cd frontend && npx tsc -b` | Pass (0 errors) |
-| Frontend Linter | `frontend/src/` (80 files) | `cd frontend && npm run lint` | **0 warnings, 0 errors** |
+| Frontend Linter | `frontend/src/` (83 files) | `cd frontend && npm run lint` | **0 warnings, 0 errors** |
 | Frontend Production Build | `frontend/` | `cd frontend && npm run build` | Pass (zero chunk `>500 kB` warnings via `manualChunks`: initial entry `70.98 kB` / `18.49 kB` gzip; largest `vendor-charts` `418.59 kB`) |
 
 ## 2. Live Headless Chromium Functional & Responsive Tests
@@ -51,3 +51,4 @@ Tested real form login at `/login` for all 4 roles (`test_donor`=`USER`, `test_a
 4. Access Control & Privacy (`USER` isolation + `/uploads`): Live verification confirmed `USER` receives HTTP `403` on `/api/transactions`, `/api/donations`, and `/api/users`; anonymous request to `/uploads/*` returns HTTP `401`; `ADMIN` receives HTTP `200` on `/api/users`.
 5. Admin & Explorer Flows in Chromium: `/roles` renders `"Daftar Akun Terdaftar"` with `test_donor`, `/explorer` renders `"Catat ke Ethereum"` for `ADMIN`, and `/analytics` renders `"Analitik Penyaluran Zakat"` from sidebar navigation with `0` console errors and `0` page errors.
 6. Live End-to-End Browser Verification (Public, Hardhat Network Badge & Sandbox Payment): Verified `/` (shows `Localhost / Hardhat`, `0x5FbDB2…180aa3`, `Blok #1`), `/transparency` (live KPIs & Recharts Y-axis formatting without label clipping), `/calculator` (`15000000` -> `Rp 375.000` & `Mencapai Nisab`), `/verify?id=1` (accurately distinguishes DB tx hash vs `NOT_FOUND_ON_CHAIN` on fresh local contract), and `/register` -> `/donate` -> `POST /api/payments/session` (`201`) -> `Simulasikan Bayar (Sandbox)` (`200`, `PAID`, Step 4 `Pembayaran Terkonfirmasi`), with `0` console/page errors or failed HTTP requests.
+7. QRIS Scan-to-Pay, Multi-Region Trace & BSZ Receipt in Browser: Verified `<svg>` QR code (`QRCodeSVG`) & `/sandbox/pay/:sessionId?t=...` simulator tab confirmed `Rp 100.000` (`200 PAID`) and `/donate` auto-polling transitioned automatically to Step 4 within ~3s; `/my-donations` rendered proportional multi-region `Jejak Wilayah` (NTT 85.5%, Bandung 12.8%, Bogor 1.7%) and printable `BSZ-2026-00004` receipt with `0` console/page/network errors (followed by layout wrap/overflow polish at `1280px`).

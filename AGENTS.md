@@ -39,7 +39,7 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/index.ts          entry server
 - backend/blockchain/routes/*.ts       endpoint
 - backend/blockchain/controllers/*.ts  logika (anomaly, audit, auth, campaign, dashboard,
-                                       donation, explorer, export, mapping, payment,
+                                       donation, explorer, export, mapping, mustahik, payment,
                                        proof, public, reconciliation, transaction, user)
 - backend/blockchain/middleware/       auth.ts (authenticate, authorize, authorizeSelfOr),
                                        rateLimit.ts, upload.ts (multer)
@@ -56,9 +56,9 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 
 Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + wagmi/viem):
 - frontend/src/main.tsx -> MainApp.tsx (routing)
-- frontend/src/pages/        public/ (LandingPage, ZakatCalculatorPage, PublicTransparencyPage),
+- frontend/src/pages/        public/ (LandingPage, ZakatCalculatorPage, PublicTransparencyPage, SandboxPayPage),
                              home/ (DonorHome, AmilHome, AuditorHome, AdminHome),
-                             muzakki/ (MyDonationsPage), admin/ (NetworkMonitorPage, RolesPermissionsPage),
+                             amil/ (MustahikPage), muzakki/ (MyDonationsPage), admin/ (NetworkMonitorPage, RolesPermissionsPage),
                              shared/ (ProfilePage), Dashboard, Campaigns, CampaignDetail, DonationPayment,
                              NewDistributionRecord, OnChainExplorer, EvidenceGraph, PovertyMapping,
                              PublicVerify, anomalies/, audit/, export/, proofs/, reconciliation/
@@ -73,21 +73,22 @@ sebelum ada keputusan konsolidasi eksplisit.
 ## 4. Hak akses (diturunkan dari routes, verifikasi ulang bila route berubah)
 Role: USER, ADMIN, AMIL, AUDITOR. Login memakai USERNAME. Register selalu membuat USER.
 - Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*,
-          GET /public/transparency (agregat + non-PII), POST /payments/webhook
+          GET /public/transparency (agregat + non-PII), POST /payments/webhook,
+          GET /payments/sandbox/session/:sessionId & POST /payments/sandbox/scan-confirm/:sessionId (non-production, token HMAC)
 - Login saja: dashboard/stats, mapping (stats, recommendations, region/:r),
   payments (generate/session/create/status/verify), POST /payments/sandbox/confirm/:sessionId (non-production)
-- AMIL+AUDITOR+ADMIN: GET /transactions, GET /donations, GET /uploads/*
-- ADMIN+AMIL: POST /campaigns, POST /mapping/import
+- AMIL+AUDITOR+ADMIN: GET /transactions, GET /donations, GET /uploads/*, GET /mustahik, GET /mustahik/:id
+- ADMIN+AMIL: POST /campaigns, POST /mapping/import, POST /mustahik, PATCH /mustahik/:id
 - ADMIN+AUDITOR: anomalies (GET, scan, resolve), audit logs, proofs/verify/:id,
   reconciliation/history, export/csv
-- ADMIN: reconciliation/run, transactions/:id/reconcile, GET /users, PATCH /users/:id/role
+- ADMIN: reconciliation/run, transactions/:id/reconcile, transactions/:id/revoke, GET /users, PATCH /users/:id/role
 - AMIL+ADMIN: POST /transactions (upload bukti)
-- Donasi per donor: authorizeSelfOr(ADMIN, AUDITOR) pada /donations/donor/:donor_id
+- Donasi per donor: authorizeSelfOr(ADMIN, AUDITOR) pada /donations/donor/:donor_id; GET /donations/:id/trace (pemilik/ADMIN/AUDITOR)
 Endpoint baru WAJIB punya authenticate + authorize yang sesuai. Default: paling ketat.
 
 ## 5. Database (SQLite)
-Tabel: users, transactions, campaigns, donations, payments, payment_events, anomalies,
-audit_logs, reconciliation_logs, poverty_stats.
+Tabel: users, transactions, transaction_allocations, mustahik, campaigns, donations,
+payments, payment_events, anomalies, audit_logs, reconciliation_logs, poverty_stats.
 - Skema asli: sqlite3 backend/database.sqlite ".schema"
 - Migrasi harus ADITIF (ADD COLUMN / CREATE IF NOT EXISTS). Dilarang DROP, TRUNCATE,
   DELETE massal, atau reset DB. Data beneficiary bersifat privat.

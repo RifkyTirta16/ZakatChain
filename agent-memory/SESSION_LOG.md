@@ -1,5 +1,10 @@
 # Session Log
 
+## 2026-11-20 - QRIS Scan-to-Pay Real SVG, Revoke On-Chain, Jejak Multi-Wilayah, Master Mustahik & BSZ
+- QRIS Scan-to-Pay: pasang `qrcode.react@4.2.0` (`QrCodeBox` SVG + toggle IP LAN), tambah Vite `/api` proxy & `SandboxPayPage` (`/sandbox/pay/:sessionId`) dengan token HMAC (`getSandboxSessionInfo` & `scanConfirmSandboxPayment`). Diuji live 2 tab browser: konfirmasi di `/sandbox/pay` otomatis memperbarui `/donate` ke `PAID` dalam ~3 detik.
+- Revoke & Multi-Wilayah: tambah tabel `transaction_allocations` + kolom `campaign_id`/`mustahik_id`/`revoke_*`, endpoint `PATCH /transactions/:id/revoke` (`ADMIN` + `audit_logs`) + UI `OnChainExplorer`/`PublicVerify`, form multi-wilayah `NewDistributionRecord`, serta `GET /donations/:id/trace` + visualisasi `Jejak Wilayah` & cetak `Bukti Setor Zakat (BSZ)` di `MyDonationsPage`.
+- Master Mustahik: tambah tabel `mustahik`, `mustahikController`/`mustahikRoutes` (`AMIL`/`AUDITOR`/`ADMIN`), `MustahikPage` (`/mustahik`), dan dropdown mustahik di `NewDistributionRecord`. Verifikasi: backend `75/75`, blockchain `18/18`, frontend `tsc -b` + `oxlint` `0/0` (83 file) + `vite build` bersih.
+
 ## 2026-11-20 - Hardening Risiko Produksi, Keamanan CORS/Auth, & Sinkronisasi ABI Kontrak
 - CORS & Header (`backend/blockchain/index.ts`): HTTP `403` JSON pada origin ditolak, tolak wildcard `'*'`, matikan fallback localhost di production + log warning, tambah `x-powered-by` off & `nosniff`/`DENY`/`no-referrer`.
 - Auth & Admin CLI (`middleware/auth.ts`, `authController.ts`, `seed_admin.ts`, `package.json`, `.env.example`): validasi `ALLOWED_ROLES` pada JWT, toggle `ALLOW_PUBLIC_REGISTRATION`, serta `npm run create:admin` (`ADMIN_USERNAME`/`ADMIN_PASSWORD` tervalidasi `RegisterSchema`, aman di produksi).
