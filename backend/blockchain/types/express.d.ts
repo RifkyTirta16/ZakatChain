@@ -6,7 +6,7 @@ declare global {
     interface Request {
       db: any;
       rawBody?: Buffer;
-      user?: { id: number; username: string; role: 'ADMIN' | 'AMIL' | 'AUDITOR' | 'DONOR' | 'USER' };
+      user?: { id: number; username: string; role: 'ADMIN' | 'AMIL' | 'AUDITOR' | 'USER' };
     }
   }
 }

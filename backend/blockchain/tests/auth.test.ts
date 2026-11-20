@@ -171,7 +171,7 @@ test('authenticate accepts a well-formed token and exposes the identity', async 
 
 test('authorize enforces the role allowlist', () => {
   const admin = { user: { id: 1, username: 'a', role: 'ADMIN' } } as AuthRequest;
-  const donor = { user: { id: 2, username: 'd', role: 'DONOR' } } as AuthRequest;
+  const donor = { user: { id: 2, username: 'd', role: 'USER' } } as AuthRequest;
 
   assert.equal(callMiddleware(authorize(['ADMIN']), admin).nextCalled, true);
   assert.equal(callMiddleware(authorize(['ADMIN']), donor).result.statusCode, 403);
@@ -179,8 +179,8 @@ test('authorize enforces the role allowlist', () => {
 });
 
 test('authorizeSelfOr permits the owner and privileged roles only', () => {
-  const donor = { user: { id: 7, username: 'd', role: 'DONOR' }, params: { donor_id: '7' } } as unknown as AuthRequest;
-  const otherDonor = { user: { id: 8, username: 'e', role: 'DONOR' }, params: { donor_id: '7' } } as unknown as AuthRequest;
+  const donor = { user: { id: 7, username: 'd', role: 'USER' }, params: { donor_id: '7' } } as unknown as AuthRequest;
+  const otherDonor = { user: { id: 8, username: 'e', role: 'USER' }, params: { donor_id: '7' } } as unknown as AuthRequest;
   const admin = { user: { id: 1, username: 'a', role: 'ADMIN' }, params: { donor_id: '7' } } as unknown as AuthRequest;
 
   assert.equal(callMiddleware(authorizeSelfOr(['ADMIN', 'AUDITOR'], 'donor_id'), donor).nextCalled, true);

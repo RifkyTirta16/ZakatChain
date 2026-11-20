@@ -31,6 +31,19 @@ dotenv.config({ path: backendEnvPath });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Default 'loopback' safely reads X-Forwarded-For from a local reverse proxy
+// without trusting spoofed headers from untrusted external clients.
+const resolveTrustProxy = (raw?: string): boolean | number | string => {
+  const val = raw?.trim();
+  if (!val) return 'loopback';
+  if (val === 'true') return true;
+  if (val === 'false') return false;
+  if (/^\d+$/.test(val)) return Number(val);
+  return val;
+};
+
+app.set('trust proxy', resolveTrustProxy(process.env.TRUST_PROXY));
+
 const uploadDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads');
 
 const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173')
@@ -149,7 +162,12 @@ if (process.env.NODE_ENV !== 'test') {
   if (!process.env.JWT_SECRET?.trim()) {
     console.warn(`[CONFIG WARNING] JWT_SECRET is not configured. Server will start, but login and protected API routes will return 503. Configure the process environment or ${backendEnvPath}.`);
   }
-  app.listen(PORT, () => {
+  app.listen(PORT, (err?: Error) => {
+    if (err) {
+      console.error('[SERVER START ERROR]', err.message);
+      process.exitCode = 1;
+      return;
+    }
     console.log(`Server running on port ${PORT}`);
   });
 }
