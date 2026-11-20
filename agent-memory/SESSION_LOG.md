@@ -122,3 +122,8 @@
 - Menambahkan `backend/blockchain/seed_test_users.ts`, script `seed:test-users` di `backend/package.json`, dan aturan ignore `.test-accounts.local` serta `database.sqlite.bak-*` di `.gitignore`.
 - Memverifikasi `backend` (69/69 tes lulus), `frontend` (`tsc -b` & `npm run build` sukses), login curl 4 akun uji (`USER`, `AMIL`, `AUDITOR`, `ADMIN`), serta matriks 11 endpoint x 5 kondisi token.
 - Mencatat hasil audit kontrak API, regresi redesain, konfigurasi, dan keamanan ke `agent-memory/KNOWN_ISSUES.md` serta memperbarui `AGENTS.md` dan `agent-memory/ACTIVE_TASK.md`.
+
+## 2026-11-20 - Transformasi UI/UX Menyeluruh (Islamic Fintech × Modern Web3 + Ethereum Branding)
+- Menambahkan endpoint publik read-only non-PII `GET /api/public/transparency`, helper `probeNetworkStatus()` di `backend/blockchain/utils/web3.ts`, serta memperbaiki isolasi store di `rateLimit.ts` dan alias field di `explorerController.ts` (70/70 tes backend lulus).
+- Membangun sistem desain baru (`tailwind.config.js`, `index.html`, `index.css`, `components/ui/*`, `components/ethereum/*`), website publik 12-section (`LandingPage`, `ZakatCalculatorPage`, `PublicTransparencyPage`, `PublicVerify`, `Campaigns`, `RegisterPage`), serta dashboard & shell terpisah untuk Muzakki (`USER`), `AMIL`, `AUDITOR`, dan `ADMIN`.
+- Memverifikasi `frontend` (`tsc -b`, `oxlint` 0 warnings/0 errors, `vite build`) dan live headless Chromium lintas rute publik, 4 akun uji role, serta 7 lebar layar (`1440px`–`360px`) dengan 0 overflow dan 0 error konsol (`docs/design/UI_TEST_REPORT.md`).

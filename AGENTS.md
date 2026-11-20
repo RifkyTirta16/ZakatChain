@@ -40,9 +40,9 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/routes/*.ts       endpoint
 - backend/blockchain/controllers/*.ts  logika (anomaly, audit, auth, campaign, dashboard,
                                        donation, explorer, export, mapping, payment,
-                                       proof, reconciliation, transaction)
+                                       proof, public, reconciliation, transaction)
 - backend/blockchain/middleware/       auth.ts (authenticate, authorize, authorizeSelfOr),
-                                       upload.ts (multer)
+                                       rateLimit.ts, upload.ts (multer)
 - backend/blockchain/models/db.ts      init SQLite + migrasi aditif (FK on, WAL on)
 - backend/blockchain/utils/            crypto.ts, validation.ts (Zod), web3.ts, auditLogger.ts
 - backend/blockchain/tests/*.test.ts   tes (node:test)
@@ -55,12 +55,15 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 
 Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + wagmi/viem):
 - frontend/src/main.tsx -> MainApp.tsx (routing)
-- frontend/src/pages/        Dashboard, Campaigns, CampaignDetail, DonationPayment,
-                             NewDistributionRecord, OnChainExplorer, EvidenceGraph,
-                             PovertyMapping, PublicVerify
-- frontend/src/components/   Analytics, PaymentModal, auth/, wattvision/, ui/ (target)
+- frontend/src/pages/        public/ (LandingPage, ZakatCalculatorPage, PublicTransparencyPage),
+                             home/ (DonorHome, AmilHome, AuditorHome, AdminHome),
+                             muzakki/ (MyDonationsPage), admin/ (NetworkMonitorPage, RolesPermissionsPage),
+                             shared/ (ProfilePage), Dashboard, Campaigns, CampaignDetail, DonationPayment,
+                             NewDistributionRecord, OnChainExplorer, EvidenceGraph, PovertyMapping,
+                             PublicVerify, anomalies/, audit/, export/, proofs/, reconciliation/
+- frontend/src/components/   Analytics, PaymentModal, auth/, dashboard/, ethereum/, layout/, ui/, wattvision/
 - frontend/src/utils/        api.ts (axios), format.ts, regions.ts, status.ts
-- frontend/tailwind.config.js  token desain (lihat DESIGN.md)
+- frontend/tailwind.config.js  token desain (lihat docs/design/DESIGN_SYSTEM.md & DESIGN.md)
 
 Blockchain: kanonik di blockchain/ (ZakatVerify.sol, Hardhat 2.29, Solidity 0.8.24).
 contracts/ dan backend/contracts/ = salinan lama/divergen: DILARANG diubah atau dihapus
@@ -68,7 +71,8 @@ sebelum ada keputusan konsolidasi eksplisit.
 
 ## 4. Hak akses (diturunkan dari routes, verifikasi ulang bila route berubah)
 Role: USER, ADMIN, AMIL, AUDITOR. Login memakai USERNAME. Register selalu membuat USER.
-- Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*, POST /payments/webhook
+- Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*,
+          GET /public/transparency (agregat + non-PII), POST /payments/webhook
 - Login saja: dashboard/stats, mapping (stats, recommendations, region/:r), donations,
   transactions (GET), payments (generate/session/create/status/verify)
 - ADMIN+AMIL: POST /campaigns, POST /mapping/import
