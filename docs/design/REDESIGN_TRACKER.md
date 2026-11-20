@@ -16,4 +16,4 @@ Latar bg-canvas. Jangan campur kelas wattvision-* dan token baru. Jangan ubah lo
 - [x] 9. pages/PovertyMapping.tsx: peta penuh, panel statistik wilayah, legenda token. Hanya pembungkus dan panel.
 - [x] 10. components/auth/*: kartu di tengah, satu aksi utama, label input, error jelas.
   Login memakai USERNAME. Logika autentikasi/token TIDAK diubah.
-- [ ] 11. components/Analytics.tsx: warna token, legenda, label sumbu. Props tidak diubah.
+- [x] 11. components/Analytics.tsx: warna token, legenda, label sumbu. Props tidak diubah.
