@@ -1,6 +1,21 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const resolveApiBase = (): string => {
+  const configured = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  if (
+    import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1' &&
+    configured.includes('localhost')
+  ) {
+    // Allow scanning QR from a mobile phone over LAN via Vite's /api proxy.
+    return '/api';
+  }
+  return configured;
+};
+
+const API_BASE = resolveApiBase();
 
 const apiClient = axios.create({
   baseURL: API_BASE,

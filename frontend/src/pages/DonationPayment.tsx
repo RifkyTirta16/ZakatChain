@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatDateTime, formatIDR } from '../utils/format';
-import { Badge, Button, Card, Input, JourneyTracker, ON_CHAIN_NOTE, Select } from '../components/ui';
+import { Badge, Button, Card, Input, JourneyTracker, ON_CHAIN_NOTE, QrCodeBox, Select } from '../components/ui';
 import { useCampaigns } from '../components/dashboard/hooks/useDashboardData';
 
 interface PaymentSession {
@@ -22,6 +22,7 @@ interface PaymentSession {
   paymentData: {
     session_id: string;
     qris_url: string;
+    lan_qris_url?: string;
     amount: number;
     expires_at: string;
   };
@@ -295,11 +296,11 @@ const DonationPayment = () => {
             </Badge>
           </div>
 
-          <div className="p-4 bg-cream rounded-2xl inline-block border border-slate-200">
-            <div className="w-52 h-52 bg-white rounded-xl flex items-center justify-center text-forest-dark font-mono text-xs break-all p-4 border border-slate-200">
-              {paymentData.paymentData.qris_url}
-            </div>
-          </div>
+          <QrCodeBox
+            value={paymentData.paymentData.qris_url}
+            lanValue={paymentData.paymentData.lan_qris_url}
+            size={188}
+          />
 
           <div>
             <p className="text-2xl font-extrabold text-forest-dark tabular-nums">

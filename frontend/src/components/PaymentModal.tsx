@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, QrCode, RefreshCw, X } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatIDR } from '../utils/format';
-import { Badge, Button, Card, JourneyTracker, ON_CHAIN_NOTE } from './ui';
+import { Badge, Button, Card, JourneyTracker, ON_CHAIN_NOTE, QrCodeBox } from './ui';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ interface PaymentSession {
   paymentData: {
     session_id: string;
     qris_url: string;
+    lan_qris_url?: string;
     expires_at?: string;
   };
 }
@@ -141,11 +142,11 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
         {status === 'PENDING' && paymentData && (
           <div className="space-y-4 text-center">
             <Badge tone="warning">Menunggu Pembayaran</Badge>
-            <div className="p-3 bg-cream rounded-xl inline-block border border-slate-200">
-              <div className="w-44 h-44 bg-white rounded-lg flex items-center justify-center text-forest-dark font-mono text-xs break-all p-3 border border-slate-200">
-                {paymentData.paymentData.qris_url}
-              </div>
-            </div>
+            <QrCodeBox
+              value={paymentData.paymentData.qris_url}
+              lanValue={paymentData.paymentData.lan_qris_url}
+              size={168}
+            />
             <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-left text-xs">
               <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block">ID Sesi</span>
               <span className="font-mono font-bold text-forest-dark break-all">

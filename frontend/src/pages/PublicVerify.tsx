@@ -27,6 +27,9 @@ interface VerificationData {
   status?: string | null;
   block_number?: number | null;
   proof_status?: string | null;
+  revoke_tx_hash?: string | null;
+  revoke_reason?: string | null;
+  allocations?: Array<{ region: string; amount: number }>;
 }
 
 interface VerificationResponse {
@@ -224,6 +227,34 @@ const PublicVerify = () => {
               </p>
             </div>
           </div>
+
+          {record.allocations && record.allocations.length > 0 && (
+            <div className="p-4 rounded-xl bg-cream border border-slate-200/70 space-y-2">
+              <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                Distribusi Multi-Wilayah (Non-PII)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {record.allocations.map((alloc, idx) => (
+                  <span
+                    key={`${alloc.region}-${idx}`}
+                    className="rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-forest-dark tabular-nums"
+                  >
+                    {alloc.region}: {formatIDR(alloc.amount)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(result.status === 'REVOKED' || result.blockchain?.revoked || record.revoke_reason) && (
+            <div role="alert" className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-900 space-y-1 text-xs">
+              <p className="font-bold">Laporan Ini Telah Dicabut (Revoked) di Smart Contract</p>
+              {record.revoke_reason && <p>Alasan: {record.revoke_reason}</p>}
+              {record.revoke_tx_hash && (
+                <p className="font-mono break-all">Tx Pencabutan: {record.revoke_tx_hash}</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-3">
             <h3 className="text-xs uppercase tracking-wider text-slate-600 font-bold flex items-center gap-1.5">

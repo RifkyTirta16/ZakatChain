@@ -19,6 +19,7 @@ import LandingPage from './pages/public/LandingPage';
 // Lazy-loaded pages for smaller initial bundle
 const ZakatCalculatorPage = lazy(() => import('./pages/public/ZakatCalculatorPage'));
 const PublicTransparencyPage = lazy(() => import('./pages/public/PublicTransparencyPage'));
+const SandboxPayPage = lazy(() => import('./pages/public/SandboxPayPage'));
 const PublicVerify = lazy(() => import('./pages/PublicVerify'));
 const Campaigns = lazy(() => import('./pages/Campaigns'));
 const CampaignDetail = lazy(() => import('./pages/CampaignDetail'));
@@ -31,6 +32,7 @@ const AdminHome = lazy(() => import('./pages/home/AdminHome'));
 const DonationPayment = lazy(() => import('./pages/DonationPayment'));
 const MyDonationsPage = lazy(() => import('./pages/muzakki/MyDonationsPage'));
 const NewDistributionRecord = lazy(() => import('./pages/NewDistributionRecord'));
+const MustahikPage = lazy(() => import('./pages/amil/MustahikPage'));
 const PovertyMapping = lazy(() => import('./pages/PovertyMapping'));
 const OnChainExplorer = lazy(() => import('./pages/OnChainExplorer'));
 const EvidenceGraph = lazy(() => import('./pages/EvidenceGraph'));
@@ -159,6 +161,7 @@ const MainApp = () => {
         <Route path="/campaigns/:id" element={publicOrWorkspace(<CampaignDetail />)} />
         <Route path="/calculator" element={publicOrWorkspace(<ZakatCalculatorPage />)} />
         <Route path="/verify" element={publicOrWorkspace(<PublicVerify />)} />
+        <Route path="/sandbox/pay/:sessionId" element={alwaysPublic(<SandboxPayPage />)} />
 
         {/* Authentication Pages */}
         <Route
@@ -190,6 +193,7 @@ const MainApp = () => {
 
         {/* Amil Operational Workspace */}
         <Route path="/new-record" element={guarded('/new-record', <NewDistributionRecord />)} />
+        <Route path="/mustahik" element={guarded('/mustahik', <MustahikPage />)} />
         <Route path="/mapping" element={guarded('/mapping', <PovertyMapping />)} />
         <Route path="/explorer" element={guarded('/explorer', <OnChainExplorer />)} />
         <Route path="/graph" element={guarded('/graph', <EvidenceGraph />)} />

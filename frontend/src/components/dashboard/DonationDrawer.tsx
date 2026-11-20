@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, CheckCircle2, Clock, Info, QrCode, X } from 'lucide-react';
 import apiClient from '../../utils/api';
 import { formatDateTime, formatIDR } from '../../utils/format';
-import { Badge, Button, Card, Input, JourneyTracker, ON_CHAIN_NOTE, Select } from '../../components/ui';
+import { Badge, Button, Card, Input, JourneyTracker, ON_CHAIN_NOTE, QrCodeBox, Select } from '../../components/ui';
 import type { Campaign } from './useDonation';
 
 interface DonationDrawerProps {
@@ -373,11 +373,11 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
               <div className="inline-flex items-center gap-2 text-primary font-bold text-sm">
                 <QrCode size={18} /> Pembayaran QRIS Sandbox
               </div>
-              <div className="bg-cream p-3 rounded-2xl inline-block border border-slate-200">
-                <div className="w-48 h-48 bg-white rounded-xl flex items-center justify-center text-forest-dark font-mono text-xs break-all p-3 border border-slate-200">
-                  {paymentData.paymentData.qris_url}
-                </div>
-              </div>
+              <QrCodeBox
+                value={paymentData.paymentData.qris_url}
+                lanValue={paymentData.paymentData.lan_qris_url}
+                size={176}
+              />
               <p className="text-2xl font-extrabold text-forest-dark tabular-nums">
                 {formatIDR(paymentData.paymentData.amount)}
               </p>

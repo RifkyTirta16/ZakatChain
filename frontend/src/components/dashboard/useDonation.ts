@@ -17,6 +17,7 @@ export interface PaymentSessionResponse {
     paymentId: string;
     qris_url: string;
     qrCodeUrl: string;
+    lan_qris_url?: string;
     amount: number;
     expires_at: string;
   };

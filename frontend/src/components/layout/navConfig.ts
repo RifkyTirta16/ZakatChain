@@ -64,6 +64,7 @@ export const NAV_ITEMS: NavItem[] = [
 
   // Amil (AMIL + ADMIN)
   { label: 'Catat Distribusi', path: '/new-record', icon: FilePlus, group: 'Operasional Amil', roles: ['AMIL', 'ADMIN'] },
+  { label: 'Data Mustahik', path: '/mustahik', icon: ClipboardList, group: 'Operasional Amil', roles: ['AMIL', 'AUDITOR', 'ADMIN'] },
   { label: 'Pemetaan Kemiskinan', path: '/mapping', icon: Map, group: 'Operasional Amil', roles: ['AMIL', 'AUDITOR', 'ADMIN'] },
 
   // Explorer & Graph (AMIL, AUDITOR, ADMIN - matches backend GET /transactions & /donations)
@@ -95,6 +96,7 @@ export const PAGE_TITLES: Record<string, string> = {
   '/campaigns': 'Program Zakat',
   '/verify': 'Verifikasi On-Chain',
   '/new-record': 'Catatan Distribusi Baru',
+  '/mustahik': 'Master Data Mustahik (Privat)',
   '/mapping': 'Pemetaan Kemiskinan & Wilayah',
   '/explorer': 'Ethereum Blockchain Explorer',
   '/graph': 'Evidence Graph',

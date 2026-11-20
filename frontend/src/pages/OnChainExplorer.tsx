@@ -1,10 +1,16 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, Check, CheckCircle2, Copy, ExternalLink, Filter, RefreshCw, Search } from 'lucide-react';
+import { AlertCircle, Ban, Check, CheckCircle2, Copy, ExternalLink, Filter, RefreshCw, Search } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatDateTime, formatIDR, shortHash } from '../utils/format';
 import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, SectionHeader, Skeleton, proofBadge } from '../components/ui';
 import { EthereumLogo, NetworkBadge, explorerBaseForChain, useNetworkInfo } from '../components/ethereum';
+
+interface RegionAllocation {
+  region: string;
+  amount: number;
+  notes?: string | null;
+}
 
 interface Transaction {
   id: number;
@@ -16,6 +22,9 @@ interface Transaction {
   audit_hash: string | null;
   blockchain_status: string | null;
   block_number: number | null;
+  revoke_tx_hash?: string | null;
+  revoke_reason?: string | null;
+  allocations?: RegionAllocation[];
 }
 
 interface VerificationDetail {
@@ -37,6 +46,9 @@ interface VerificationDetail {
     blockchain_status?: string | null;
     status?: string | null;
     block_number?: number | null;
+    revoke_tx_hash?: string | null;
+    revoke_reason?: string | null;
+    allocations?: RegionAllocation[];
   } | null;
 }
 
@@ -50,6 +62,9 @@ const OnChainExplorer = () => {
   const [detailError, setDetailError] = useState('');
   const [reconcilingId, setReconcilingId] = useState<number | null>(null);
   const [reconcileMsg, setReconcileMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<Transaction | null>(null);
+  const [revokeReason, setRevokeReason] = useState('');
+  const [revokingId, setRevokingId] = useState<number | null>(null);
 
   let isAdmin = false;
   try {
@@ -111,6 +126,38 @@ const OnChainExplorer = () => {
       });
     } finally {
       setReconcilingId(null);
+    }
+  };
+
+  const submitRevoke = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!revokeTarget) return;
+    if (revokeReason.trim().length < 5) {
+      setReconcileMsg({ type: 'err', text: 'Alasan pencabutan minimal 5 karakter.' });
+      return;
+    }
+    setRevokingId(revokeTarget.id);
+    setReconcileMsg(null);
+    try {
+      const { data } = await apiClient.patch<{ message?: string; revoke_tx_hash?: string }>(
+        `/transactions/${revokeTarget.id}/revoke`,
+        { reason: revokeReason.trim() },
+      );
+      setReconcileMsg({
+        type: 'ok',
+        text: `Laporan #${revokeTarget.id} berhasil dicabut on-chain${data.revoke_tx_hash ? ` (${shortHash(data.revoke_tx_hash, 8, 6)})` : ''}.`,
+      });
+      setRevokeTarget(null);
+      setRevokeReason('');
+      void refetch();
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { error?: string } } };
+      setReconcileMsg({
+        type: 'err',
+        text: e2.response?.data?.error || `Gagal mencabut laporan #${revokeTarget.id} di smart contract.`,
+      });
+    } finally {
+      setRevokingId(null);
     }
   };
 
@@ -276,7 +323,65 @@ const OnChainExplorer = () => {
             <p className="font-mono font-bold text-forest-dark break-all">
               {detailData.tx_hash || 'Belum ada tx_hash on-chain'}
             </p>
+            {detailData.revoke_reason && (
+              <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-red-800 space-y-1">
+                <p className="font-bold">Dicabut (Revoked): {detailData.revoke_reason}</p>
+                {detailData.revoke_tx_hash && (
+                  <p className="font-mono text-[11px] break-all">Tx pencabutan: {detailData.revoke_tx_hash}</p>
+                )}
+              </div>
+            )}
+            {detailData.allocations && detailData.allocations.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-slate-200/80 space-y-1">
+                <p className="text-[11px] font-semibold text-slate-600">Sebaran Wilayah:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {detailData.allocations.map((a, idx) => (
+                    <span
+                      key={`${a.region}-${idx}`}
+                      className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-[11px] text-forest-dark font-medium tabular-nums"
+                    >
+                      {a.region}: {formatIDR(a.amount)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+        </Card>
+      )}
+
+      {revokeTarget && (
+        <Card className="border-red-200 bg-red-50/40 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-red-900 flex items-center gap-2">
+              <Ban size={16} className="text-danger" /> Cabut (Revoke) Laporan #{revokeTarget.id} di Smart Contract
+            </h2>
+            <button
+              type="button"
+              onClick={() => {
+                setRevokeTarget(null);
+                setRevokeReason('');
+              }}
+              className="text-xs font-semibold text-slate-600 hover:text-forest-dark"
+            >
+              Batal
+            </button>
+          </div>
+          <p className="text-xs text-slate-700">
+            Pemanggilan <code className="font-mono">ZakatVerify.revokeReport()</code> bersifat permanen (sticky) di blockchain dan tidak dapat dibatalkan.
+          </p>
+          <form onSubmit={(e) => void submitRevoke(e)} className="flex flex-col sm:flex-row gap-2.5">
+            <input
+              type="text"
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value)}
+              placeholder="Alasan pencabutan (min. 5 karakter), mis. Dokumen ganda / tidak valid"
+              className="flex-1 min-h-[40px] rounded-[10px] border border-slate-300 bg-white px-3 text-xs sm:text-sm text-forest-dark outline-none focus:ring-2 focus:ring-danger/25"
+            />
+            <Button type="submit" variant="danger" size="sm" loading={revokingId === revokeTarget.id}>
+              <Ban size={13} /> Konfirmasi Cabut On-Chain
+            </Button>
+          </form>
         </Card>
       )}
 
@@ -310,7 +415,9 @@ const OnChainExplorer = () => {
                 {filtered.map((t) => {
                   const isCopiedTx = copiedHash === t.tx_hash;
                   const isCopiedAudit = copiedHash === t.audit_hash;
-                  const isPendingChain = !t.tx_hash || t.blockchain_status !== 'CONFIRMED';
+                  const isRevoked = t.blockchain_status === 'REVOKED';
+                  const isConfirmed = t.blockchain_status === 'CONFIRMED';
+                  const isPendingChain = !isRevoked && (!t.tx_hash || !isConfirmed);
                   return (
                     <tr key={t.id} className="hover:bg-cream/60">
                       <td className="py-3.5 px-4 font-mono font-bold text-forest-dark">#{t.id}</td>
@@ -368,10 +475,23 @@ const OnChainExplorer = () => {
                             size="sm"
                             variant="gold"
                             loading={reconcilingId === t.id}
-                            disabled={reconcilingId !== null}
+                            disabled={reconcilingId !== null || revokingId !== null}
                             onClick={() => void retryOnChain(t.id)}
                           >
                             <RefreshCw size={11} /> Catat ke Ethereum
+                          </Button>
+                        )}
+                        {isAdmin && isConfirmed && (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            disabled={reconcilingId !== null || revokingId !== null}
+                            onClick={() => {
+                              setRevokeTarget(t);
+                              setRevokeReason('');
+                            }}
+                          >
+                            <Ban size={11} /> Cabut On-Chain
                           </Button>
                         )}
                         <button

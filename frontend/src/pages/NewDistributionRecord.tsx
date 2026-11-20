@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
   CheckCircle2,
   Eye,
   FileText,
+  Plus,
   Send,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react';
@@ -21,7 +24,27 @@ interface FieldErrors {
   amount?: string;
   recipient_name?: string;
   region?: string;
+  allocations?: string;
   proof_file?: string;
+}
+
+interface AllocationDraft {
+  province: string;
+  city: string;
+  amountDigits: string;
+}
+
+interface MustahikOption {
+  id: number;
+  full_name: string;
+  category_asnaf: string;
+  region: string;
+}
+
+interface CampaignOption {
+  id: number;
+  title: string;
+  status: string;
 }
 
 interface SubmitResult {
@@ -39,16 +62,57 @@ const groupThousands = (digits: string): string => {
 const NewDistributionRecord = () => {
   const [amountDigits, setAmountDigits] = useState('');
   const [donorName, setDonorName] = useState('');
+  const [mustahikId, setMustahikId] = useState<string>('');
+  const [campaignId, setCampaignId] = useState<string>('');
   const [recipientName, setRecipientName] = useState('');
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
+  const [multiRegion, setMultiRegion] = useState(false);
+  const [allocations, setAllocations] = useState<AllocationDraft[]>([
+    { province: '', city: '', amountDigits: '' },
+    { province: '', city: '', amountDigits: '' },
+  ]);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const mustahikQuery = useQuery<MustahikOption[]>({
+    queryKey: ['verified-mustahik-options'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<MustahikOption[]>('/mustahik', {
+        params: { status: 'VERIFIED' },
+      });
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
+  const campaignsQuery = useQuery<CampaignOption[]>({
+    queryKey: ['campaign-options'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<CampaignOption[]>('/campaigns');
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
+  const handleSelectMustahik = (selectedId: string) => {
+    setMustahikId(selectedId);
+    if (!selectedId) return;
+    const found = (mustahikQuery.data ?? []).find((m) => String(m.id) === selectedId);
+    if (found) {
+      setRecipientName(found.full_name);
+      setFieldErrors((prev) => ({ ...prev, recipient_name: undefined }));
+      const parts = found.region.split(',').map((s) => s.trim());
+      if (parts.length >= 2 && parts[0] in INDONESIA_REGIONS) {
+        setProvince(parts[0]);
+        setCity(parts[1]);
+        setFieldErrors((prev) => ({ ...prev, region: undefined }));
+      }
+    }
+  };
 
   const clearFile = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -97,7 +161,19 @@ const NewDistributionRecord = () => {
     if (recipientName.trim().length < 3) {
       errors.recipient_name = 'Nama penerima minimal 3 karakter.';
     }
-    if (!province || !city) {
+    if (multiRegion) {
+      const validRows = allocations.filter(
+        (a) => a.province && a.city && Number(a.amountDigits) > 0,
+      );
+      if (validRows.length < 2) {
+        errors.allocations = 'Mode multi-wilayah memerlukan minimal 2 wilayah lengkap beserta nominalnya.';
+      } else {
+        const sum = validRows.reduce((s, a) => s + Number(a.amountDigits), 0);
+        if (Math.abs(sum - amount) > 0.01) {
+          errors.allocations = `Total alokasi wilayah (${formatIDR(sum)}) harus sama dengan nominal distribusi (${formatIDR(amount)}).`;
+        }
+      }
+    } else if (!province || !city) {
       errors.region = 'Provinsi dan kota/kabupaten wajib dipilih.';
     }
     setFieldErrors(errors);
@@ -116,7 +192,24 @@ const NewDistributionRecord = () => {
     data.append('donor_name', donorName.trim());
     data.append('recipient_name', recipientName.trim());
     data.append('category', category);
-    data.append('region', `${province}, ${city}`);
+    if (campaignId) data.append('campaign_id', campaignId);
+    if (mustahikId) data.append('mustahik_id', mustahikId);
+
+    if (multiRegion) {
+      const validRows = allocations.filter((a) => a.province && a.city && Number(a.amountDigits) > 0);
+      data.append('region', `Multi-Wilayah (${validRows.length} daerah)`);
+      data.append(
+        'allocations',
+        JSON.stringify(
+          validRows.map((a) => ({
+            region: `${a.province}, ${a.city}`,
+            amount: Number(a.amountDigits),
+          })),
+        ),
+      );
+    } else {
+      data.append('region', `${province}, ${city}`);
+    }
     if (file) data.append('proof_file', file);
 
     try {
@@ -124,10 +217,17 @@ const NewDistributionRecord = () => {
       setResult(response.data);
       setAmountDigits('');
       setDonorName('');
+      setMustahikId('');
+      setCampaignId('');
       setRecipientName('');
       setCategory(CATEGORIES[0]);
       setProvince('');
       setCity('');
+      setMultiRegion(false);
+      setAllocations([
+        { province: '', city: '', amountDigits: '' },
+        { province: '', city: '', amountDigits: '' },
+      ]);
       clearFile();
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { error?: string; details?: unknown } } };
@@ -238,6 +338,46 @@ const NewDistributionRecord = () => {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="mustahik-select" className="block text-xs uppercase tracking-wider text-slateText font-semibold mb-1.5">
+                Pilih Mustahik Terverifikasi (Opsional)
+              </label>
+              <select
+                id="mustahik-select"
+                value={mustahikId}
+                onChange={(e) => handleSelectMustahik(e.target.value)}
+                className="w-full min-h-[44px] rounded-[10px] bg-white border border-slate-300 px-3.5 py-2.5 text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25"
+              >
+                <option value="">Ketik manual / pilih mustahik…</option>
+                {(mustahikQuery.data ?? []).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.full_name} ({m.category_asnaf} · {m.region})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="campaign-select" className="block text-xs uppercase tracking-wider text-slateText font-semibold mb-1.5">
+                Tautkan ke Program Zakat (Opsional)
+              </label>
+              <select
+                id="campaign-select"
+                value={campaignId}
+                onChange={(e) => setCampaignId(e.target.value)}
+                className="w-full min-h-[44px] rounded-[10px] bg-white border border-slate-300 px-3.5 py-2.5 text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25"
+              >
+                <option value="">Pool Zakat Umum</option>
+                {(campaignsQuery.data ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div>
             <label htmlFor="recipient" className="block text-xs uppercase tracking-wider text-slateText font-semibold mb-1.5">
               Nama Penerima Manfaat (Mustahik — Privat) <span className="text-danger">*</span>
@@ -291,55 +431,164 @@ const NewDistributionRecord = () => {
             </select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="province" className="block text-xs uppercase tracking-wider text-slateText font-semibold mb-1.5">
-                Provinsi <span className="text-danger">*</span>
-              </label>
-              <select
-                id="province"
-                className={`w-full min-h-[44px] rounded-[10px] bg-white border px-3.5 py-2.5 text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25 cursor-pointer ${
-                  fieldErrors.region ? 'border-danger' : 'border-slate-300'
-                }`}
-                value={province}
-                onChange={(e) => {
-                  setProvince(e.target.value);
-                  setCity('');
-                  setFieldErrors((prev) => ({ ...prev, region: undefined }));
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-cream/60 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs uppercase tracking-wider text-slateText font-semibold">
+                Wilayah Distribusi <span className="text-danger">*</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMultiRegion((prev) => !prev);
+                  setFieldErrors((prev) => ({ ...prev, region: undefined, allocations: undefined }));
                 }}
+                className="text-xs font-semibold text-primary hover:underline"
               >
-                <option value="">Pilih Provinsi</option>
-                {Object.keys(INDONESIA_REGIONS).map((reg) => (
-                  <option key={reg} value={reg}>{reg}</option>
-                ))}
-              </select>
+                {multiRegion ? 'Gunakan 1 Wilayah Saja' : '+ Bagi ke Beberapa Wilayah (Multi-Daerah)'}
+              </button>
             </div>
 
-            <div>
-              <label htmlFor="city" className="block text-xs uppercase tracking-wider text-slateText font-semibold mb-1.5">
-                Kota / Kabupaten <span className="text-danger">*</span>
-              </label>
-              <select
-                id="city"
-                className={`w-full min-h-[44px] rounded-[10px] bg-white border px-3.5 py-2.5 text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25 cursor-pointer disabled:bg-slate-100 ${
-                  fieldErrors.region ? 'border-danger' : 'border-slate-300'
-                }`}
-                value={city}
-                onChange={(e) => {
-                  setCity(e.target.value);
-                  setFieldErrors((prev) => ({ ...prev, region: undefined }));
-                }}
-                disabled={!province}
-              >
-                <option value="">Pilih Kota / Kabupaten</option>
-                {province &&
-                  INDONESIA_REGIONS[province as keyof typeof INDONESIA_REGIONS]?.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-              </select>
-            </div>
+            {!multiRegion ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="province" className="block text-xs uppercase tracking-wider text-slateText font-semibold mb-1.5">
+                    Provinsi <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    id="province"
+                    className={`w-full min-h-[44px] rounded-[10px] bg-white border px-3.5 py-2.5 text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25 cursor-pointer ${
+                      fieldErrors.region ? 'border-danger' : 'border-slate-300'
+                    }`}
+                    value={province}
+                    onChange={(e) => {
+                      setProvince(e.target.value);
+                      setCity('');
+                      setFieldErrors((prev) => ({ ...prev, region: undefined }));
+                    }}
+                  >
+                    <option value="">Pilih Provinsi</option>
+                    {Object.keys(INDONESIA_REGIONS).map((reg) => (
+                      <option key={reg} value={reg}>{reg}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="city" className="block text-xs uppercase tracking-wider text-slateText font-semibold mb-1.5">
+                    Kota / Kabupaten <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    id="city"
+                    className={`w-full min-h-[44px] rounded-[10px] bg-white border px-3.5 py-2.5 text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25 cursor-pointer disabled:bg-slate-100 ${
+                      fieldErrors.region ? 'border-danger' : 'border-slate-300'
+                    }`}
+                    value={city}
+                    onChange={(e) => {
+                      setCity(e.target.value);
+                      setFieldErrors((prev) => ({ ...prev, region: undefined }));
+                    }}
+                    disabled={!province}
+                  >
+                    <option value="">Pilih Kota / Kabupaten</option>
+                    {province &&
+                      INDONESIA_REGIONS[province as keyof typeof INDONESIA_REGIONS]?.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {allocations.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end bg-white p-3 rounded-xl border border-slate-200">
+                    <div className="sm:col-span-4">
+                      <label className="block text-[11px] font-semibold text-slate-500 mb-1">Provinsi #{idx + 1}</label>
+                      <select
+                        value={item.province}
+                        onChange={(e) => {
+                          const next = [...allocations];
+                          next[idx] = { ...item, province: e.target.value, city: '' };
+                          setAllocations(next);
+                        }}
+                        className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-forest-dark"
+                      >
+                        <option value="">Pilih Provinsi</option>
+                        {Object.keys(INDONESIA_REGIONS).map((reg) => (
+                          <option key={reg} value={reg}>{reg}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="sm:col-span-4">
+                      <label className="block text-[11px] font-semibold text-slate-500 mb-1">Kota / Kab</label>
+                      <select
+                        disabled={!item.province}
+                        value={item.city}
+                        onChange={(e) => {
+                          const next = [...allocations];
+                          next[idx] = { ...item, city: e.target.value };
+                          setAllocations(next);
+                        }}
+                        className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-forest-dark disabled:bg-slate-100"
+                      >
+                        <option value="">Pilih Kota</option>
+                        {item.province &&
+                          INDONESIA_REGIONS[item.province as keyof typeof INDONESIA_REGIONS]?.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                      </select>
+                    </div>
+                    <div className="sm:col-span-3">
+                      <label className="block text-[11px] font-semibold text-slate-500 mb-1">Nominal (Rp)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={groupThousands(item.amountDigits)}
+                        onChange={(e) => {
+                          const next = [...allocations];
+                          next[idx] = { ...item, amountDigits: e.target.value.replace(/\D/g, '').slice(0, 15) };
+                          setAllocations(next);
+                        }}
+                        className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono font-bold text-forest-dark"
+                      />
+                    </div>
+                    <div className="sm:col-span-1 flex justify-end">
+                      {allocations.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setAllocations(allocations.filter((_, i) => i !== idx))}
+                          className="p-2 text-slate-400 hover:text-danger rounded-lg"
+                          aria-label="Hapus baris wilayah"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setAllocations([...allocations, { province: '', city: '', amountDigits: '' }])}
+                    className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                  >
+                    <Plus size={13} /> Tambah Wilayah
+                  </button>
+                  <span className="font-mono text-slate-600 tabular-nums">
+                    Teralokasi:{' '}
+                    <strong className="text-forest-dark">
+                      {formatIDR(allocations.reduce((s, a) => s + Number(a.amountDigits || 0), 0))}
+                    </strong>
+                    {amountDigits ? ` / ${formatIDR(Number(amountDigits))}` : ''}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {fieldErrors.region && <p className="text-xs text-danger font-medium">{fieldErrors.region}</p>}
+            {fieldErrors.allocations && <p className="text-xs text-danger font-medium">{fieldErrors.allocations}</p>}
           </div>
-          {fieldErrors.region && <p className="text-xs text-danger font-medium">{fieldErrors.region}</p>}
 
           <div className="space-y-2">
             <label className="block text-xs uppercase tracking-wider text-slateText font-semibold">
@@ -410,7 +659,7 @@ const NewDistributionRecord = () => {
             {fieldErrors.proof_file && <p className="text-xs text-danger font-medium">{fieldErrors.proof_file}</p>}
           </div>
 
-          {amountDigits && recipientName && province && city && (
+          {amountDigits && recipientName && (multiRegion ? allocations.some((a) => a.province && a.city) : Boolean(province && city)) && (
             <div className="p-4 rounded-xl bg-mint/60 border border-primary/20 space-y-2 text-xs">
               <p className="font-bold uppercase tracking-wider text-forest text-[11px]">Ringkasan Sebelum Simpan</p>
               <div className="grid grid-cols-2 gap-2 text-forest-dark">
@@ -428,7 +677,11 @@ const NewDistributionRecord = () => {
                 </div>
                 <div>
                   <span className="text-slate-500 block">Wilayah</span>
-                  <span className="font-bold">{city}, {province}</span>
+                  <span className="font-bold">
+                    {multiRegion
+                      ? `${allocations.filter((a) => a.province && a.city && Number(a.amountDigits) > 0).length} wilayah alokasi`
+                      : `${city}, ${province}`}
+                  </span>
                 </div>
               </div>
             </div>

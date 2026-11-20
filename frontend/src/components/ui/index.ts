@@ -11,3 +11,4 @@ export * from './JourneyTracker';
 export * from './ActionPanel';
 export * from './StatCard';
 export * from './SectionHeader';
+export * from './QrCodeBox';

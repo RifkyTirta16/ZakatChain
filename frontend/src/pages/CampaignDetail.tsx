@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Check, Clock, Copy, Heart, Info, LogIn, QrCode } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatDateTime, formatIDR } from '../utils/format';
-import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, Skeleton } from '../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, QrCodeBox, Skeleton } from '../components/ui';
 
 interface Donation {
   id: number;
@@ -29,6 +29,7 @@ interface PaymentSession {
   paymentData: {
     session_id: string;
     qris_url: string;
+    lan_qris_url?: string;
   };
 }
 
@@ -316,11 +317,11 @@ const CampaignDetail = () => {
               </form>
             ) : (
               <div className="space-y-4 text-center">
-                <div className="p-4 bg-cream rounded-2xl inline-block border border-slate-200">
-                  <div className="w-48 h-48 bg-white rounded-xl flex items-center justify-center text-forest-dark font-mono text-xs break-all p-4 border border-slate-200">
-                    {paymentResult.paymentData.qris_url}
-                  </div>
-                </div>
+                <QrCodeBox
+                  value={paymentResult.paymentData.qris_url}
+                  lanValue={paymentResult.paymentData.lan_qris_url}
+                  size={176}
+                />
 
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-left">
                   <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">
