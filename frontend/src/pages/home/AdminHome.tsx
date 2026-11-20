@@ -58,6 +58,12 @@ interface ReconciliationLog {
   status: string | null;
 }
 
+interface AdminUserRow {
+  id: number;
+  username: string;
+  role: string;
+}
+
 const NETWORK_TONE: Record<string, 'success' | 'warning' | 'danger'> = {
   Healthy: 'success',
   Degraded: 'warning',
@@ -92,10 +98,19 @@ const AdminHome = () => {
     refetchInterval: 30_000,
   });
 
+  const usersQuery = useQuery<AdminUserRow[]>({
+    queryKey: ['admin-users-summary'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<AdminUserRow[]>('/users');
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
   const stats = statsQuery.data;
   const reconLogs = reconQuery.data ?? [];
   const lastRecon = reconLogs[0];
   const transactions = txQuery.data ?? [];
+  const usersList = usersQuery.data ?? [];
   const pendingProofs = transactions.filter(
     (t) =>
       t.proof_status === null ||
@@ -215,12 +230,30 @@ const AdminHome = () => {
                   <Cpu size={14} /> Detail Jaringan & Kontrak
                 </Link>
                 <Link
+                  to="/explorer"
+                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-300 px-3 text-xs font-semibold text-forest-dark hover:bg-mint"
+                >
+                  <ShieldCheck size={14} /> Catat / Revoke On-Chain
+                </Link>
+                <Link
                   to="/roles"
                   className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-300 px-3 text-xs font-semibold text-forest-dark hover:bg-mint"
                 >
-                  <UserCheck size={14} /> Peran & Kebijakan Akses
+                  <UserCheck size={14} /> Manajemen Akun ({usersList.length})
                 </Link>
               </div>
+              {usersList.length > 0 && (
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-center text-xs">
+                  {(['USER', 'AMIL', 'AUDITOR', 'ADMIN'] as const).map((r) => (
+                    <div key={r} className="rounded-lg bg-slate-50 border border-slate-200/80 py-2">
+                      <span className="text-[10px] font-bold text-slate-500 block">{r}</span>
+                      <span className="font-display text-sm font-extrabold text-forest-dark tabular-nums">
+                        {usersList.filter((u) => u.role === r).length}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
 
             <Card className="lg:col-span-6 space-y-4">

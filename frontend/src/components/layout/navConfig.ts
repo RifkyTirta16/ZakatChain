@@ -53,10 +53,11 @@ export const NAV_ITEMS: NavItem[] = [
   // Shared Dashboard Entry
   { label: 'Ringkasan', path: '/dashboard', icon: LayoutDashboard, group: 'Utama', roles: ['USER', 'AMIL', 'AUDITOR', 'ADMIN'] },
 
-  // Muzakki (USER)
-  { label: 'Kalkulator Zakat', path: '/calculator', icon: Calculator, group: 'Layanan Zakat', roles: ['USER', 'ADMIN'] },
-  { label: 'Tunaikan Zakat', path: '/donate', icon: Heart, group: 'Layanan Zakat', roles: ['USER', 'ADMIN'] },
-  { label: 'Riwayat & Bukti', path: '/my-donations', icon: Receipt, group: 'Layanan Zakat', roles: ['USER', 'ADMIN'] },
+  // Muzakki (USER only — keeps roles distinctly separated)
+  { label: 'Kalkulator Zakat', path: '/calculator', icon: Calculator, group: 'Layanan Zakat', roles: ['USER'] },
+  { label: 'Tunaikan Zakat', path: '/donate', icon: Heart, group: 'Layanan Zakat', roles: ['USER'] },
+  { label: 'Riwayat & Bukti BSZ', path: '/my-donations', icon: Receipt, group: 'Layanan Zakat', roles: ['USER'] },
+  { label: 'Portal Transparansi', path: '/transparency', icon: Globe, group: 'Layanan Zakat', roles: ['USER'] },
 
   // Shared Operational / Public-Aligned
   { label: 'Program Zakat', path: '/campaigns', icon: Megaphone, group: 'Program & Penyaluran', roles: [] },
@@ -92,7 +93,8 @@ export const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard Utama',
   '/calculator': 'Kalkulator Zakat',
   '/donate': 'Tunaikan Zakat',
-  '/my-donations': 'Riwayat & Bukti Pembayaran',
+  '/my-donations': 'Riwayat, Jejak Wilayah & BSZ',
+  '/transparency': 'Portal Transparansi Publik',
   '/campaigns': 'Program Zakat',
   '/verify': 'Verifikasi On-Chain',
   '/new-record': 'Catatan Distribusi Baru',

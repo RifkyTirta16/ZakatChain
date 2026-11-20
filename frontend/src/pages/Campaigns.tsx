@@ -64,6 +64,7 @@ const Campaigns = () => {
     user = null;
   }
   const canCreateCampaign = ['ADMIN', 'AMIL'].includes(user?.role ?? '');
+  const canDonateAsMuzakki = !user || user.role === 'USER';
 
   const query = useQuery({
     queryKey: ['campaigns'],
@@ -239,20 +240,32 @@ const Campaigns = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Button
-                      variant="primary"
-                      onClick={() => handleDonate(campaign.id)}
-                      className="w-full"
-                    >
-                      <Heart size={15} /> Tunaikan Zakat ke Program
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/campaigns/${campaign.id}`)}
-                      className="w-full text-center text-xs font-semibold text-slate-600 hover:text-primary py-1"
-                    >
-                      Lihat Rincian & Riwayat →
-                    </button>
+                    {canDonateAsMuzakki ? (
+                      <>
+                        <Button
+                          variant="primary"
+                          onClick={() => handleDonate(campaign.id)}
+                          className="w-full"
+                        >
+                          <Heart size={15} /> Tunaikan Zakat ke Program
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                          className="w-full text-center text-xs font-semibold text-slate-600 hover:text-primary py-1"
+                        >
+                          Lihat Rincian & Riwayat →
+                        </button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                        className="w-full"
+                      >
+                        Lihat Rincian & Penyaluran →
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>

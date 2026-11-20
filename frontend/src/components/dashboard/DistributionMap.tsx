@@ -59,6 +59,14 @@ export const DistributionMap = () => {
   );
 
   const regions = data ?? [];
+  let isStaff = false;
+  try {
+    const raw = localStorage.getItem('zakat_user');
+    const role = raw ? (JSON.parse(raw) as { role?: string }).role : '';
+    isStaff = role === 'AMIL' || role === 'AUDITOR' || role === 'ADMIN';
+  } catch {
+    isStaff = false;
+  }
 
   if (isLoading) {
     return (
@@ -86,8 +94,11 @@ export const DistributionMap = () => {
           <h2 className="text-lg font-bold text-forest-dark">Sebaran Distribusi Wilayah</h2>
           <p className="text-xs text-slate-500">Ringkasan agregat penyaluran zakat per provinsi</p>
         </div>
-        <Link to="/mapping" className="text-xs font-semibold text-primary hover:text-forest">
-          Buka Pemetaan Lengkap →
+        <Link
+          to={isStaff ? '/mapping' : '/transparency'}
+          className="text-xs font-semibold text-primary hover:text-forest"
+        >
+          {isStaff ? 'Buka Pemetaan Lengkap →' : 'Buka Portal Transparansi →'}
         </Link>
       </div>
 
