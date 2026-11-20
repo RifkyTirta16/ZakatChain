@@ -50,7 +50,6 @@ app.use(cors({
 
 // Rate limit global: 100 permintaan per 15 menit per IP. Rute auth lebih ketat.
 app.use(rateLimit());
-app.use('/api/auth', rateLimit({ limit: AUTH_LIMIT }), authRoutes);
 app.use(express.json({
   limit: '1mb',
   verify: (req, _res, buffer) => {
@@ -97,6 +96,8 @@ app.use(async (req, res, next) => {
   }
 });
 
+// Must stay after express.json() and the DB middleware: auth needs req.body and req.db.
+app.use('/api/auth', rateLimit({ limit: AUTH_LIMIT }), authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/anomalies', anomalyRoutes);
 app.use('/api/payments', paymentRoutes);
