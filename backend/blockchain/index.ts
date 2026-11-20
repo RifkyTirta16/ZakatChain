@@ -30,7 +30,22 @@ const PORT = process.env.PORT || 5000;
 
 const uploadDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads');
 
-app.use(cors());
+const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Izinkan request tanpa origin (mobile apps, curl, dll) dan origin dalam allowlist.
+    if (!origin || corsOrigin.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin tidak diizinkan oleh kebijakan CORS: ${origin}`));
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json({
   limit: '1mb',
   verify: (req, _res, buffer) => {
