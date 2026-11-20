@@ -71,7 +71,8 @@ export const CONTRACT_ABI = [
 
 
 export type ZakatContract = ethers.Contract & {
-  registerReport(reportHash: string | Uint8Array, reportId: bigint | number, overrides?: Record<string, unknown>): Promise<ethers.ContractTransaction>;
+  registerReport(reportHash: string | Uint8Array, reportId: bigint | number, overrides?: Record<string, unknown>): Promise<ethers.ContractTransactionResponse>;
+  revokeReport(reportHash: string | Uint8Array, reason: string, overrides?: Record<string, unknown>): Promise<ethers.ContractTransactionResponse>;
   verifyReport(reportHash: string | Uint8Array): Promise<[boolean, bigint, boolean]>;
 };
 

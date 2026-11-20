@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ethers } from 'ethers';
 import { initDb } from './models/db.js';
-import { CONTRACT_ABI, getContractAddress } from './utils/web3.js';
+import { CONTRACT_ABI, getContractAddress, type ZakatContract } from './utils/web3.js';
 
 const isLocalRpc = (url: string): boolean => {
   try {
@@ -55,7 +55,7 @@ async function main() {
     const signer = process.env.BLOCKCHAIN_PRIVATE_KEY?.trim()
       ? new ethers.Wallet(process.env.BLOCKCHAIN_PRIVATE_KEY.trim(), provider)
       : await provider.getSigner(0);
-    const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer);
+    const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer) as unknown as ZakatContract;
 
     const db = await initDb();
     try {
