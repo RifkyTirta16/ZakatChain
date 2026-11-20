@@ -5,9 +5,9 @@ import {
   LogIn,
   LogOut,
   Menu,
-  ShieldCheck,
   X,
 } from 'lucide-react';
+import zakatChainLogo from '../../../assets/zakatchain-logo.png';
 import { Badge } from '../../ui';
 import { NetworkBadge, PoweredByEthereum } from '../../ethereum';
 import { toRole, type SessionUser } from '../navConfig';
@@ -39,33 +39,31 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
   return (
     <div className="min-h-screen flex flex-col bg-cream text-slateText font-sans">
       {/* Top Bar */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-              <div className="w-9 h-9 rounded-[10px] bg-gradient-to-b from-primary-light to-primary flex items-center justify-center text-white shadow-teal-glow border border-primary/80 transition-transform group-hover:scale-[1.03]">
-                <ShieldCheck size={19} />
-              </div>
-              <div className="leading-tight">
-                <span className="font-display font-extrabold text-lg tracking-tight text-forest-dark">
-                  Zakat<span className="text-primary">Chain</span>
-                </span>
-              </div>
-            </Link>
-            <div className="hidden xl:block shrink-0">
-              <PoweredByEthereum />
-            </div>
-          </div>
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 lg:gap-6">
+          <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
+            <img
+              src={zakatChainLogo}
+              alt="Logo ZakatChain"
+              className="w-9 h-9 object-contain shrink-0 transition-transform group-hover:scale-[1.04]"
+            />
+            <span className="font-display font-extrabold text-lg tracking-tight text-forest-dark whitespace-nowrap">
+              Zakat<span className="text-primary">Chain</span>
+            </span>
+          </Link>
 
           {/* Desktop Navigation */}
-          <nav aria-label="Navigasi publik" className="hidden lg:flex items-center gap-0.5 rounded-xl bg-slate-100/70 p-1 border border-slate-200/60">
+          <nav
+            aria-label="Navigasi publik"
+            className="hidden lg:flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 border border-slate-200/70 shrink-0"
+          >
             {PUBLIC_NAV.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 end={item.path === '/'}
                 className={({ isActive }) =>
-                  `px-2.5 xl:px-3 py-1.5 rounded-[9px] text-xs xl:text-sm font-medium transition-all whitespace-nowrap ${
+                  `shrink-0 whitespace-nowrap px-3 py-1.5 rounded-[9px] text-[13px] xl:text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-white text-primary font-semibold shadow-xs'
                       : 'text-slateText hover:text-forest-dark hover:bg-white/60'
@@ -78,23 +76,24 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
           </nav>
 
           {/* Right Actions */}
-          <div className="hidden lg:flex items-center gap-2 shrink-0">
-            <NetworkBadge compact className="hidden 2xl:inline-flex" />
+          <div className="hidden lg:flex items-center gap-2.5 shrink-0">
             {user ? (
               <>
+                <span className="hidden xl:inline-flex shrink-0">
+                  <Badge tone={role ? 'primary' : 'neutral'}>{user.role}</Badge>
+                </span>
                 <Link
                   to="/dashboard"
-                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] bg-gradient-to-b from-primary-light to-primary px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-white hover:to-forest shadow-teal-glow transition-all"
+                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] bg-gradient-to-b from-primary-light to-primary px-3.5 py-1.5 text-xs xl:text-sm font-semibold text-white hover:to-forest shadow-teal-glow transition-all whitespace-nowrap shrink-0"
                 >
                   <LayoutDashboard size={15} />
                   <span>Dashboard</span>
                 </Link>
-                <Badge tone={role ? 'primary' : 'neutral'}>{user.role}</Badge>
                 <button
                   type="button"
                   onClick={onLogout}
                   aria-label="Keluar"
-                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slateText hover:bg-slate-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-200 bg-white px-3 py-1.5 text-xs xl:text-sm font-semibold text-slateText hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0"
                 >
                   <LogOut size={14} />
                   <span>Keluar</span>
@@ -104,14 +103,14 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
               <>
                 <Link
                   to="/login"
-                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-200 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-forest-dark hover:bg-slate-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-200 bg-white px-3.5 py-1.5 text-xs xl:text-sm font-semibold text-forest-dark hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0"
                 >
                   <LogIn size={15} />
                   <span>Masuk</span>
                 </Link>
                 <Link
                   to="/donate"
-                  className="inline-flex items-center min-h-[38px] rounded-[10px] bg-gradient-to-b from-primary-light to-primary px-4 py-1.5 text-xs sm:text-sm font-semibold text-white hover:to-forest shadow-teal-glow transition-all"
+                  className="inline-flex items-center min-h-[38px] rounded-[10px] bg-gradient-to-b from-primary-light to-primary px-4 py-1.5 text-xs xl:text-sm font-semibold text-white hover:to-forest shadow-teal-glow transition-all whitespace-nowrap shrink-0"
                 >
                   Tunaikan Zakat
                 </Link>
@@ -125,7 +124,7 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
             aria-label={mobileOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((prev) => !prev)}
-            className="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-[10px] border border-slate-200 text-forest-dark hover:bg-slate-100"
+            className="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-[10px] border border-slate-200 text-forest-dark hover:bg-slate-100 shrink-0"
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -208,8 +207,12 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
           <div className="grid gap-8 md:grid-cols-12">
             <div className="md:col-span-5 space-y-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-[10px] bg-primary flex items-center justify-center text-white">
-                  <ShieldCheck size={20} />
+                <div className="w-9 h-9 rounded-[10px] bg-white/95 p-1 flex items-center justify-center shrink-0 shadow-xs">
+                  <img
+                    src={zakatChainLogo}
+                    alt="Logo ZakatChain"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <span className="font-display font-extrabold text-xl text-white">
                   Zakat<span className="text-gold">Chain</span>

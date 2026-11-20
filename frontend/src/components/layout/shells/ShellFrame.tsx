@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { ChevronRight, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
+import { ChevronRight, LogOut, Menu, X } from 'lucide-react';
+import zakatChainLogo from '../../../assets/zakatchain-logo.png';
 import { Badge } from '../../ui';
 import { NetworkBadge, PoweredByEthereum } from '../../ethereum';
 import {
@@ -78,8 +79,12 @@ const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
           onClick={() => closeOnClick && setDrawerOpen(false)}
           className="flex items-center gap-2.5"
         >
-          <div className="w-9 h-9 rounded-[10px] bg-gradient-to-b from-primary-light to-primary flex items-center justify-center text-white shadow-teal-glow border border-white/15">
-            <ShieldCheck size={19} />
+          <div className="w-9 h-9 rounded-[10px] bg-white/95 p-1 flex items-center justify-center shrink-0 shadow-xs">
+            <img
+              src={zakatChainLogo}
+              alt="Logo ZakatChain"
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
             <span className="font-display font-extrabold text-lg text-white tracking-tight block leading-none">

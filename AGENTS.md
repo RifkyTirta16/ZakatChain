@@ -64,6 +64,7 @@ Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + wag
                              PublicVerify, anomalies/, audit/, export/, proofs/, reconciliation/
 - frontend/src/components/   Analytics, PaymentModal, auth/, dashboard/, ethereum/, layout/, ui/
 - frontend/src/utils/        api.ts (axios), format.ts, regions.ts, status.ts
+- frontend/src/assets/       zakatchain-logo.png (mark logo geometris ETH)
 - frontend/tailwind.config.js  token desain (lihat docs/design/DESIGN_SYSTEM.md & DESIGN.md)
 
 Blockchain: kanonik di blockchain/ (ZakatVerify.sol, Hardhat 2.29, Solidity 0.8.24).
