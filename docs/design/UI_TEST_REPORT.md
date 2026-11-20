@@ -9,7 +9,7 @@
 | Backend Test Suite | `backend/blockchain/tests/*.test.ts` | `cd backend && npm test` | **71 / 71 pass** (includes `publicTransparency.test.ts` & full RBAC/sandbox/search regression tests) |
 | Frontend TypeScript | `frontend/src/` | `cd frontend && npx tsc -b` | Pass (0 errors) |
 | Frontend Linter | `frontend/src/` (80 files) | `cd frontend && npm run lint` | **0 warnings, 0 errors** |
-| Frontend Production Build | `frontend/` | `cd frontend && npm run build` | Pass (initial JS chunk shrunk to `523.43 kB` / `164.24 kB` gzip via route lazy-loading) |
+| Frontend Production Build | `frontend/` | `cd frontend && npm run build` | Pass (zero chunk `>500 kB` warnings via `manualChunks`: initial entry `70.98 kB` / `18.49 kB` gzip; largest `vendor-charts` `418.59 kB`) |
 
 ## 2. Live Headless Chromium Functional & Responsive Tests
 Executed via Chromium DevTools Protocol against live backend (`http://localhost:5000`) and Vite (`http://localhost:5173`):
@@ -49,3 +49,4 @@ Tested real form login at `/login` for all 4 roles (`test_donor`=`USER`, `test_a
 3. `frontend/src/utils/api.ts`: Excluded `/auth/login` and `/auth/register` from the 401 full-page reload interceptor so failed login messages stay visible.
 4. Access Control & Privacy (`USER` isolation + `/uploads`): Live verification confirmed `USER` receives HTTP `403` on `/api/transactions`, `/api/donations`, and `/api/users`; anonymous request to `/uploads/*` returns HTTP `401`; `ADMIN` receives HTTP `200` on `/api/users`.
 5. Admin & Explorer Flows in Chromium: `/roles` renders `"Daftar Akun Terdaftar"` with `test_donor`, `/explorer` renders `"Catat ke Ethereum"` for `ADMIN`, and `/analytics` renders `"Analitik Penyaluran Zakat"` from sidebar navigation with `0` console errors and `0` page errors.
+6. Live End-to-End Browser Verification (Public, Hardhat Network Badge & Sandbox Payment): Verified `/` (shows `Localhost / Hardhat`, `0x5FbDB2…180aa3`, `Blok #1`), `/transparency` (live KPIs & Recharts Y-axis formatting without label clipping), `/calculator` (`15000000` -> `Rp 375.000` & `Mencapai Nisab`), `/verify?id=1` (accurately distinguishes DB tx hash vs `NOT_FOUND_ON_CHAIN` on fresh local contract), and `/register` -> `/donate` -> `POST /api/payments/session` (`201`) -> `Simulasikan Bayar (Sandbox)` (`200`, `PAID`, Step 4 `Pembayaran Terkonfirmasi`), with `0` console/page errors or failed HTTP requests.

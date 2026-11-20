@@ -1,5 +1,10 @@
 # Session Log
 
+## 2026-11-20 - Penyelesaian Item Minor Pra-Produksi, Chunk Splitting Vite (<500 kB), & Uji Browser Live
+- Backend: tambah `app.set('trust proxy', resolveTrustProxy(process.env.TRUST_PROXY))` (default `'loopback'`) dan penanganan error pada callback `app.listen` di `backend/blockchain/index.ts`; hapus literal `'DONOR'` yang tidak dipakai dari `middleware/auth.ts`, `types/express.d.ts`, dan `tests/auth.test.ts`.
+- Frontend: split vendor chunk di `vite.config.ts` (`vendor-react`, `vendor-web3`, `vendor-query`, `vendor-icons`, `vendor-map`, `vendor-charts`, `vendor-misc`) -> `index` `70.98 kB` dan nol peringatan `>500 kB`; rapikan lebar + format `YAxis` grafik batang `PublicTransparencyPage.tsx`.
+- Verifikasi: backend `tsc` & `71/71` tes lulus; frontend `tsc -b`, `oxlint` `0/0`, `vite build` tanpa chunk warning; live browser (`/`, `/transparency`, `/calculator`, `/verify?id=1`, `/campaigns`, `/register`, `/donate` + `Simulasikan Bayar (Sandbox)` -> `PAID`) lulus 0 error.
+
 ## 2026-11-20 - Paket 1–3 Keamanan, Manajemen User, Retry On-Chain, Sandbox & Bundle Split
 - Keamanan & bug backend: `?search=` OR fix (`transactionController.ts`), pembatasan `AMIL+AUDITOR+ADMIN` di `GET /transactions`, `GET /donations`, & `/uploads`, `audit_logs` pada `resolveAnomaly`, serta pencatatan "Zakat Umum" (`campaign_id=null`) + update `campaigns.current_amount` + `POST /payments/sandbox/confirm/:sessionId`.
 - Fitur & UI: manajemen akun & role `ADMIN` (`userRoutes.ts`, `userController.ts`, `RolesPermissionsPage.tsx`), tombol `Catat ke Ethereum` di `OnChainExplorer.tsx`, tombol Sandbox dev di `DonationPayment.tsx`/`DonationDrawer.tsx`, pengalihan `ImpactPanel`/`ChainPanel` ke `/public/transparency`, dan `/analytics` di `navConfig.ts`.
