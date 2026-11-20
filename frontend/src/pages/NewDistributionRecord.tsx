@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, Send, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Send, Loader2, X, Eye } from 'lucide-react';
 import { INDONESIA_REGIONS } from '../utils/regions';
 import apiClient from '../utils/api';
 import { formatIDR, shortHash } from '../utils/format';
+import { Badge, Card } from '../components/ui';
+import { ON_CHAIN_NOTE } from '../components/ui/badgeStatus';
 
 const CATEGORIES = ['Konsumsi', 'Kesehatan', 'Pendidikan', 'Modal Usaha'] as const;
 
@@ -36,10 +38,17 @@ const NewDistributionRecord = () => {
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const clearFile = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setFile(null);
+    setPreviewUrl(null);
+  };
 
   const handleAmountChange = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 15);
@@ -49,6 +58,10 @@ const NewDistributionRecord = () => {
 
   const handleFileChange = (selected: File | null) => {
     setFieldErrors((prev) => ({ ...prev, proof_file: undefined }));
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
     if (!selected) {
       setFile(null);
       return;
@@ -64,6 +77,9 @@ const NewDistributionRecord = () => {
       return;
     }
     setFile(selected);
+    if (selected.type.startsWith('image/')) {
+      setPreviewUrl(URL.createObjectURL(selected));
+    }
   };
 
   const validate = (): boolean => {
@@ -106,7 +122,7 @@ const NewDistributionRecord = () => {
       setCategory(CATEGORIES[0]);
       setProvince('');
       setCity('');
-      setFile(null);
+      clearFile();
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { error?: string; details?: unknown } } };
       const details = e2.response?.data?.details;
@@ -124,141 +140,163 @@ const NewDistributionRecord = () => {
   };
 
   return (
-    <div className="flex justify-center">
-      <div className="max-w-2xl w-full bg-wattvision-surface border border-wattvision-border p-8 rounded-3xl shadow-xl">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-3 bg-wattvision-primary/10 rounded-2xl">
-            <FileText className="text-wattvision-primary" size={24} />
+    <div className="min-h-screen bg-[#F6F8F8] py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Header Form */}
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-primary-bg rounded-2xl flex items-center justify-center text-primary shrink-0">
+            <FileText size={24} />
           </div>
-          <h1 className="text-2xl font-bold uppercase italic">Catat <span className="text-wattvision-primary">Distribusi</span></h1>
-        </div>
-        <p className="text-wattvision-textSecondary text-xs uppercase tracking-widest mb-6">
-          POST /api/transactions · memerlukan sesi login
-        </p>
-
-        {result && (
-          <div className="mb-6 p-4 rounded-xl border border-wattvision-success/30 bg-wattvision-success/10 text-wattvision-success space-y-2">
-            <div className="flex items-center gap-3">
-              <CheckCircle size={20} />
-              <span className="text-sm font-medium">Laporan distribusi tersimpan (ID #{result.id}).</span>
-            </div>
-            <p className="text-xs font-mono leading-relaxed pl-8">
-              Audit hash: {shortHash(result.audit_hash, 12, 8)}
-              <br />
-              Status blockchain:{' '}
-              {result.blockchain_status === 'CONFIRMED' ? (
-                <>terkonfirmasi (tx {shortHash(result.tx_hash)})</>
-              ) : (
-                <span className="text-yellow-400">
-                  tertunda — transaksi tersimpan di basis data lokal dan dapat direkonsiliasi saat node blockchain tersedia.
-                </span>
-              )}
-              <br />
-              Status bukti: PENDING — menunggu verifikasi petugas (ADMIN/AUDITOR).
+          <div>
+            <h1 className="text-2xl font-extrabold text-primary-dark">Catat Distribusi Zakat</h1>
+            <p className="text-xs sm:text-sm text-primary-dark/70">
+              Formulir pencatatan penyaluran dana zakat dan infaq dengan bukti pendukung.
             </p>
           </div>
+        </div>
+
+        {/* Notifikasi Hasil Simpan */}
+        {result && (
+          <Card className="rounded-2xl p-5 border border-success/30 bg-success/10 space-y-2">
+            <div className="flex items-center gap-2.5 text-success font-bold text-sm">
+              <CheckCircle2 size={18} />
+              <span>Laporan penyaluran berhasil disimpan (ID #{result.id}).</span>
+            </div>
+            <div className="text-xs text-primary-dark/80 font-mono space-y-1 pl-7">
+              <p>Audit hash: {shortHash(result.audit_hash, 12, 8)}</p>
+              <div className="flex items-center gap-2 font-sans pt-1">
+                <span>Status on-chain:</span>
+                <Badge tone={result.blockchain_status === 'CONFIRMED' ? 'primary' : 'gold'}>
+                  {result.blockchain_status === 'CONFIRMED'
+                    ? `Terkonfirmasi (tx: ${shortHash(result.tx_hash)})`
+                    : 'Tertunda On-Chain'}
+                </Badge>
+              </div>
+            </div>
+            <p className="text-[11px] text-primary-dark/60 pl-7 pt-1">
+              {ON_CHAIN_NOTE}
+            </p>
+          </Card>
         )}
 
+        {/* Notifikasi Error Global */}
         {errorMessage && (
-          <div className="mb-6 p-4 rounded-xl flex items-center gap-3 bg-wattvision-alert/10 text-wattvision-alert border border-wattvision-alert/20">
-            <AlertCircle size={20} />
-            <span className="text-sm font-medium">{errorMessage}</span>
+          <div
+            role="alert"
+            className="p-4 rounded-2xl border border-coral/30 bg-coral/10 text-coral-dark text-xs sm:text-sm flex items-start gap-2.5 font-medium"
+          >
+            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="amount" className="block text-xs text-wattvision-textSecondary mb-1 ml-1 uppercase tracking-widest">
-                  Nominal Distribusi (Rp)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-wattvision-textSecondary font-mono text-sm">Rp</span>
-                  <input
-                    id="amount"
-                    type="text"
-                    inputMode="numeric"
-                    className={`w-full bg-wattvision-bg border rounded-xl py-3 pl-10 pr-4 focus:outline-none transition-colors font-mono text-lg ${
-                      fieldErrors.amount ? 'border-wattvision-alert' : 'border-wattvision-border focus:border-wattvision-primary'
-                    }`}
-                    placeholder="0"
-                    value={groupThousands(amountDigits)}
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                    aria-invalid={Boolean(fieldErrors.amount)}
-                  />
-                </div>
-                <div className="flex justify-between mt-1 ml-1">
-                  <p className="text-[11px] text-wattvision-alert">{fieldErrors.amount || ''}</p>
-                  <p className="text-[11px] text-wattvision-textSecondary font-mono">
-                    {amountDigits ? formatIDR(Number(amountDigits)) : ''}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="donor" className="block text-xs text-wattvision-textSecondary mb-1 ml-1 uppercase tracking-widest">
-                  Nama Donatur
-                </label>
+        {/* Form Satu Kolom */}
+        <Card className="rounded-2xl p-6 sm:p-8 bg-white border border-slate-200/70 shadow-card">
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            {/* 1. Nominal */}
+            <div>
+              <label htmlFor="amount" className="block text-xs uppercase tracking-wider text-primary-dark/70 font-bold mb-1.5">
+                Nominal Distribusi (Rp) <span className="text-coral">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-primary-dark/50 font-bold text-sm">
+                  Rp
+                </span>
                 <input
-                  id="donor"
+                  id="amount"
                   type="text"
-                  className="w-full bg-wattvision-bg border border-wattvision-border rounded-xl p-3 focus:outline-none focus:border-wattvision-primary transition-colors"
-                  placeholder="Nama pemberi zakat (opsional)"
-                  value={donorName}
-                  onChange={(e) => setDonorName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="recipient" className="block text-xs text-wattvision-textSecondary mb-1 ml-1 uppercase tracking-widest">
-                  Nama Penerima
-                </label>
-                <input
-                  id="recipient"
-                  type="text"
-                  className={`w-full bg-wattvision-bg border rounded-xl p-3 focus:outline-none transition-colors ${
-                    fieldErrors.recipient_name ? 'border-wattvision-alert' : 'border-wattvision-border focus:border-wattvision-primary'
+                  inputMode="numeric"
+                  className={`w-full min-h-[44px] rounded-xl bg-cream border py-2.5 pl-11 pr-4 text-sm text-primary-dark font-mono font-bold outline-none focus:ring-2 focus:ring-primary/20 ${
+                    fieldErrors.amount ? 'border-coral' : 'border-primary-bg'
                   }`}
-                  placeholder="Nama mustahik"
-                  value={recipientName}
-                  onChange={(e) => {
-                    setRecipientName(e.target.value);
-                    setFieldErrors((prev) => ({ ...prev, recipient_name: undefined }));
-                  }}
-                  aria-invalid={Boolean(fieldErrors.recipient_name)}
+                  placeholder="0"
+                  value={groupThousands(amountDigits)}
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.amount)}
                 />
-                {fieldErrors.recipient_name && (
-                  <p className="text-[11px] text-wattvision-alert mt-1 ml-1">{fieldErrors.recipient_name}</p>
+              </div>
+              <div className="flex justify-between items-center mt-1">
+                {fieldErrors.amount ? (
+                  <p className="text-[11px] text-coral font-medium">{fieldErrors.amount}</p>
+                ) : (
+                  <span />
+                )}
+                {amountDigits && (
+                  <p className="text-[11px] text-primary-dark/70 font-bold tabular-nums">
+                    {formatIDR(Number(amountDigits))}
+                  </p>
                 )}
               </div>
             </div>
 
-            <div className="space-y-4">
+            {/* 2. Nama Penerima */}
+            <div>
+              <label htmlFor="recipient" className="block text-xs uppercase tracking-wider text-primary-dark/70 font-bold mb-1.5">
+                Nama Penerima Manfaat (Mustahik) <span className="text-coral">*</span>
+              </label>
+              <input
+                id="recipient"
+                type="text"
+                className={`w-full min-h-[44px] rounded-xl bg-cream border px-4 py-2.5 text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary/20 ${
+                  fieldErrors.recipient_name ? 'border-coral' : 'border-primary-bg'
+                }`}
+                placeholder="Nama lengkap mustahik"
+                value={recipientName}
+                onChange={(e) => {
+                  setRecipientName(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, recipient_name: undefined }));
+                }}
+                aria-invalid={Boolean(fieldErrors.recipient_name)}
+              />
+              {fieldErrors.recipient_name && (
+                <p className="text-[11px] text-coral font-medium mt-1">{fieldErrors.recipient_name}</p>
+              )}
+            </div>
+
+            {/* 3. Nama Donatur (Opsional) */}
+            <div>
+              <label htmlFor="donor" className="block text-xs uppercase tracking-wider text-primary-dark/70 font-bold mb-1.5">
+                Nama Donatur (Opsional)
+              </label>
+              <input
+                id="donor"
+                type="text"
+                className="w-full min-h-[44px] rounded-xl bg-cream border border-primary-bg px-4 py-2.5 text-sm text-primary-dark placeholder-primary-dark/40 outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Contoh: Hamba Allah / Nama perorangan"
+                value={donorName}
+                onChange={(e) => setDonorName(e.target.value)}
+              />
+            </div>
+
+            {/* 4. Kategori Penyaluran */}
+            <div>
+              <label htmlFor="category" className="block text-xs uppercase tracking-wider text-primary-dark/70 font-bold mb-1.5">
+                Kategori Penyaluran <span className="text-coral">*</span>
+              </label>
+              <select
+                id="category"
+                className="w-full min-h-[44px] rounded-xl bg-cream border border-primary-bg px-4 py-2.5 text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-medium"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 5. Wilayah Penyaluran: Provinsi & Kota/Kabupaten */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="category" className="block text-xs text-wattvision-textSecondary mb-1 ml-1 uppercase tracking-widest">
-                  Kategori Penyaluran
-                </label>
-                <select
-                  id="category"
-                  className="w-full bg-wattvision-bg border border-wattvision-border rounded-xl p-3 focus:outline-none focus:border-wattvision-primary transition-colors"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-wattvision-textSecondary mt-1 ml-1 uppercase tracking-wider">
-                  Daftar kategori mengikuti validasi backend
-                </p>
-              </div>
-              <div>
-                <label htmlFor="province" className="block text-xs text-wattvision-textSecondary mb-1 ml-1 uppercase tracking-widest">
-                  Provinsi
+                <label htmlFor="province" className="block text-xs uppercase tracking-wider text-primary-dark/70 font-bold mb-1.5">
+                  Provinsi <span className="text-coral">*</span>
                 </label>
                 <select
                   id="province"
-                  className={`w-full bg-wattvision-bg border rounded-xl p-3 focus:outline-none transition-colors ${
-                    fieldErrors.region ? 'border-wattvision-alert' : 'border-wattvision-border focus:border-wattvision-primary'
+                  className={`w-full min-h-[44px] rounded-xl bg-cream border px-4 py-2.5 text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer ${
+                    fieldErrors.region ? 'border-coral' : 'border-primary-bg'
                   }`}
                   value={province}
                   onChange={(e) => {
@@ -269,18 +307,21 @@ const NewDistributionRecord = () => {
                 >
                   <option value="">Pilih Provinsi</option>
                   {Object.keys(INDONESIA_REGIONS).map((reg) => (
-                    <option key={reg} value={reg}>{reg}</option>
+                    <option key={reg} value={reg}>
+                      {reg}
+                    </option>
                   ))}
                 </select>
               </div>
+
               <div>
-                <label htmlFor="city" className="block text-xs text-wattvision-textSecondary mb-1 ml-1 uppercase tracking-widest">
-                  Kota/Kabupaten
+                <label htmlFor="city" className="block text-xs uppercase tracking-wider text-primary-dark/70 font-bold mb-1.5">
+                  Kota / Kabupaten <span className="text-coral">*</span>
                 </label>
                 <select
                   id="city"
-                  className={`w-full bg-wattvision-bg border rounded-xl p-3 focus:outline-none transition-colors ${
-                    fieldErrors.region ? 'border-wattvision-alert' : 'border-wattvision-border focus:border-wattvision-primary'
+                  className={`w-full min-h-[44px] rounded-xl bg-cream border px-4 py-2.5 text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer ${
+                    fieldErrors.region ? 'border-coral' : 'border-primary-bg'
                   }`}
                   value={city}
                   onChange={(e) => {
@@ -289,89 +330,145 @@ const NewDistributionRecord = () => {
                   }}
                   disabled={!province}
                 >
-                  <option value="">Pilih Kota</option>
-                  {province && INDONESIA_REGIONS[province as keyof typeof INDONESIA_REGIONS].map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                  <option value="">Pilih Kota / Kabupaten</option>
+                  {province &&
+                    INDONESIA_REGIONS[province as keyof typeof INDONESIA_REGIONS]?.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
                 </select>
-                {fieldErrors.region && (
-                  <p className="text-[11px] text-wattvision-alert mt-1 ml-1">{fieldErrors.region}</p>
-                )}
               </div>
             </div>
-          </div>
+            {fieldErrors.region && (
+              <p className="text-[11px] text-coral font-medium mt-1">{fieldErrors.region}</p>
+            )}
 
-          <div className="space-y-2">
-            <label className="block text-xs text-wattvision-textSecondary mb-1 ml-1 uppercase tracking-widest">
-              Bukti Penyaluran (JPG, PNG, PDF — maks. {MAX_FILE_MB} MB)
-            </label>
-            <div
-              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
-                fieldErrors.proof_file
-                  ? 'border-wattvision-alert bg-wattvision-alert/5'
-                  : file
-                    ? 'border-wattvision-success bg-wattvision-success/5'
-                    : 'border-wattvision-border hover:border-wattvision-primary bg-wattvision-bg'
-              }`}
-              onClick={() => document.getElementById('file-upload')?.click()}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') document.getElementById('file-upload')?.click();
-              }}
-            >
-              <input
-                id="file-upload"
-                type="file"
-                className="hidden"
-                accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
-                onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)}
-              />
-              <div className="flex flex-col items-center gap-3">
-                {file ? (
-                  <>
-                    <CheckCircle className="text-wattvision-success" size={32} />
-                    <span className="font-mono text-sm text-wattvision-success break-all">{file.name}</span>
-                    <span className="text-[11px] text-wattvision-textSecondary font-mono">
-                      {(file.size / 1024).toFixed(0)} KB · klik untuk mengganti
+            {/* 6. Upload Bukti dengan Pratinjau */}
+            <div className="space-y-2 pt-1">
+              <label className="block text-xs uppercase tracking-wider text-primary-dark/70 font-bold">
+                Bukti Penyaluran (JPG, PNG, PDF — maks. {MAX_FILE_MB} MB)
+              </label>
+
+              {!file ? (
+                <div
+                  className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer bg-primary-bg/20 hover:bg-primary-bg/40 ${
+                    fieldErrors.proof_file ? 'border-coral' : 'border-primary/40 hover:border-primary'
+                  }`}
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') document.getElementById('file-upload')?.click();
+                  }}
+                >
+                  <input
+                    id="file-upload"
+                    type="file"
+                    className="hidden"
+                    accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                    onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)}
+                  />
+                  <div className="flex flex-col items-center gap-2 text-primary-dark/70">
+                    <Upload className="text-primary" size={28} />
+                    <span className="text-xs sm:text-sm font-semibold">
+                      Klik atau seret file bukti ke sini
                     </span>
+                    <span className="text-[11px] text-primary-dark/50">
+                      Format didukung: JPG, PNG, atau PDF (maks. {MAX_FILE_MB}MB)
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* Pratinjau Bukti Terpilih */
+                <div className="p-4 rounded-2xl bg-cream/70 border border-cream space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 size={18} className="text-success shrink-0" />
+                      <span className="text-xs font-bold text-primary-dark truncate">{file.name}</span>
+                      <span className="text-[11px] text-primary-dark/60 font-mono shrink-0">
+                        ({(file.size / 1024).toFixed(0)} KB)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => clearFile()}
+                      className="text-primary-dark/60 hover:text-coral p-1 rounded-lg"
+                      title="Hapus file"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {previewUrl && (
+                    <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 bg-white max-h-48 flex justify-center">
+                      <img src={previewUrl} alt="Pratinjau bukti penyaluran" className="object-contain max-h-48" />
+                    </div>
+                  )}
+
+                  {!previewUrl && file.type === 'application/pdf' && (
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center gap-2 text-xs text-primary-dark font-medium">
+                      <Eye size={16} className="text-primary" />
+                      <span>Dokumen PDF terlampir siap diverifikasi oleh sistem.</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {fieldErrors.proof_file && (
+                <p className="text-[11px] text-coral font-medium">{fieldErrors.proof_file}</p>
+              )}
+            </div>
+
+            {/* 7. Ringkasan Sebelum Kirim */}
+            {amountDigits && recipientName && province && city && (
+              <div className="p-4 rounded-xl bg-primary-bg/40 border border-primary-bg space-y-2 text-xs">
+                <p className="font-bold uppercase tracking-wider text-primary-dark/70 text-[11px]">
+                  Ringkasan Penyaluran
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-primary-dark">
+                  <div>
+                    <span className="text-primary-dark/60 block">Nominal:</span>
+                    <span className="font-bold">{formatIDR(Number(amountDigits))}</span>
+                  </div>
+                  <div>
+                    <span className="text-primary-dark/60 block">Penerima:</span>
+                    <span className="font-bold">{recipientName}</span>
+                  </div>
+                  <div>
+                    <span className="text-primary-dark/60 block">Kategori:</span>
+                    <span className="font-bold">{category}</span>
+                  </div>
+                  <div>
+                    <span className="text-primary-dark/60 block">Wilayah:</span>
+                    <span className="font-bold">{city}, {province}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Aksi Utama Tunggal: Simpan Laporan */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center min-h-[44px] rounded-full bg-gradient-to-br from-gold to-gold-light text-primary-dark font-bold text-sm shadow-gold-glow outline-none focus-visible:ring-2 focus-visible:ring-primary transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin mr-2" />
+                    Menyimpan Laporan...
                   </>
                 ) : (
                   <>
-                    <Upload className="text-wattvision-textSecondary" size={32} />
-                    <span className="text-wattvision-textSecondary text-sm">
-                      Klik untuk memilih file bukti penyaluran
-                    </span>
+                    <Send size={16} className="mr-2" />
+                    Simpan Laporan Penyaluran
                   </>
                 )}
-              </div>
+              </button>
             </div>
-            {fieldErrors.proof_file && (
-              <p className="text-[11px] text-wattvision-alert ml-1">{fieldErrors.proof_file}</p>
-            )}
-            <p className="text-[10px] text-wattvision-textSecondary ml-1 leading-relaxed">
-              File dikirim sebagai <span className="font-mono">proof_file</span> melalui multer di backend
-              (disimpan ke <span className="font-mono">/uploads</span>, di-hash SHA-256).
-              Mengunggah bukti bersifat disarankan — tanpa bukti, laporan ditandai anomali oleh backend.
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-wattvision-primary text-wattvision-bg font-bold py-4 rounded-2xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-wattvision-primary/20 uppercase tracking-widest text-sm"
-          >
-            {loading ? (
-              <>
-                <Loader2 size={20} className="animate-spin" /> Mengirim…
-              </>
-            ) : (
-              <>
-                <Send size={20} /> Simpan Laporan Distribusi
-              </>
-            )}
-          </button>
-        </form>
+          </form>
+        </Card>
       </div>
     </div>
   );
