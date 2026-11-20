@@ -116,3 +116,9 @@
 - Verifikasi: tsc bersih, build sukses, lint 0 warning.
 - COMMIT "feat(ui): redesign Campaigns" (Campaigns.tsx + tracker). Scan secret: tidak ada perubahan sensitif.
 - BERHENTI; item berikutnya: 4. pages/CampaignDetail.tsx - juga sudah diredesain; verifikasi kesesuaian tracker saat gilirannya.
+
+## 2026-11-20 - Fix login 400, seed 4 akun uji per role, uji matriks RBAC & audit sistem
+- Memperbaiki kegagalan login HTTP 400 dengan memindahkan mount `app.use('/api/auth', ...)` ke setelah `express.json()` dan DB middleware di `backend/blockchain/index.ts`.
+- Menambahkan `backend/blockchain/seed_test_users.ts`, script `seed:test-users` di `backend/package.json`, dan aturan ignore `.test-accounts.local` serta `database.sqlite.bak-*` di `.gitignore`.
+- Memverifikasi `backend` (69/69 tes lulus), `frontend` (`tsc -b` & `npm run build` sukses), login curl 4 akun uji (`USER`, `AMIL`, `AUDITOR`, `ADMIN`), serta matriks 11 endpoint x 5 kondisi token.
+- Mencatat hasil audit kontrak API, regresi redesain, konfigurasi, dan keamanan ke `agent-memory/KNOWN_ISSUES.md` serta memperbarui `AGENTS.md` dan `agent-memory/ACTIVE_TASK.md`.
