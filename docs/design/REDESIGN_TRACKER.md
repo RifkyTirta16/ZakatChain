@@ -11,7 +11,7 @@ Latar bg-canvas. Jangan campur kelas wattvision-* dan token baru. Jangan ubah lo
 - [x] 4. components/PaymentModal.tsx: Modal radius xl, ringkasan nominal, Badge status, Escape menutup.
 - [x] 5. pages/NewDistributionRecord.tsx: form satu kolom, upload bukti dengan pratinjau, ringkasan, validasi inline.
 - [x] 6. pages/PublicVerify.tsx: input hash/ID besar, hasil di kartu dengan Badge + catatan on-chain.
-- [ ] 7. pages/OnChainExplorer.tsx: tabel hash terpotong + tombol salin, filter status.
+- [x] 7. pages/OnChainExplorer.tsx: tabel hash terpotong + tombol salin, filter status.
 - [ ] 8. pages/EvidenceGraph.tsx: graf di tengah, panel detail saat node diklik. Library graf tidak diubah.
 - [ ] 9. pages/PovertyMapping.tsx: peta penuh, panel statistik wilayah, legenda token. Hanya pembungkus dan panel.
 - [ ] 10. components/auth/*: kartu di tengah, satu aksi utama, label input, error jelas.
