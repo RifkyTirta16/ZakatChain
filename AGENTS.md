@@ -40,7 +40,7 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/routes/*.ts       endpoint
 - backend/blockchain/controllers/*.ts  logika (anomaly, audit, auth, campaign, dashboard,
                                        donation, explorer, export, mapping, payment,
-                                       proof, public, reconciliation, transaction)
+                                       proof, public, reconciliation, transaction, user)
 - backend/blockchain/middleware/       auth.ts (authenticate, authorize, authorizeSelfOr),
                                        rateLimit.ts, upload.ts (multer)
 - backend/blockchain/models/db.ts      init SQLite + migrasi aditif (FK on, WAL on)
@@ -61,7 +61,7 @@ Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + wag
                              shared/ (ProfilePage), Dashboard, Campaigns, CampaignDetail, DonationPayment,
                              NewDistributionRecord, OnChainExplorer, EvidenceGraph, PovertyMapping,
                              PublicVerify, anomalies/, audit/, export/, proofs/, reconciliation/
-- frontend/src/components/   Analytics, PaymentModal, auth/, dashboard/, ethereum/, layout/, ui/, wattvision/
+- frontend/src/components/   Analytics, PaymentModal, auth/, dashboard/, ethereum/, layout/, ui/
 - frontend/src/utils/        api.ts (axios), format.ts, regions.ts, status.ts
 - frontend/tailwind.config.js  token desain (lihat docs/design/DESIGN_SYSTEM.md & DESIGN.md)
 
@@ -73,12 +73,13 @@ sebelum ada keputusan konsolidasi eksplisit.
 Role: USER, ADMIN, AMIL, AUDITOR. Login memakai USERNAME. Register selalu membuat USER.
 - Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*,
           GET /public/transparency (agregat + non-PII), POST /payments/webhook
-- Login saja: dashboard/stats, mapping (stats, recommendations, region/:r), donations,
-  transactions (GET), payments (generate/session/create/status/verify)
+- Login saja: dashboard/stats, mapping (stats, recommendations, region/:r),
+  payments (generate/session/create/status/verify), POST /payments/sandbox/confirm/:sessionId (non-production)
+- AMIL+AUDITOR+ADMIN: GET /transactions, GET /donations, GET /uploads/*
 - ADMIN+AMIL: POST /campaigns, POST /mapping/import
 - ADMIN+AUDITOR: anomalies (GET, scan, resolve), audit logs, proofs/verify/:id,
   reconciliation/history, export/csv
-- ADMIN: reconciliation/run, transactions/:id/reconcile
+- ADMIN: reconciliation/run, transactions/:id/reconcile, GET /users, PATCH /users/:id/role
 - AMIL+ADMIN: POST /transactions (upload bukti)
 - Donasi per donor: authorizeSelfOr(ADMIN, AUDITOR) pada /donations/donor/:donor_id
 Endpoint baru WAJIB punya authenticate + authorize yang sesuai. Default: paling ketat.

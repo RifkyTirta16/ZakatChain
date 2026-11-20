@@ -6,10 +6,10 @@
 | Check | Scope | Command | Result |
 |---|---|---|---|
 | Backend TypeScript | `backend/` | `cd backend && npx tsc --noEmit -p .` | Pass (0 errors) |
-| Backend Test Suite | `backend/blockchain/tests/*.test.ts` | `cd backend && npm test` | **70 / 70 pass** (includes `publicTransparency.test.ts`) |
+| Backend Test Suite | `backend/blockchain/tests/*.test.ts` | `cd backend && npm test` | **71 / 71 pass** (includes `publicTransparency.test.ts` & full RBAC/sandbox/search regression tests) |
 | Frontend TypeScript | `frontend/src/` | `cd frontend && npx tsc -b` | Pass (0 errors) |
-| Frontend Linter | `frontend/src/` (81 files) | `cd frontend && npm run lint` | **0 warnings, 0 errors** |
-| Frontend Production Build | `frontend/` | `cd frontend && npm run build` | Pass (`dist/` built cleanly) |
+| Frontend Linter | `frontend/src/` (80 files) | `cd frontend && npm run lint` | **0 warnings, 0 errors** |
+| Frontend Production Build | `frontend/` | `cd frontend && npm run build` | Pass (initial JS chunk shrunk to `523.43 kB` / `164.24 kB` gzip via route lazy-loading) |
 
 ## 2. Live Headless Chromium Functional & Responsive Tests
 Executed via Chromium DevTools Protocol against live backend (`http://localhost:5000`) and Vite (`http://localhost:5173`):
@@ -47,3 +47,5 @@ Tested real form login at `/login` for all 4 roles (`test_donor`=`USER`, `test_a
 1. `GET /api/public/transparency` (`publicTransparency.test.ts`): Verified HTTP 200 without auth token, non-zero KPI aggregation, and strict exclusion of `recipient_name`, `donor_name`, and `proof_url`.
 2. `backend/blockchain/middleware/rateLimit.ts`: Isolated per-limiter counter stores so normal public browsing does not consume the `/api/auth` 20-request quota.
 3. `frontend/src/utils/api.ts`: Excluded `/auth/login` and `/auth/register` from the 401 full-page reload interceptor so failed login messages stay visible.
+4. Access Control & Privacy (`USER` isolation + `/uploads`): Live verification confirmed `USER` receives HTTP `403` on `/api/transactions`, `/api/donations`, and `/api/users`; anonymous request to `/uploads/*` returns HTTP `401`; `ADMIN` receives HTTP `200` on `/api/users`.
+5. Admin & Explorer Flows in Chromium: `/roles` renders `"Daftar Akun Terdaftar"` with `test_donor`, `/explorer` renders `"Catat ke Ethereum"` for `ADMIN`, and `/analytics` renders `"Analitik Penyaluran Zakat"` from sidebar navigation with `0` console errors and `0` page errors.

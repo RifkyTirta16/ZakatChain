@@ -1,5 +1,10 @@
 # Session Log
 
+## 2026-11-20 - Paket 1–3 Keamanan, Manajemen User, Retry On-Chain, Sandbox & Bundle Split
+- Keamanan & bug backend: `?search=` OR fix (`transactionController.ts`), pembatasan `AMIL+AUDITOR+ADMIN` di `GET /transactions`, `GET /donations`, & `/uploads`, `audit_logs` pada `resolveAnomaly`, serta pencatatan "Zakat Umum" (`campaign_id=null`) + update `campaigns.current_amount` + `POST /payments/sandbox/confirm/:sessionId`.
+- Fitur & UI: manajemen akun & role `ADMIN` (`userRoutes.ts`, `userController.ts`, `RolesPermissionsPage.tsx`), tombol `Catat ke Ethereum` di `OnChainExplorer.tsx`, tombol Sandbox dev di `DonationPayment.tsx`/`DonationDrawer.tsx`, pengalihan `ImpactPanel`/`ChainPanel` ke `/public/transparency`, dan `/analytics` di `navConfig.ts`.
+- Kebersihan & bundle: route lazy-loading di `MainApp.tsx` (chunk awal `523.43 kB`), hapus `App.tsx\`` + `components/wattvision/` + token `wattvision` Tailwind. Verifikasi: backend `tsc` & `71/71` test lulus; frontend `tsc -b`, `oxlint` (`0` warnings/errors, 80 files), `vite build` bersih; uji live Chromium lulus.
+
 ## 2026-11-20 - Redesain Penuh Semua Item REDESIGN_TRACKER.md (Item 1 s/d 11) Selesai
 - Item 1 (`pages/Campaigns.tsx`): Katalog kampanye Visual v2, Card rounded-2xl shadow-card, progress bar, nominal formatIDR, sisa hari daysLeft, DonationDrawer terintegrasi. Commit `76a4b41`.
 - Item 2 (`pages/CampaignDetail.tsx`): Layout 2 kolom Visual v2, ON_CHAIN_NOTE, riwayat donasi ber-badge, sticky progress & preset nominal, QRIS generator. Commit `0787718`.
