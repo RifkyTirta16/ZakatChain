@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { Copy, Check } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Card, EmptyState, Skeleton, Badge } from '../../components/ui';
+import { Link, useNavigate } from 'react-router-dom';
+import { Check, Copy, Search } from 'lucide-react';
+import { Badge, Button, Card, EmptyState, ON_CHAIN_NOTE, Skeleton, proofBadge } from '../../components/ui';
+import { EthereumLogo, NetworkBadge } from '../../components/ethereum';
 import { shortHash } from '../../utils/format';
-import { proofBadge, ON_CHAIN_NOTE } from '../../components/ui/badgeStatus';
 import { useTransactions } from './hooks/useDashboardData';
 
 export const ChainPanel = () => {
@@ -14,7 +14,7 @@ export const ChainPanel = () => {
   const { data: transactions, isLoading } = useTransactions();
 
   const confirmed = (transactions ?? [])
-    .filter((t) => Boolean(t.tx_hash))
+    .filter((t) => Boolean(t.tx_hash || t.audit_hash))
     .slice(0, 5);
 
   const handleCopy = (hash: string) => {
@@ -25,107 +25,104 @@ export const ChainPanel = () => {
 
   const handleCheck = (e: FormEvent) => {
     e.preventDefault();
-    if (!verifyInput.trim()) return;
-    navigate('/verify');
+    const q = verifyInput.trim();
+    if (!q) return;
+    navigate(`/verify?query=${encodeURIComponent(q)}`);
   };
 
   if (isLoading) {
     return (
-      <Card className="rounded-2xl p-6">
-        <Skeleton lines={4} className="w-full rounded-xl" />
-      </Card>
-    );
-  }
-
-  if (confirmed.length === 0) {
-    return (
-      <Card className="rounded-2xl p-8">
-        <EmptyState
-          title="Belum ada transaksi on-chain"
-          description="Transaksi yang telah terverifikasi hash di blockchain akan tercatat di sini."
-        />
+      <Card>
+        <Skeleton lines={5} />
       </Card>
     );
   }
 
   return (
-    <Card className="rounded-2xl p-0">
-      <div className="p-6 pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <h2 className="text-lg font-extrabold text-primary-dark">Transparansi Blockchain</h2>
-          <form onSubmit={handleCheck} className="flex items-center gap-2">
+    <Card className="space-y-4 h-full flex flex-col justify-between">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <EthereumLogo size={13} />
+            <h2 className="text-lg font-bold text-forest-dark">Jejak Ethereum</h2>
+          </div>
+          <NetworkBadge compact />
+        </div>
+
+        <form onSubmit={handleCheck} className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Hash / ID verifikasi"
+              placeholder="ID laporan atau hash audit…"
               value={verifyInput}
               onChange={(e) => setVerifyInput(e.target.value)}
-              className="w-44 sm:w-48 min-h-[44px] rounded-xl border border-primary-bg px-3 py-2 text-xs sm:text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary"
+              className="w-full min-h-[40px] rounded-[10px] border border-slate-300 bg-white pl-8 pr-3 text-xs text-forest-dark font-mono outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary"
             />
-            <button
-              type="submit"
-              className="min-h-[44px] rounded-xl border-2 border-primary px-3 py-2 text-xs sm:text-sm font-bold text-primary-dark hover:bg-primary-bg transition-colors"
-            >
-              Cek
-            </button>
-          </form>
-        </div>
-      </div>
+          </div>
+          <Button type="submit" variant="secondary" size="sm" disabled={!verifyInput.trim()}>
+            Cek
+          </Button>
+        </form>
 
-      <div className="divide-y divide-dashed divide-primary-bg/70 px-6">
-        {confirmed.map((t) => {
-          const isCopied = copiedHash === t.tx_hash;
-          return (
-            <div key={t.id} className="py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs font-mono text-primary-dark truncate">
-                  {shortHash(t.tx_hash ?? '')}
-                </span>
-                {t.tx_hash && (
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(t.tx_hash!)}
-                    title={isCopied ? 'Tersalin' : 'Salin hash'}
-                    className="inline-flex items-center gap-1 rounded p-1 text-xs text-primary-dark/70 hover:bg-primary-bg transition-colors"
-                  >
-                    {isCopied ? (
-                      <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                        <Check size={13} />
-                        Tersalin
-                      </span>
-                    ) : (
-                      <Copy size={13} />
+        {confirmed.length === 0 ? (
+          <EmptyState
+            title="Belum ada transaksi on-chain"
+            description="Catatan distribusi yang sudah memiliki hash akan muncul di sini."
+          />
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {confirmed.map((t) => {
+              const hash = t.tx_hash || '';
+              const isCopied = Boolean(hash && copiedHash === hash);
+              const badge = proofBadge(t.blockchain_status ?? 'PENDING');
+              return (
+                <div key={t.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Link
+                      to={`/verify?id=${t.id}`}
+                      className="text-xs font-semibold text-forest-dark hover:text-primary shrink-0"
+                    >
+                      #{t.id}
+                    </Link>
+                    <span className="text-xs font-mono text-slate-600 truncate">
+                      {hash ? shortHash(hash, 8, 6) : 'Menunggu tx'}
+                    </span>
+                    {hash && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(hash)}
+                        aria-label="Salin tx hash"
+                        className="p-1 rounded text-slate-400 hover:text-primary hover:bg-slate-100 shrink-0"
+                      >
+                        {isCopied ? <Check size={13} className="text-primary" /> : <Copy size={13} />}
+                      </button>
                     )}
-                  </button>
-                )}
-              </div>
+                  </div>
 
-              <div className="flex flex-col items-end text-right shrink-0">
-                <Badge tone={proofBadge(t.blockchain_status ?? '').tone} className="text-xs">
-                  {proofBadge(t.blockchain_status ?? '').label}
-                </Badge>
-                {t.block_number !== null && t.block_number !== undefined && (
-                  <span className="text-[11px] text-primary-dark/60 mt-0.5">
-                    Blok #{t.block_number}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                  <div className="flex flex-col items-end text-right shrink-0">
+                    <Badge tone={badge.tone}>{badge.label}</Badge>
+                    {t.block_number !== null && t.block_number !== undefined && (
+                      <span className="text-[11px] text-slate-500 mt-0.5 tabular-nums">
+                        Blok #{t.block_number}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div className="px-6 pt-4 pb-6">
-        <div className="bg-cream rounded-xl p-3 text-xs text-primary-dark/70 border border-cream">
-          {ON_CHAIN_NOTE}
-        </div>
-        <div className="mt-3 text-right">
-          <a
-            href="/verify"
-            className="text-xs font-semibold text-primary-dark hover:underline inline-flex items-center gap-1"
-          >
-            Buka portal verifikasi publik &rarr;
-          </a>
-        </div>
+      <div className="space-y-2.5 pt-2 border-t border-slate-100">
+        <p className="text-[11px] text-slate-500">{ON_CHAIN_NOTE}</p>
+        <Link
+          to="/verify"
+          className="text-xs font-semibold text-primary hover:text-forest inline-flex items-center gap-1"
+        >
+          Buka Portal Verifikasi Publik →
+        </Link>
       </div>
     </Card>
   );

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Card, EmptyState, Skeleton, Badge, JourneyTracker } from '../../components/ui';
-import { formatIDR, formatDateTime } from '../../utils/format';
+import { Badge, Button, Card, EmptyState, JourneyTracker, Skeleton } from '../../components/ui';
+import { formatDateTime, formatIDR } from '../../utils/format';
 
 interface Donation {
   id: number;
@@ -16,24 +16,22 @@ interface ActivityListProps {
   setIsDrawerOpen: (open: boolean) => void;
 }
 
-const STATUS_TONE: Record<string, 'sky' | 'success' | 'coral'> = {
+const STATUS_TONE: Record<string, 'warning' | 'success' | 'danger'> = {
   CONFIRMED: 'success',
-  PENDING: 'sky',
+  PENDING: 'warning',
+  FAILED: 'danger',
 };
 
 const STATUS_LABEL: Record<string, string> = {
   CONFIRMED: 'Terkonfirmasi',
   PENDING: 'Menunggu',
+  FAILED: 'Gagal',
 };
 
 const trackerStep = (status: string): number => {
   if (status === 'CONFIRMED') return 4;
-  if (status === 'PENDING') return 3;
-  return 1;
-};
-
-const trackerRejected = (status: string): boolean => {
-  return status === 'FAILED';
+  if (status === 'PENDING') return 2;
+  return 2;
 };
 
 export const ActivityList = ({
@@ -43,8 +41,8 @@ export const ActivityList = ({
 }: ActivityListProps) => {
   if (isLoading) {
     return (
-      <Card className="rounded-2xl p-6">
-        <Skeleton lines={5} className="w-full rounded-lg" />
+      <Card>
+        <Skeleton lines={5} />
       </Card>
     );
   }
@@ -53,17 +51,14 @@ export const ActivityList = ({
 
   if (recent.length === 0) {
     return (
-      <Card className="rounded-2xl p-8">
+      <Card>
         <EmptyState
-          title="Belum ada aktivitas"
-          description="Donasi Anda akan muncul di sini setelah pembuatan sesi pembayaran."
+          title="Belum ada aktivitas donasi"
+          description="Donasi Anda akan muncul di sini setelah membuat sesi pembayaran."
           action={
-            <button
-              onClick={() => setIsDrawerOpen(true)}
-              className="inline-flex items-center min-h-[44px] rounded-full border-2 border-primary px-3 py-2 text-sm font-bold text-primary-dark hover:bg-primary-bg"
-            >
-              Mulai donasi
-            </button>
+            <Button variant="primary" size="sm" onClick={() => setIsDrawerOpen(true)}>
+              Mulai Tunaikan Zakat
+            </Button>
           }
         />
       </Card>
@@ -71,50 +66,49 @@ export const ActivityList = ({
   }
 
   return (
-    <Card className="rounded-2xl p-0">
-      <div className="px-6 pb-4 flex items-center justify-between">
-        <h2 className="text-lg font-extrabold text-primary-dark">Aktivitas Transaksi</h2>
-        <Link
-          to="/donate"
-          className="text-sm font-medium text-primary-dark hover:underline"
-        >
-          Lihat semua
-        </Link>
-      </div>
-      <div className="divide-y divide-dashed px-6">
-        {recent.map((d) => (
-          <div key={d.id} className="py-4 flex items-center gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-primary-dark truncate">
-                {d.campaign_id ? `Kampanye #${d.campaign_id}` : 'Donasi umum'}
-              </p>
-              <p className="text-xs text-primary-dark/60 truncate">
-                {formatDateTime(d.timestamp)}
-              </p>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
+    <Card className="space-y-4 h-full flex flex-col justify-between">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-forest-dark">Riwayat Pembayaran Terbaru</h2>
+          <Link to="/my-donations" className="text-xs font-semibold text-primary hover:text-forest">
+            Lihat Semua →
+          </Link>
+        </div>
+
+        <div className="divide-y divide-slate-100">
+          {recent.map((d) => (
+            <div key={d.id} className="py-3.5 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-forest-dark">
+                    {d.campaign_id ? `Program Zakat #${d.campaign_id}` : 'Zakat Umum'}
+                  </p>
+                  <p className="text-xs text-slate-500">{formatDateTime(d.timestamp)}</p>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Badge tone={STATUS_TONE[d.status] ?? 'warning'}>
+                    {STATUS_LABEL[d.status] ?? d.status}
+                  </Badge>
+                  <span className="text-sm font-bold text-forest-dark tabular-nums">
+                    {formatIDR(Number(d.amount))}
+                  </span>
+                </div>
+              </div>
               <JourneyTracker
                 currentStep={trackerStep(d.status)}
-                rejected={trackerRejected(d.status)}
+                rejected={d.status === 'FAILED'}
                 size="sm"
+                showNote={false}
               />
-              <Badge tone={STATUS_TONE[d.status] ?? 'sky'}>
-                {STATUS_LABEL[d.status] ?? d.status}
-              </Badge>
-              <span className="text-sm font-bold text-primary-dark tabular-nums">
-                {formatIDR(Number(d.amount))}
-              </span>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-      <div className="px-6 pt-4 pb-6 text-right">
-        <button
-          onClick={() => setIsDrawerOpen(true)}
-          className="min-h-[44px] rounded-xl border-2 border-transparent bg-transparent text-sm font-bold text-primary-dark hover:bg-primary-bg"
-        >
-          Donasi lagi
-        </button>
+
+      <div className="pt-2 border-t border-slate-100 flex justify-end">
+        <Button variant="secondary" size="sm" onClick={() => setIsDrawerOpen(true)}>
+          Salurkan Zakat Lagi
+        </Button>
       </div>
     </Card>
   );

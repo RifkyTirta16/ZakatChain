@@ -71,6 +71,7 @@ export interface Transaction {
   status: string;
   timestamp: string;
   tx_hash: string | null;
+  audit_hash?: string | null;
   blockchain_status: string | null;
   block_number: number | null;
   proof_status?: string | null;

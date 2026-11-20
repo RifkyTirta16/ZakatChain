@@ -47,10 +47,10 @@ const MapBoundsHandler = ({ data }: { data: GeoJsonObject }) => {
 
 // Token Warna Desain ZakatChain untuk Peta
 const povertyColor = (rate: number) =>
-  rate > 20 ? '#EF6C4A' : rate > 15 ? '#FF8A6A' : rate > 10 ? '#FFD23F' : rate > 5 ? '#2BA8A2' : '#3CC4BD';
+  rate > 20 ? '#DC2626' : rate > 15 ? '#D97706' : rate > 10 ? '#C9A45C' : rate > 5 ? '#047857' : '#059669';
 
 const priorityColor = (score: number) =>
-  score > 30 ? '#EF6C4A' : score > 15 ? '#FF8A6A' : score > 8 ? '#FFD23F' : '#2BA8A2';
+  score > 30 ? '#DC2626' : score > 15 ? '#D97706' : score > 8 ? '#C9A45C' : '#047857';
 
 const PovertyMapping = () => {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -153,7 +153,7 @@ const PovertyMapping = () => {
         fillColor,
         weight: 2,
         opacity: 0.9,
-        color: '#1E8C86',
+        color: '#064E3B',
         fillOpacity: 0.65,
       } as PathOptions;
     };
@@ -169,7 +169,7 @@ const PovertyMapping = () => {
       layer.on({
         mouseover: (e: LeafletEvent) => {
           const l = e.target as L.Path;
-          l.setStyle({ fillOpacity: 0.85, weight: 3, color: '#FFD23F' });
+          l.setStyle({ fillOpacity: 0.85, weight: 3, color: '#C9A45C' });
         },
         mouseout: (e: LeafletEvent) => {
           const l = e.target as L.Path;
@@ -178,7 +178,7 @@ const PovertyMapping = () => {
             : indicatorMode === 'poverty'
               ? povertyColor(data.poverty_rate)
               : priorityColor(parseFloat(data.priority_score));
-          l.setStyle({ fillColor, fillOpacity: 0.65, weight: 2, color: '#1E8C86', opacity: 0.9 });
+          l.setStyle({ fillColor, fillOpacity: 0.65, weight: 2, color: '#064E3B', opacity: 0.9 });
         },
         click: () => {
           if (data) setSelectedCode(data.region_code);
@@ -245,8 +245,8 @@ const PovertyMapping = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F6F8F8] py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="space-y-6">
+        <div className="space-y-6">
           <Skeleton lines={2} className="w-64 rounded-xl" />
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-8">
@@ -267,8 +267,8 @@ const PovertyMapping = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#F6F8F8] py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="py-4">
+        <div>
           <ErrorState
             message={
               (error as { response?: { data?: { error?: string } } })?.response?.data?.error ||
@@ -282,8 +282,8 @@ const PovertyMapping = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F8F8] py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* Header Pemetaan */}
         <header className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
           <div>
@@ -401,30 +401,30 @@ const PovertyMapping = () => {
                   {indicatorMode === 'poverty' ? (
                     <>
                       <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#EF6C4A' }} />
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#DC2626' }} />
                         <span>Kritis (&gt; 20%)</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FFD23F' }} />
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#C9A45C' }} />
                         <span>Sedang (10–20%)</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#2BA8A2' }} />
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#047857' }} />
                         <span>Rendah (&lt; 10%)</span>
                       </div>
                     </>
                   ) : (
                     <>
                       <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#EF6C4A' }} />
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#DC2626' }} />
                         <span>Prioritas Tinggi (&gt; 30)</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FF8A6A' }} />
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#D97706' }} />
                         <span>Prioritas Sedang (15–30)</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#2BA8A2' }} />
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#047857' }} />
                         <span>Prioritas Terpenuhi (&lt; 15)</span>
                       </div>
                     </>

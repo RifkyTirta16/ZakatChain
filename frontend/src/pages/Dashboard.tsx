@@ -42,12 +42,12 @@ export interface Transaction {
 
 /** Nilai warna dari DESIGN.md untuk Recharts (SVG butuh string warna, bukan class Tailwind). */
 const CHART = {
-  primary: '#2BA8A2',
-  primaryDark: '#1E8C86',
-  gold: '#FFD23F',
-  coral: '#EF6C4A',
-  sky: '#5DADE2',
-  grid: '#E8F6F5',
+  primary: '#047857',
+  primaryDark: '#064E3B',
+  gold: '#C9A45C',
+  coral: '#DC2626',
+  sky: '#0284C7',
+  grid: '#ECFDF5',
 };
 
 const PIE_COLORS = [CHART.primary, CHART.gold, CHART.coral, CHART.sky, CHART.primaryDark];

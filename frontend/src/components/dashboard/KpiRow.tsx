@@ -1,21 +1,6 @@
-import { Card } from '../../components/ui';
+import { CheckCircle2, HeartHandshake, Scale, Wallet } from 'lucide-react';
+import { StatCard } from '../../components/ui';
 import { formatIDR } from '../../utils/format';
-
-interface KpiCardProps {
-  label: string;
-  value: number | null;
-  hint: string;
-}
-
-const KpiCard = ({ label, value, hint }: KpiCardProps) => (
-  <Card className="rounded-2xl p-5">
-    <p className="text-xs uppercase tracking-wider text-primary-dark/60 mb-1">{label}</p>
-    <p className="text-3xl font-extrabold text-primary-dark tabular-nums">
-      {value === null ? '-' : formatIDR(value)}
-    </p>
-    <p className="text-xs text-primary-dark/60 mt-2">{hint}</p>
-  </Card>
-);
 
 interface KpiRowProps {
   myConfirmed: number;
@@ -31,21 +16,33 @@ export const KpiRow = ({ myConfirmed, platformTotal, platformDistributed }: KpiR
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <KpiCard label="Donasi saya" value={myConfirmed} hint="terkonfirmasi" />
-      <KpiCard
-        label="Total donasi platform"
-        value={platformTotal}
-        hint={platformTotal !== null ? 'terkonfirmasi' : 'Belum tersedia'}
+      <StatCard
+        label="Kontribusi Saya"
+        value={formatIDR(myConfirmed)}
+        sublabel="Total donasi terkonfirmasi"
+        icon={<HeartHandshake size={18} />}
+        tone="emerald"
       />
-      <KpiCard
-        label="Total terdistribusi platform"
-        value={platformDistributed}
-        hint={platformDistributed !== null ? 'tersalurkan' : 'Belum tersedia'}
+      <StatCard
+        label="Total Dana Platform"
+        value={platformTotal === null ? '-' : formatIDR(platformTotal)}
+        sublabel={platformTotal !== null ? 'Terkonfirmasi sistem' : 'Belum tersedia'}
+        icon={<Wallet size={18} />}
+        tone="forest"
       />
-      <KpiCard
-        label="Saldo belum tersalurkan"
-        value={balance}
-        hint={balance !== null ? '(total platform − terdistribusi)' : 'Belum tersedia'}
+      <StatCard
+        label="Tersalurkan Terverifikasi"
+        value={platformDistributed === null ? '-' : formatIDR(platformDistributed)}
+        sublabel={platformDistributed !== null ? 'Disetujui & tercatat on-chain' : 'Belum tersedia'}
+        icon={<CheckCircle2 size={18} />}
+        tone="gold"
+      />
+      <StatCard
+        label="Saldo Siap Salur"
+        value={balance === null ? '-' : formatIDR(balance)}
+        sublabel={balance !== null ? 'Selisih dana masuk & salur' : 'Belum tersedia'}
+        icon={<Scale size={18} />}
+        tone="neutral"
       />
     </div>
   );

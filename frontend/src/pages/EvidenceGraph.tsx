@@ -19,10 +19,10 @@ type GraphNode = {
 type GraphLink = { source: string; target: string; type: string };
 
 const NODE_COLORS: Record<GraphNode['type'], string> = {
-  campaign: '#2BA8A2',
-  donation: '#27AE60',
-  distribution: '#FFD23F',
-  blockchain: '#EF6C4A',
+  campaign: '#047857',
+  donation: '#059669',
+  distribution: '#C9A45C',
+  blockchain: '#064E3B',
 };
 
 const NODE_TYPE_LABELS: Record<GraphNode['type'], string> = {
@@ -145,8 +145,8 @@ const EvidenceGraph = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F6F8F8] py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* Header Evidence Graph */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -331,7 +331,7 @@ const EvidenceGraph = () => {
                     <div className="pt-2">
                       <a
                         href={`/verify?hash=${encodeURIComponent(selectedNode.txHash)}`}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-br from-gold to-gold-light text-primary-dark rounded-xl text-xs font-bold shadow-gold-glow outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 bg-primary text-white hover:bg-forest rounded-[10px] text-xs font-semibold transition-colors"
                       >
                         <ShieldCheck size={14} /> Verifikasi di Portal Publik
                       </a>

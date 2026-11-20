@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Card, EmptyState, Skeleton, Badge } from '../../components/ui';
+import { ArrowRight, Heart } from 'lucide-react';
+import { Badge, Button, Card, EmptyState, Skeleton } from '../../components/ui';
 import { formatIDR } from '../../utils/format';
 
 interface Campaign {
@@ -52,12 +53,10 @@ export const PopularCampaigns = ({
 
   if (isLoading) {
     return (
-      <Card className="rounded-2xl">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 p-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="p-0">
-              <Skeleton lines={5} className="w-full rounded-lg" />
-            </Card>
+      <Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} lines={5} />
           ))}
         </div>
       </Card>
@@ -66,16 +65,16 @@ export const PopularCampaigns = ({
 
   if (visible.length === 0) {
     return (
-      <Card className="rounded-2xl p-8">
+      <Card>
         <EmptyState
-          title="Belum ada kampanye"
-          description="Kampanye penggalangan akan tampil di sini."
+          title="Belum ada program penyaluran"
+          description="Program zakat yang tersedia akan tampil di sini."
           action={
             <Link
               to="/campaigns"
-              className="inline-flex items-center min-h-[44px] rounded-full border-2 border-primary px-3 py-2 text-sm font-bold text-primary-dark hover:bg-primary-bg"
+              className="inline-flex items-center min-h-[40px] rounded-[10px] border border-slate-300 px-4 text-sm font-semibold text-forest-dark hover:bg-mint"
             >
-              Lihat semua kampanye
+              Lihat Semua Program
             </Link>
           }
         />
@@ -84,61 +83,62 @@ export const PopularCampaigns = ({
   }
 
   return (
-    <Card className="rounded-2xl p-0">
-      <div className="px-6 pb-6 flex items-center justify-between">
-        <h2 className="text-lg font-extrabold text-primary-dark">Kampanye Populer</h2>
+    <Card className="space-y-5 h-full">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-bold text-forest-dark">Program Zakat Populer</h2>
         <Link
           to="/campaigns"
-          className="text-sm font-medium text-primary-dark hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-forest"
         >
-          Lihat semua kampanye
+          Semua Program <ArrowRight size={13} />
         </Link>
       </div>
-      <div className="grid gap-4 px-6 md:grid-cols-2 lg:grid-cols-3">
-        {visible.map((campaign) => {
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {visible.slice(0, 4).map((campaign) => {
           const remaining = daysLeft(campaign.deadline);
           const progress = progressPercent(campaign);
           return (
-            <Card
+            <div
               key={campaign.id}
-              variant={
-                campaign.status === 'ACTIVE' ? 'default' : 'anomaly'
-              }
-              className="flex flex-col p-0"
+              className="rounded-xl border border-slate-200/80 bg-cream/60 p-4 flex flex-col justify-between gap-3"
             >
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <Badge tone="primary" className="text-xs">
-                    Aktif
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-center gap-2">
+                  <Badge tone={campaign.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                    {campaign.status === 'ACTIVE' ? 'Aktif' : campaign.status}
                   </Badge>
+                  {remaining && <span className="text-[11px] text-slate-500">{remaining}</span>}
                 </div>
-                <h3 className="text-base font-extrabold text-primary-dark mb-2 line-clamp-2">
+                <Link
+                  to={`/campaigns/${campaign.id}`}
+                  className="block text-sm font-bold text-forest-dark hover:text-primary line-clamp-2"
+                >
                   {campaign.title}
-                </h3>
-                <div className="h-2 rounded-full bg-primary-bg overflow-hidden mb-3">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${progress}%` }}
-                  />
+                </Link>
+                <div className="h-2 rounded-full bg-slate-200/70 overflow-hidden">
+                  <div className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} />
                 </div>
-                <div className="flex justify-between text-sm text-primary-dark/70 mb-1">
-                  <span>{formatIDR(Number(campaign.current_amount || 0))}</span>
+                <div className="flex justify-between text-xs text-slate-600 tabular-nums">
+                  <span className="font-semibold text-forest-dark">
+                    {formatIDR(Number(campaign.current_amount || 0))}
+                  </span>
                   <span>Target {formatIDR(Number(campaign.target_amount))}</span>
                 </div>
-                {remaining && (
-                  <p className="text-xs text-primary-dark/70">{remaining}</p>
-                )}
               </div>
-              <button
+
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setSelectedCampaignId(campaign.id);
                   setIsDrawerOpen(true);
                 }}
-                className="w-full min-h-[44px] rounded-none border-t border-transparent bg-transparent text-sm font-bold text-primary-dark shadow-teal-glow hover:bg-primary-bg transition-colors"
+                className="w-full"
               >
-                Donasi
-              </button>
-            </Card>
+                <Heart size={14} /> Salurkan
+              </Button>
+            </div>
           );
         })}
       </div>

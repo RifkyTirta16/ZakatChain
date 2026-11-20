@@ -1,6 +1,7 @@
-import { Card } from '../../components/ui';
-import { Badge } from '../../components/ui';
-import { formatIDR, formatDateKey } from '../../utils/format';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Calculator, Heart } from 'lucide-react';
+import { Badge, Card } from '../../components/ui';
+import { formatDateKey, formatIDR } from '../../utils/format';
 import type { SessionUser } from '../../components/layout/navConfig';
 
 interface Donation {
@@ -14,60 +15,59 @@ interface WelcomeCardProps {
   donations: Donation[];
 }
 
-const StatMini = ({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-}) => (
-  <div className="space-y-1">
-    <p className="text-xs uppercase tracking-wider text-primary-dark/60">{label}</p>
-    <p className="text-xl font-extrabold text-primary-dark">{value}</p>
-    {hint && <p className="text-xs text-primary-dark/60">{hint}</p>}
-  </div>
-);
-
 export const WelcomeCard = ({ user, donations }: WelcomeCardProps) => {
   const confirmed = donations.filter((d) => d.status === 'CONFIRMED');
   const total = confirmed.reduce((sum, d) => sum + Number(d.amount || 0), 0);
-  const count = donations.length;
   const last = donations[0]?.timestamp ?? null;
   const pendingCount = donations.filter((d) => d.status === 'PENDING').length;
 
   return (
-    <Card className="rounded-2xl p-6">
-      <div className="flex items-center justify-between gap-3 mb-5">
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wider text-primary-dark/60">Halo</p>
-          <h2 className="text-xl font-extrabold text-primary-dark">
-            Halo, {user?.username ?? 'Sahabat'}
+    <Card className="bg-gradient-to-br from-forest-dark via-forest to-primary text-white border-0 shadow-elevated h-full flex flex-col justify-between gap-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-white/65 font-semibold">Assalamu&apos;alaikum</p>
+          <h2 className="mt-1 text-2xl font-extrabold text-white">
+            {user?.username ?? 'Sahabat Muzakki'}
           </h2>
+          <p className="mt-1 text-xs text-white/75">
+            Pantau amanah zakat dan bukti penyaluran Anda secara transparan.
+          </p>
         </div>
-        <Badge tone="primary" className="text-xs">
-          {user?.role ?? 'USER'}
+        <Badge tone="gold" className="bg-gold/20 text-gold-light border-gold/40">
+          {user?.role === 'USER' ? 'MUZAKKI' : user?.role ?? 'USER'}
         </Badge>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-5">
-        <StatMini label="Total donasi saya" value={formatIDR(total)} hint="terkonfirmasi" />
-        <StatMini label="Jumlah donasi" value={`${count} donasi`} hint="tercatat" />
-        <StatMini
-          label="Donasi terakhir"
-          value={last ? formatDateKey(last) : '-'}
-          hint={last ? '' : 'Belum tersedia'}
-        />
+      <div className="grid grid-cols-3 gap-3 rounded-xl bg-white/10 border border-white/15 p-4">
+        <div>
+          <p className="text-[11px] text-white/65">Zakat Terkonfirmasi</p>
+          <p className="mt-1 text-base sm:text-lg font-bold text-white tabular-nums">{formatIDR(total)}</p>
+        </div>
+        <div>
+          <p className="text-[11px] text-white/65">Total Transaksi</p>
+          <p className="mt-1 text-base sm:text-lg font-bold text-white tabular-nums">{donations.length}</p>
+          {pendingCount > 0 && <p className="text-[11px] text-gold-light">{pendingCount} menunggu</p>}
+        </div>
+        <div>
+          <p className="text-[11px] text-white/65">Terakhir</p>
+          <p className="mt-1 text-xs sm:text-sm font-semibold text-white">{last ? formatDateKey(last) : 'Belum ada'}</p>
+        </div>
       </div>
 
-      {count === 0 ? (
-        <p className="text-sm text-primary-dark/70">Mulai donasi pertamamu</p>
-      ) : pendingCount > 0 ? (
-        <p className="text-sm text-primary-dark/70">
-          {pendingCount} donasi menunggu konfirmasi
-        </p>
-      ) : null}
+      <div className="flex flex-wrap gap-2.5">
+        <Link
+          to="/donate"
+          className="inline-flex items-center justify-center gap-2 min-h-[42px] rounded-[10px] bg-gold px-4 py-2 text-xs sm:text-sm font-bold text-forest-dark hover:bg-gold-light transition-colors"
+        >
+          <Heart size={15} /> Tunaikan Zakat
+        </Link>
+        <Link
+          to="/calculator"
+          className="inline-flex items-center justify-center gap-2 min-h-[42px] rounded-[10px] border border-white/25 bg-white/10 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-white/15 transition-colors"
+        >
+          <Calculator size={15} /> Hitung Zakat <ArrowRight size={14} />
+        </Link>
+      </div>
     </Card>
   );
 };

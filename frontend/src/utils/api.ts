@@ -25,10 +25,14 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const requestUrl = String(error.config?.url ?? '');
+    const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+    if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem('zakat_token');
       localStorage.removeItem('zakat_user');
-      window.location.href = '/'; // Redirect to login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Activity } from 'lucide-react';
+import { Activity, AlertCircle, RefreshCcw } from 'lucide-react';
 import apiClient from '../../utils/api';
-import { formatIDR, formatDateTime } from '../../utils/format';
-import { Badge, Button, Card, EmptyState, ErrorState, Skeleton } from '../../components/ui';
-import { ON_CHAIN_NOTE } from '../../components/ui/badgeStatus';
+import { formatDateTime, formatIDR } from '../../utils/format';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  ON_CHAIN_NOTE,
+  SectionHeader,
+  Skeleton,
+  StatCard,
+} from '../../components/ui';
 
 interface ReconciliationLog {
   id: number;
@@ -19,12 +28,22 @@ interface ReconciliationLog {
 export const ReconciliationPage = () => {
   const [period, setPeriod] = useState('');
   const [running, setRunning] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  let role = '';
+  try {
+    const raw = localStorage.getItem('zakat_user');
+    role = raw ? ((JSON.parse(raw) as { role?: string }).role ?? '') : '';
+  } catch {
+    role = '';
+  }
+  const canRun = role === 'ADMIN';
 
   const { data, isLoading, error, refetch } = useQuery<ReconciliationLog[]>({
     queryKey: ['reconciliation-history'],
     queryFn: async () => {
       const { data } = await apiClient.get<ReconciliationLog[]>('/reconciliation/history');
-      return data;
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -33,10 +52,15 @@ export const ReconciliationPage = () => {
 
   const runReconciliation = async (e: React.FormEvent) => {
     e.preventDefault();
+    setActionError('');
     setRunning(true);
     try {
       await apiClient.post('/reconciliation/run', { period: period.trim() || undefined });
-      refetch();
+      setPeriod('');
+      void refetch();
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { error?: string } } };
+      setActionError(e2.response?.data?.error || 'Gagal menjalankan rekonsiliasi dana.');
     } finally {
       setRunning(false);
     }
@@ -44,107 +68,124 @@ export const ReconciliationPage = () => {
 
   if (isLoading) {
     return (
-      <Card className="rounded-2xl p-6">
-        <Skeleton lines={6} className="w-full rounded-xl" />
+      <Card>
+        <Skeleton lines={8} />
       </Card>
     );
   }
 
   if (error) {
     return (
-      <Card className="rounded-2xl p-6">
-        <ErrorState message="Gagal memuat riwayat rekonsiliasi." retry={() => { refetch(); }} />
-      </Card>
+      <ErrorState
+        message="Gagal memuat riwayat rekonsiliasi dana."
+        retry={() => void refetch()}
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-primary-dark mb-1">Rekonsiliasi</h1>
-        <p className="text-primary-dark/70">Cocokkan total donasi terkonfirmasi dengan distribusi terverifikasi.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <SectionHeader
+          title="Rekonsiliasi Keuangan Zakat"
+          subtitle="Membandingkan total donasi masuk terkonfirmasi dengan total penyaluran terverifikasi."
+        />
+        <Button variant="secondary" size="sm" onClick={() => void refetch()}>
+          <RefreshCcw size={14} /> Segarkan
+        </Button>
       </div>
 
       {last ? (
-        <Card>
-          <h2 className="font-bold text-primary-dark mb-3 flex items-center gap-2">
-            <Activity size={16} className="text-primary" /> Rekonsiliasi Terakhir
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-3 mb-4">
-            <div className="p-3 bg-primary-bg rounded-xl border border-primary-bg">
-              <p className="text-xs text-primary-dark/70 uppercase tracking-wider mb-1">Total Donasi</p>
-              <p className="text-xl font-extrabold text-primary-dark">{formatIDR(last.total_donations ?? 0)}</p>
-            </div>
-            <div className="p-3 bg-gold/10 rounded-xl border border-gold/30">
-              <p className="text-xs text-primary-dark/70 uppercase tracking-wider mb-1">Total Distribusi</p>
-              <p className="text-xl font-extrabold text-primary-dark">{formatIDR(last.total_distributions ?? 0)}</p>
-            </div>
-            <div className="p-3 rounded-xl border">
-              <p className="text-xs text-primary-dark/70 uppercase tracking-wider mb-1">Saldo Net</p>
-              <p className={`text-xl font-extrabold ${Number(last.balance || 0) >= 0 ? 'text-primary-dark' : 'text-coral-dark'}`}>
-                {formatIDR(Number(last.balance ?? 0))}
-              </p>
-            </div>
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatCard
+              label="Total Donasi"
+              value={formatIDR(last.total_donations ?? 0)}
+              tone="emerald"
+            />
+            <StatCard
+              label="Total Distribusi"
+              value={formatIDR(last.total_distributions ?? 0)}
+              tone="gold"
+            />
+            <StatCard
+              label="Saldo Net"
+              value={formatIDR(Number(last.balance ?? 0))}
+              sublabel={`${last.status || '-'} · ${formatDateTime(last.reconciliation_date)}`}
+              tone={Number(last.balance || 0) >= 0 ? 'forest' : 'danger'}
+            />
           </div>
-          <div className="p-3 bg-cream rounded-xl border border-cream">
-            <p className="text-xs text-primary-dark/70 mb-1">Status</p>
-            <p className="text-sm font-bold text-primary-dark">{last.status || 'Tidak diketahui'}</p>
-            <p className="text-xs text-primary-dark/70 mt-1">{formatDateTime(last.reconciliation_date)}</p>
-            {last.notes && <p className="text-xs text-primary-dark/70 mt-1">{last.notes}</p>}
-          </div>
-          <p className="text-xs text-primary-dark/70 mt-3">{ON_CHAIN_NOTE}</p>
-        </Card>
+          {last.notes && (
+            <Card className="py-3.5 text-xs text-slate-600">
+              <strong className="text-forest-dark">Catatan terakhir:</strong> {last.notes}
+            </Card>
+          )}
+        </div>
       ) : (
         <Card>
           <EmptyState
-            icon={<Activity size={36} className="text-primary" />}
+            icon={<Activity size={24} />}
             title="Belum ada riwayat rekonsiliasi"
-            description="Jalankan rekonsiliasi pertama untuk mencetak saldo net platform."
+            description="Snapshot rekonsiliasi pertama akan tampil di sini setelah dijalankan oleh Administrator."
           />
         </Card>
       )}
 
-      <Card>
-        <h2 className="font-bold text-primary-dark mb-3">Jalankan Rekonsiliasi</h2>
-        <form onSubmit={runReconciliation} className="flex flex-col sm:flex-row gap-3 items-end">
-          <input
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            placeholder="Perioda (opsional, mis. November 2026)"
-            className="bg-cream border border-primary-bg px-3 py-2 rounded-xl text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary w-full sm:w-64"
-          />
-          <Button type="submit" variant="primary" loading={running} disabled={running}>
-            Jalankan Rekonsiliasi
-          </Button>
-        </form>
-        <p className="text-xs text-primary-dark/70 mt-3">
-          Rekonsiliasi hanya dicatat sebagai snapshot hash-terbukti; tidak pernah mengubah dana di dunia nyata.
-        </p>
-      </Card>
+      {canRun ? (
+        <Card className="space-y-3">
+          <h2 className="text-base font-bold text-forest-dark">Jalankan Rekonsiliasi Baru (Khusus ADMIN)</h2>
+          {actionError && (
+            <div role="alert" className="p-3 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs flex items-center gap-2">
+              <AlertCircle size={15} className="text-danger shrink-0" />
+              <span>{actionError}</span>
+            </div>
+          )}
+          <form onSubmit={runReconciliation} className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+            <input
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              placeholder="Periode (opsional, mis. November 2026)"
+              className="min-h-[44px] bg-white border border-slate-300 px-3.5 py-2 rounded-[10px] text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary w-full sm:w-72"
+            />
+            <Button type="submit" variant="primary" loading={running}>
+              Jalankan Rekonsiliasi
+            </Button>
+          </form>
+          <p className="text-xs text-slate-500">
+            Rekonsiliasi mencatat snapshot saldo di database; tidak pernah memindahkan dana nyata. {ON_CHAIN_NOTE}
+          </p>
+        </Card>
+      ) : (
+        <Card className="bg-cream border-slate-200 text-xs text-slate-600">
+          Mode baca Auditor: eksekusi rekonsiliasi baru hanya dapat dilakukan oleh peran <strong>ADMIN</strong>.
+        </Card>
+      )}
 
       {logs.length > 1 && (
-        <Card>
-          <h2 className="font-bold text-primary-dark mb-3">Riwayat</h2>
-          <div className="overflow-x-auto rounded-xl border border-primary-bg">
+        <Card className="p-0 sm:p-0 overflow-hidden">
+          <div className="p-5 border-b border-slate-100">
+            <h2 className="text-base font-bold text-forest-dark">Riwayat Snapshot Rekonsiliasi</h2>
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-primary-bg text-primary-dark text-xs">
-                  <th className="px-3 py-3 text-left font-bold">Tanggal</th>
-                  <th className="px-3 py-3 text-right font-bold">Donasi</th>
-                  <th className="px-3 py-3 text-right font-bold">Distribusi</th>
-                  <th className="px-3 py-3 text-right font-bold">Saldo</th>
-                  <th className="px-3 py-3 text-left font-bold">Status</th>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left font-semibold">Tanggal</th>
+                  <th className="px-4 py-3 text-right font-semibold">Donasi</th>
+                  <th className="px-4 py-3 text-right font-semibold">Distribusi</th>
+                  <th className="px-4 py-3 text-right font-semibold">Saldo</th>
+                  <th className="px-4 py-3 text-left font-semibold">Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {logs.slice(1).map((l) => (
-                  <tr key={l.id} className="border-t border-primary-bg hover:bg-primary-bg/40 transition-colors">
-                    <td className="px-3 py-3 text-primary-dark/70 whitespace-nowrap">{formatDateTime(l.reconciliation_date)}</td>
-                    <td className="px-3 py-3 text-right text-primary-dark">{formatIDR(l.total_donations ?? 0)}</td>
-                    <td className="px-3 py-3 text-right text-primary-dark">{formatIDR(l.total_distributions ?? 0)}</td>
-                    <td className="px-3 py-3 text-right text-primary-dark">{formatIDR(Number(l.balance ?? 0))}</td>
-                    <td className="px-3 py-3">
-                      <Badge tone={l.status === 'BALANCED' ? 'success' : 'gold'} className="text-xs">{l.status}</Badge>
+                  <tr key={l.id} className="hover:bg-cream/60">
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{formatDateTime(l.reconciliation_date)}</td>
+                    <td className="px-4 py-3 text-right text-forest-dark tabular-nums">{formatIDR(l.total_donations ?? 0)}</td>
+                    <td className="px-4 py-3 text-right text-forest-dark tabular-nums">{formatIDR(l.total_distributions ?? 0)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-forest-dark tabular-nums">{formatIDR(Number(l.balance ?? 0))}</td>
+                    <td className="px-4 py-3">
+                      <Badge tone={l.status === 'BALANCED' ? 'success' : 'gold'}>{l.status}</Badge>
                     </td>
                   </tr>
                 ))}

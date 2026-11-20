@@ -1,39 +1,46 @@
 import { useMemo } from 'react';
 import {
-  BarChart,
   Bar,
-  XAxis,
-  YAxis,
+  BarChart,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
   Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import { formatIDR } from '../utils/format';
-import { Card, EmptyState } from './ui';
+import { Card, EmptyState, StatCard } from './ui';
 
-interface AnalyticsProps {
-  data: { category?: string | null; amount: number }[];
+interface AnalyticsRow {
+  category?: string | null;
+  amount: number;
 }
 
-/** Token warna resmi ZakatChain dari DESIGN.md */
+interface AnalyticsProps {
+  data?: AnalyticsRow[];
+  transactions?: AnalyticsRow[];
+}
+
 const CHART = {
-  primary: '#2BA8A2',
-  primaryDark: '#1E8C86',
-  gold: '#FFD23F',
-  coral: '#EF6C4A',
-  sky: '#5DADE2',
+  primary: '#047857',
+  forest: '#064E3B',
+  gold: '#C9A45C',
+  sky: '#0284C7',
+  slate: '#64748B',
   grid: '#E2E8F0',
 };
 
-const PIE_COLORS = [CHART.primary, CHART.gold, CHART.coral, CHART.sky, CHART.primaryDark];
+const PIE_COLORS = [CHART.primary, CHART.gold, CHART.forest, CHART.sky, CHART.slate];
 
-export const Analytics = ({ data }: AnalyticsProps) => {
+export const Analytics = ({ data, transactions }: AnalyticsProps) => {
+  const rows = useMemo(() => data ?? transactions ?? [], [data, transactions]);
+
   const chartData = useMemo(() => {
-    const categoryData = (data ?? []).reduce<Record<string, number>>((acc, t) => {
+    const categoryData = rows.reduce<Record<string, number>>((acc, t) => {
       const key = t.category || 'Tanpa Kategori';
       acc[key] = (acc[key] || 0) + (Number(t.amount) || 0);
       return acc;
@@ -42,12 +49,9 @@ export const Analytics = ({ data }: AnalyticsProps) => {
       name: cat,
       value: categoryData[cat],
     }));
-  }, [data]);
+  }, [rows]);
 
-  const totalValue = useMemo(
-    () => chartData.reduce((sum, c) => sum + c.value, 0),
-    [chartData]
-  );
+  const totalValue = useMemo(() => chartData.reduce((sum, c) => sum + c.value, 0), [chartData]);
 
   const topCategory = useMemo(() => {
     if (chartData.length === 0) return '-';
@@ -56,7 +60,7 @@ export const Analytics = ({ data }: AnalyticsProps) => {
 
   if (chartData.length === 0) {
     return (
-      <Card className="rounded-2xl p-6 bg-white border border-slate-200/70 shadow-card mb-6">
+      <Card>
         <EmptyState
           title="Belum ada data penyaluran"
           description="Grafik analisis kategori akan tampil otomatis setelah ada transaksi tercatat."
@@ -67,45 +71,19 @@ export const Analytics = ({ data }: AnalyticsProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Kartu Ringkasan Analisis */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="rounded-2xl p-5 bg-white border border-slate-200/70 shadow-card">
-          <p className="text-xs uppercase tracking-wider text-primary-dark/60 font-semibold mb-1">
-            Total Penyaluran Tercatat
-          </p>
-          <p className="text-2xl font-extrabold text-primary-dark tabular-nums">
-            {formatIDR(totalValue)}
-          </p>
-        </Card>
-
-        <Card className="rounded-2xl p-5 bg-white border border-slate-200/70 shadow-card">
-          <p className="text-xs uppercase tracking-wider text-primary-dark/60 font-semibold mb-1">
-            Jumlah Kategori
-          </p>
-          <p className="text-2xl font-extrabold text-primary-dark tabular-nums">
-            {chartData.length} <span className="text-sm font-normal text-primary-dark/70">kategori</span>
-          </p>
-        </Card>
-
-        <Card className="rounded-2xl p-5 bg-white border border-slate-200/70 shadow-card">
-          <p className="text-xs uppercase tracking-wider text-primary-dark/60 font-semibold mb-1">
-            Kategori Terbesar
-          </p>
-          <p className="text-lg font-extrabold text-primary-dark truncate">
-            {topCategory}
-          </p>
-        </Card>
+        <StatCard label="Total Penyaluran Tercatat" value={formatIDR(totalValue)} tone="emerald" />
+        <StatCard label="Jumlah Kategori" value={`${chartData.length} kategori`} tone="gold" />
+        <StatCard label="Kategori Terbesar" value={topCategory} tone="forest" />
       </div>
 
-      {/* Grid 2 Grafik: BarChart & PieChart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Grafik Batang Penyaluran per Kategori */}
-        <Card className="rounded-2xl p-6 bg-white border border-slate-200/70 shadow-card">
+        <Card>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-extrabold uppercase tracking-wider text-primary-dark">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-forest-dark">
               Nominal Penyaluran per Kategori
             </h3>
-            <span className="text-xs text-primary-dark/60 font-medium">Dalam Rupiah (Rp)</span>
+            <span className="text-xs text-slate-500">Dalam Rupiah (IDR)</span>
           </div>
 
           <div className="h-64 w-full">
@@ -114,7 +92,7 @@ export const Analytics = ({ data }: AnalyticsProps) => {
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} vertical={false} />
                 <XAxis
                   dataKey="name"
-                  stroke={CHART.primaryDark}
+                  stroke="#334155"
                   fontSize={11}
                   tickLine={false}
                   axisLine={{ stroke: '#CBD5E1' }}
@@ -122,21 +100,21 @@ export const Analytics = ({ data }: AnalyticsProps) => {
                   tickMargin={8}
                 />
                 <YAxis
-                  stroke={CHART.primaryDark}
+                  stroke="#334155"
                   fontSize={10}
                   tickLine={false}
                   axisLine={{ stroke: '#CBD5E1' }}
                   tickFormatter={(v: number) => formatIDR(v)}
-                  width={75}
+                  width={80}
                 />
                 <Tooltip
-                  cursor={{ fill: '#E8F6F5', opacity: 0.6 }}
+                  cursor={{ fill: '#ECFDF5', opacity: 0.7 }}
                   contentStyle={{
                     backgroundColor: '#FFFFFF',
                     border: '1px solid #CBD5E1',
                     borderRadius: 12,
                     fontSize: 12,
-                    color: CHART.primaryDark,
+                    color: '#022C22',
                   }}
                   formatter={(value) => [formatIDR(Number(value)), 'Total Tercatat']}
                 />
@@ -144,7 +122,7 @@ export const Analytics = ({ data }: AnalyticsProps) => {
                   verticalAlign="top"
                   align="right"
                   height={30}
-                  formatter={() => <span className="text-xs font-semibold text-primary-dark">Penyaluran</span>}
+                  formatter={() => <span className="text-xs font-semibold text-forest-dark">Penyaluran</span>}
                 />
                 <Bar dataKey="value" fill={CHART.primary} radius={[6, 6, 0, 0]} />
               </BarChart>
@@ -152,13 +130,12 @@ export const Analytics = ({ data }: AnalyticsProps) => {
           </div>
         </Card>
 
-        {/* Grafik Donut Proporsi Kategori */}
-        <Card className="rounded-2xl p-6 bg-white border border-slate-200/70 shadow-card">
+        <Card>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-extrabold uppercase tracking-wider text-primary-dark">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-forest-dark">
               Distribusi Kategori
             </h3>
-            <span className="text-xs text-primary-dark/60 font-medium">Persentase (%)</span>
+            <span className="text-xs text-slate-500">Persentase (%)</span>
           </div>
 
           <div className="h-64 w-full">
@@ -181,9 +158,7 @@ export const Analytics = ({ data }: AnalyticsProps) => {
                 <Legend
                   verticalAlign="bottom"
                   iconSize={10}
-                  formatter={(value) => (
-                    <span className="text-xs font-medium text-primary-dark mr-2">{value}</span>
-                  )}
+                  formatter={(value) => <span className="text-xs font-medium text-forest-dark mr-2">{value}</span>}
                 />
                 <Tooltip
                   contentStyle={{
@@ -191,7 +166,7 @@ export const Analytics = ({ data }: AnalyticsProps) => {
                     border: '1px solid #CBD5E1',
                     borderRadius: 12,
                     fontSize: 12,
-                    color: CHART.primaryDark,
+                    color: '#022C22',
                   }}
                   formatter={(value, name) => {
                     const total = chartData.reduce((sum, c) => sum + c.value, 0);

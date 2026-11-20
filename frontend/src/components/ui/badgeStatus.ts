@@ -8,7 +8,9 @@ export type ProofStatus =
   | 'CONFIRMED'
   | 'PAID'
   | 'REJECTED'
-  | 'ANOMALY';
+  | 'ANOMALY'
+  | 'FAILED'
+  | 'EXPIRED';
 
 export interface ProofBadge {
   tone: BadgeTone;
@@ -16,20 +18,22 @@ export interface ProofBadge {
 }
 
 export const ON_CHAIN_NOTE =
-  'On-chain hanya membuktikan hash, bukan penerimaan di lapangan';
+  'On-chain hanya membuktikan pencatatan hash audit, bukan kebenaran penerimaan zakat di lapangan.';
 
 const PROOF_BADGES: Record<ProofStatus, ProofBadge> = {
-  DRAFT: { tone: 'sky', label: 'Diajukan' },
-  PENDING: { tone: 'sky', label: 'Diajukan' },
-  PENDING_BLOCKCHAIN: { tone: 'sky', label: 'Diajukan' },
-  APPROVED: { tone: 'gold', label: 'Ditinjau' },
-  CONFIRMED: { tone: 'primary', label: 'Hash tercatat on-chain' },
-  PAID: { tone: 'success', label: 'Pembayaran terkonfirmasi' },
-  REJECTED: { tone: 'coral', label: 'Ditolak/Anomali' },
-  ANOMALY: { tone: 'coral', label: 'Ditolak/Anomali' },
+  DRAFT: { tone: 'neutral', label: 'Draf' },
+  PENDING: { tone: 'warning', label: 'Menunggu' },
+  PENDING_BLOCKCHAIN: { tone: 'sky', label: 'Menunggu Pencatatan On-Chain' },
+  APPROVED: { tone: 'gold', label: 'Bukti Disetujui' },
+  CONFIRMED: { tone: 'primary', label: 'Tercatat On-Chain' },
+  PAID: { tone: 'success', label: 'Pembayaran Terkonfirmasi' },
+  REJECTED: { tone: 'danger', label: 'Ditolak' },
+  ANOMALY: { tone: 'danger', label: 'Anomali Terdeteksi' },
+  FAILED: { tone: 'danger', label: 'Gagal' },
+  EXPIRED: { tone: 'neutral', label: 'Kedaluwarsa' },
 };
 
-const DEFAULT_BADGE: ProofBadge = { tone: 'sky', label: 'Diajukan' };
+const DEFAULT_BADGE: ProofBadge = { tone: 'sky', label: 'Diproses' };
 
 export const proofBadge = (status: string): ProofBadge =>
   PROOF_BADGES[status as ProofStatus] ?? DEFAULT_BADGE;

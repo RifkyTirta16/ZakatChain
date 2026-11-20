@@ -9,31 +9,40 @@ export interface SelectProps {
   options?: { value: string; label: string }[];
   id?: string;
   label?: string;
+  error?: string;
 }
 
 export const Select = ({
   placeholder = 'Pilih opsi',
   disabled,
-  className,
+  className = '',
   value,
   onChange,
   options,
   id,
   label,
+  error,
 }: SelectProps) => {
   const generatedId = useId();
   const selectId = id ?? generatedId;
 
   return (
-    <div>
-      {label && <label htmlFor={selectId} className="block text-sm font-medium mb-1 text-primary-dark">{label}</label>}
+    <div className="space-y-1.5">
+      {label && (
+        <label htmlFor={selectId} className="block text-xs font-semibold uppercase tracking-wider text-slateText">
+          {label}
+        </label>
+      )}
       <select
         id={selectId}
         disabled={disabled}
         className={`
-          w-full min-h-[44px] rounded-md border border-transparent py-2 px-3
-          outline-none focus-visible:ring-2 focus-visible:ring-primary
-          bg-cream text-primary-dark ${className || ''}
+          w-full min-h-[44px] rounded-[10px] border bg-white py-2.5 px-3.5 text-sm text-forest-dark
+          outline-none transition-colors cursor-pointer
+          focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary
+          disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed
+          ${error ? 'border-danger' : 'border-slate-300'}
+          ${className}
         `}
         value={value ?? ''}
         onChange={onChange}
@@ -45,6 +54,7 @@ export const Select = ({
           </option>
         ))}
       </select>
+      {error && <p className="text-xs font-medium text-danger">{error}</p>}
     </div>
   );
 };

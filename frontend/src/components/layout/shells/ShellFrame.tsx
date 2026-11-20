@@ -1,57 +1,19 @@
 import { useState, type ReactNode } from 'react';
-import { Link, NavLink } from 'react-router-dom';
-import { LogOut, Menu, X, Zap } from 'lucide-react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { ChevronRight, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
 import { Badge } from '../../ui';
-import { itemsForRole, toRole, type Role, type SessionUser } from '../navConfig';
+import { NetworkBadge, PoweredByEthereum } from '../../ethereum';
+import {
+  PAGE_TITLES,
+  ROLE_LABELS,
+  itemsForRole,
+  toRole,
+  type NavItem,
+  type Role,
+  type SessionUser,
+} from '../navConfig';
 
-export type ShellTheme = 'public' | 'amil' | 'auditor' | 'admin';
-
-interface ThemeSpec {
-  sidebarBg: string;
-  brandText: string;
-  brandSub: string;
-  itemBase: string;
-  itemActive: string;
-  mobileBarBg: string;
-  padding: string;
-}
-
-const THEMES: Record<Exclude<ShellTheme, 'public'>, ThemeSpec> = {
-  amil: {
-    sidebarBg: 'bg-primary text-white',
-    brandText: 'text-white',
-    brandSub: 'text-white/70',
-    itemBase: 'text-white/80 hover:bg-white/10 hover:text-white',
-    itemActive: 'bg-white/20 text-white',
-    mobileBarBg: 'bg-primary text-white',
-    padding: 'px-4 py-2.5 text-sm',
-  },
-  auditor: {
-    sidebarBg: 'bg-slate-900 text-slate-100',
-    brandText: 'text-white',
-    brandSub: 'text-slate-400',
-    itemBase: 'text-slate-300 hover:bg-slate-800 hover:text-white',
-    itemActive: 'bg-sky/20 text-sky-200',
-    mobileBarBg: 'bg-slate-900 text-slate-100',
-    padding: 'px-2.5 py-1.5 text-xs',
-  },
-  admin: {
-    sidebarBg: 'bg-primary-dark text-white',
-    brandText: 'text-white',
-    brandSub: 'text-white/70',
-    itemBase: 'text-white/80 hover:bg-white/10 hover:text-white',
-    itemActive: 'bg-white/20 text-white',
-    mobileBarBg: 'bg-primary-dark text-white',
-    padding: 'px-4 py-2.5 text-sm',
-  },
-};
-
-const ROLE_BADGE_TONE: Record<Role, 'primary' | 'neutral'> = {
-  USER: 'neutral',
-  AMIL: 'primary',
-  AUDITOR: 'primary',
-  ADMIN: 'primary',
-};
+export type ShellTheme = 'public' | 'muzakki' | 'amil' | 'auditor' | 'admin';
 
 interface ShellFrameProps {
   theme: Exclude<ShellTheme, 'public'>;
@@ -60,116 +22,193 @@ interface ShellFrameProps {
   children: ReactNode;
 }
 
-/** Shared chrome for role workspaces: one component, role only changes the theme. */
+const ROLE_SUBTITLE: Record<Exclude<ShellTheme, 'public'>, string> = {
+  muzakki: 'Workspace Muzakki',
+  amil: 'Operasional Amil Zakat',
+  auditor: 'Audit & Pengawasan Independen',
+  admin: 'Konsol Administrator Sistem',
+};
+
+const ROLE_BADGE_TONE: Record<Role, 'primary' | 'gold' | 'sky' | 'neutral'> = {
+  USER: 'primary',
+  AMIL: 'gold',
+  AUDITOR: 'sky',
+  ADMIN: 'primary',
+};
+
+const groupItems = (items: NavItem[]): [string, NavItem[]][] => {
+  const map = new Map<string, NavItem[]>();
+  for (const item of items) {
+    const key = item.group || 'Menu';
+    const arr = map.get(key) ?? [];
+    arr.push(item);
+    map.set(key, arr);
+  }
+  return Array.from(map.entries());
+};
+
+/**
+ * Unified commercial SaaS application shell for all signed-in roles.
+ * Deep Forest sidebar + clean Soft Cream workspace + top breadcrumb/network bar.
+ */
 const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const spec = THEMES[theme];
-  const items = itemsForRole(toRole(user.role));
-  const mobileItems = items.slice(0, 5);
+  const location = useLocation();
+  const role = toRole(user.role);
+  const items = itemsForRole(role);
+  const grouped = groupItems(items);
 
-  const renderItem = (item: (typeof items)[number], compact: boolean) => (
-    <NavLink
-      key={item.path}
-      to={item.path}
-      onClick={() => setDrawerOpen(false)}
-      className={({ isActive }) =>
-        `flex items-center gap-2 rounded-md font-medium ${compact ? 'px-2.5 py-1.5 text-xs' : 'px-4 py-2.5 text-sm'} ${
-          isActive ? spec.itemActive : spec.itemBase
-        }`
-      }
-    >
-      <item.icon size={compact ? 14 : 16} />
-      {item.label}
-    </NavLink>
+  const pageTitle =
+    PAGE_TITLES[location.pathname] ??
+    (location.pathname.startsWith('/campaigns/') ? 'Rincian Program Zakat' : 'ZakatChain');
+
+  const renderNavContent = (closeOnClick: boolean) => (
+    <div className="flex flex-col h-full">
+      {/* Brand */}
+      <div className="px-4 pt-5 pb-4 border-b border-white/10">
+        <Link
+          to="/dashboard"
+          onClick={() => closeOnClick && setDrawerOpen(false)}
+          className="flex items-center gap-2.5"
+        >
+          <div className="w-9 h-9 rounded-[10px] bg-primary flex items-center justify-center text-white shadow-sm">
+            <ShieldCheck size={20} />
+          </div>
+          <div>
+            <span className="font-display font-extrabold text-lg text-white tracking-tight block leading-none">
+              Zakat<span className="text-gold-light">Chain</span>
+            </span>
+            <span className="text-[11px] text-white/60 block mt-1">{ROLE_SUBTITLE[theme]}</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* Grouped Nav */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        {grouped.map(([groupName, groupList]) => (
+          <div key={groupName} className="space-y-1">
+            <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-white/45">
+              {groupName}
+            </p>
+            {groupList.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.path === '/' || item.path === '/dashboard'}
+                onClick={() => closeOnClick && setDrawerOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-white/15 text-white font-semibold border-l-2 border-gold'
+                      : 'text-white/75 hover:bg-white/10 hover:text-white'
+                  }`
+                }
+              >
+                <item.icon size={16} className="shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Sidebar Footer */}
+      <div className="p-4 border-t border-white/10 space-y-3">
+        <PoweredByEthereum variant="dark" className="w-full justify-center" />
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-white/5 px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-white truncate">{user.username}</p>
+            <p className="text-[11px] text-white/60 truncate">
+              {role ? ROLE_LABELS[role] : user.role}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            aria-label="Keluar dari akun"
+            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            title="Keluar"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 
   return (
-    <div className="min-h-screen bg-surface text-primary-dark font-sans">
-      {/* Mobile top bar */}
-      <div className={`md:hidden flex items-center justify-between px-4 py-3 ${spec.mobileBarBg}`}>
-        <BrandText spec={spec} />
-        <button aria-label="Buka menu" onClick={() => setDrawerOpen(true)} className="p-2">
-          <Menu size={20} />
-        </button>
-      </div>
+    <div className="min-h-screen bg-cream text-slateText flex">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:block w-64 shrink-0 bg-forest-dark text-white sticky top-0 h-screen">
+        {renderNavContent(false)}
+      </aside>
 
-      {/* Mobile drawer */}
+      {/* Mobile Drawer */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <button aria-label="Tutup menu" className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-          <nav className={`absolute left-0 top-0 h-full w-64 p-4 space-y-1 ${spec.sidebarBg}`}>
-            <button aria-label="Tutup menu" onClick={() => setDrawerOpen(false)} className="mb-4 p-2 ml-auto flex">
-              <X size={20} />
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Tutup menu"
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <aside className="relative w-72 max-w-[85vw] h-full bg-forest-dark text-white shadow-2xl">
+            <button
+              type="button"
+              aria-label="Tutup navigasi"
+              onClick={() => setDrawerOpen(false)}
+              className="absolute top-4 right-3 p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 z-10"
+            >
+              <X size={18} />
             </button>
-            {items.map((item) => renderItem(item, false))}
-          </nav>
+            {renderNavContent(true)}
+          </aside>
         </div>
       )}
 
-      <div className="flex">
-        {/* Desktop sidebar */}
-        <aside className={`hidden md:flex flex-col w-60 min-h-screen sticky top-0 p-4 space-y-1 ${spec.sidebarBg}`}>
-          <BrandText spec={spec} />
-          <div className="border-t border-white/20 my-3" />
-          {items.map((item) => renderItem(item, theme === 'auditor'))}
-        </aside>
+      {/* Main Column */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Top Utility Header */}
+        <header className="sticky top-0 z-30 h-16 bg-white/95 backdrop-blur border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              aria-label="Buka menu navigasi"
+              onClick={() => setDrawerOpen(true)}
+              className="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-[10px] border border-slate-200 text-forest-dark hover:bg-slate-50 shrink-0"
+            >
+              <Menu size={18} />
+            </button>
 
-        <div className="flex-1 min-w-0">
-          {/* Header: user identity + role badge + logout */}
-          <header className="bg-white border-b border-primary-bg px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-40">
-            <span className="text-sm font-bold text-primary-dark">ZakatChain</span>
-            <div className="flex items-center gap-3">
-              <div className="text-right leading-tight">
-                <p className="text-sm font-bold text-primary-dark">{user.username || 'Pengguna'}</p>
-                <Badge tone={toRole(user.role) ? ROLE_BADGE_TONE[toRole(user.role) as Role] : 'neutral'}>
-                  {user.role || 'PENGGUNA'}
-                </Badge>
+            <div className="min-w-0">
+              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-400">
+                <span>ZakatChain</span>
+                <ChevronRight size={12} />
+                <span className="text-slate-600 font-medium">{ROLE_SUBTITLE[theme]}</span>
               </div>
-              <button
-                onClick={onLogout}
-                aria-label="Keluar"
-                className="inline-flex items-center min-h-[44px] gap-2 rounded-full px-3 text-sm font-medium text-primary-dark hover:bg-primary-bg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <LogOut size={16} /> <span className="hidden sm:inline">Keluar</span>
-              </button>
+              <h1 className="text-sm sm:text-base font-bold text-forest-dark truncate">{pageTitle}</h1>
             </div>
-          </header>
+          </div>
 
-          <main className="p-4 md:p-6 max-w-7xl mx-auto">{children}</main>
-        </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <NetworkBadge compact />
+            <Link
+              to="/profile"
+              className="hidden sm:inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-cream px-3 py-1.5 text-xs font-semibold text-forest-dark hover:bg-mint transition-colors"
+            >
+              <span>{user.username}</span>
+              <Badge tone={role ? ROLE_BADGE_TONE[role] : 'neutral'}>{user.role}</Badge>
+            </Link>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {children}
+        </main>
       </div>
-
-      {/* Mobile bottom nav */}
-      <nav className={`md:hidden fixed bottom-0 inset-x-0 z-40 flex justify-around py-2 ${spec.mobileBarBg}`}>
-        {mobileItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] ${isActive ? 'opacity-100 font-bold' : 'opacity-70'}`
-            }
-          >
-            <item.icon size={18} />
-            {item.label.split(' ')[0]}
-          </NavLink>
-        ))}
-      </nav>
     </div>
   );
 };
-
-const BrandText = ({ spec }: { spec: ThemeSpec }) => (
-  <Link to="/" className="flex items-center gap-2 px-2">
-    <div className="w-8 h-8 bg-gold rounded-lg flex items-center justify-center text-primary-dark">
-      <Zap size={18} />
-    </div>
-    <div className="flex flex-col leading-none">
-      <span className={`font-extrabold tracking-tight ${spec.brandText}`}>
-        Zakat<span className="text-gold">Chain</span>
-      </span>
-      <span className={`text-[9px] uppercase tracking-widest ${spec.brandSub}`}>Audit System</span>
-    </div>
-  </Link>
-);
 
 export default ShellFrame;

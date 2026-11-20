@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, CheckCircle2, QrCode, Clock, Info, ArrowRight } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, CheckCircle2, Clock, Info, QrCode, X } from 'lucide-react';
 import apiClient from '../../utils/api';
-import { formatIDR, formatDateTime } from '../../utils/format';
-import { Badge, Button, Card, Input, Select, JourneyTracker } from '../../components/ui';
-import { ON_CHAIN_NOTE } from '../../components/ui/badgeStatus';
+import { formatDateTime, formatIDR } from '../../utils/format';
+import { Badge, Button, Card, Input, JourneyTracker, ON_CHAIN_NOTE, Select } from '../../components/ui';
 import type { Campaign } from './useDonation';
 
 interface DonationDrawerProps {
@@ -13,7 +12,7 @@ interface DonationDrawerProps {
   initialCampaignId?: number | null;
 }
 
-const QUICK_AMOUNTS = [50000, 100000, 250000];
+const QUICK_AMOUNTS = [50_000, 100_000, 250_000];
 const MIN_AMOUNT = 1;
 const MAX_AMOUNT = 1_000_000_000_000;
 const POLL_INTERVAL_MS = 3000;
@@ -50,7 +49,11 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
     return null;
   }, [userSelectedCampaign, initialCampaignId, campaigns]);
 
-  const createSession = useMutation<any, Error, { amount: number; donor_name?: string; campaign_id?: number; program_id?: string }>({
+  const createSession = useMutation<
+    any,
+    Error,
+    { amount: number; donor_name?: string; campaign_id?: number; program_id?: string }
+  >({
     mutationFn: async (payload) => {
       const { data } = await apiClient.post('/payments/session', payload);
       return data;
@@ -74,8 +77,8 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
       return data;
     },
     enabled: Boolean(sessionId) && step === 'pembayaran' && !pollExpired,
-    refetchInterval: (data) => {
-      const status = (data as { status?: string } | undefined)?.status;
+    refetchInterval: (query) => {
+      const status = (query.state.data as { status?: string } | undefined)?.status;
       if (status === 'PAID' || status === 'FAILED' || status === 'EXPIRED') return false;
       if (pollExpired) return false;
       return POLL_INTERVAL_MS;
@@ -83,8 +86,13 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
   });
 
   const token = localStorage.getItem('zakat_token');
-  const userRaw = localStorage.getItem('zakat_user');
-  const user = userRaw ? JSON.parse(userRaw) : null;
+  let user: { username?: string } | null = null;
+  try {
+    const raw = localStorage.getItem('zakat_user');
+    user = raw ? (JSON.parse(raw) as { username?: string }) : null;
+  } catch {
+    user = null;
+  }
   const isLoggedIn = Boolean(token);
 
   const numericAmount = quickAmount ?? (amount ? Number(amount) : 0);
@@ -109,7 +117,7 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
   const handleToSummary = () => {
     setError('');
     if (!effectiveSelectedCampaign) {
-      setError('Pilih kampanye terlebih dahulu.');
+      setError('Pilih program zakat terlebih dahulu.');
       return;
     }
     if (!isAmountValid()) {
@@ -121,20 +129,8 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
 
   const handlePay = () => {
     setError('');
-    if (!isLoggedIn) {
-      if (effectiveSelectedCampaign) {
-        sessionStorage.setItem('zakat_donation_campaign', String(effectiveSelectedCampaign.id));
-      }
-      sessionStorage.setItem('zakat_donation_amount', String(numericAmount));
-      onClose();
-      return;
-    }
-    if (!effectiveSelectedCampaign) {
-      setError('Pilih kampanye terlebih dahulu.');
-      return;
-    }
-    if (!isAmountValid()) {
-      setError(`Nominal harus antara Rp 1 dan ${formatIDR(MAX_AMOUNT)}.`);
+    if (!isLoggedIn || !effectiveSelectedCampaign || !isAmountValid()) {
+      setError('Pastikan Anda sudah masuk dan nominal valid.');
       return;
     }
     createSession.mutate({
@@ -156,14 +152,6 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
     setQuickAmount(null);
   };
 
-  const handleCloseDrawer = () => {
-    onClose();
-  };
-
-  const handleCheckNow = () => {
-    void statusQuery.refetch();
-  };
-
   useEffect(() => {
     if (isOpen) {
       triggerRef.current = document.activeElement as HTMLElement | null;
@@ -181,9 +169,7 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
 
   useEffect(() => {
     if (step === 'pembayaran' && !pollExpired) {
-      const timer = setTimeout(() => {
-        setPollExpired(true);
-      }, MAX_POLL_MINUTES * 60 * 1000);
+      const timer = setTimeout(() => setPollExpired(true), MAX_POLL_MINUTES * 60 * 1000);
       return () => clearTimeout(timer);
     }
     return undefined;
@@ -194,32 +180,29 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
     if (status === 'PAID' && !paidHandledRef.current) {
       paidHandledRef.current = true;
       setStep('selesai');
-      queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['donations'] });
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['donations'] });
+      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
     }
   }, [statusQuery.data, queryClient]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      handleCloseDrawer();
-    }
-  };
+  if (!isOpen) return null;
 
   const currentStatus = (statusQuery.data as { status?: string } | undefined)?.status;
-
-  const trackerStep = step === 'pembayaran'
-    ? (currentStatus === 'PAID' ? 3 : currentStatus === 'FAILED' || currentStatus === 'EXPIRED' ? 1 : 2)
-    : step === 'selesai'
-    ? 4
-    : step === 'ringkasan'
-    ? 2
-    : 1;
-
+  const trackerStep =
+    step === 'pembayaran'
+      ? currentStatus === 'PAID'
+        ? 3
+        : currentStatus === 'FAILED' || currentStatus === 'EXPIRED'
+          ? 1
+          : 2
+      : step === 'selesai'
+        ? 4
+        : step === 'ringkasan'
+          ? 2
+          : 1;
   const trackerRejected = step === 'pembayaran' && (currentStatus === 'FAILED' || currentStatus === 'EXPIRED');
-
-  if (!isOpen) return null;
 
   return (
     <div
@@ -227,78 +210,99 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
       role="dialog"
       aria-modal="true"
       aria-labelledby="donation-drawer-title"
-      onKeyDown={handleKeyDown}
-      className="fixed inset-0 z-50 flex items-end justify-end"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-50 flex justify-end"
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCloseDrawer} />
-      <div className="relative w-full max-w-md h-full bg-white border-l border-primary-light shadow-card transform transition-transform duration-300 translate-y-0">
-        <div className="p-4 flex justify-between items-start">
-          <h2 id="donation-drawer-title" className="font-extrabold text-primary-dark text-lg">Donasi</h2>
+      <div className="absolute inset-0 bg-forest-dark/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md h-full bg-white border-l border-slate-200 shadow-2xl overflow-y-auto">
+        <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+          <div>
+            <h2 id="donation-drawer-title" className="font-bold text-forest-dark text-lg">
+              Salurkan Zakat
+            </h2>
+            <p className="text-xs text-slate-500">Pembayaran Rupiah (IDR) terpantau</p>
+          </div>
           <button
-            onClick={handleCloseDrawer}
-            aria-label="Tutup"
-            className="rounded-lg p-2 text-primary-dark/70 hover:bg-primary-bg outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup panel donasi"
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Step 1: Pilih kampanye dan nominal */}
         {step === 'pilih' && (
-          <div className="p-4 space-y-4">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-primary-dark">Kampanye</label>
-              <Select
-                value={effectiveSelectedCampaign?.id?.toString() ?? ''}
-                onChange={(e) => {
-                  const id = Number(e.target.value);
-                  const c = campaigns?.find((x) => x.id === id);
-                  if (c) setUserSelectedCampaign(c);
-                }}
-                placeholder="Pilih kampanye"
-                disabled={campaignsLoading}
-                options={(campaigns ?? []).map((c) => ({
-                  value: String(c.id),
-                  label: `${c.title} (${formatIDR(c.current_amount)} / ${formatIDR(c.target_amount)})`,
-                }))}
-              />
-            </div>
+          <div className="p-5 space-y-5">
+            <Select
+              label="Program Penyaluran"
+              value={effectiveSelectedCampaign?.id?.toString() ?? ''}
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                const c = campaigns?.find((x) => x.id === id);
+                if (c) setUserSelectedCampaign(c);
+              }}
+              placeholder="Pilih program zakat"
+              disabled={campaignsLoading}
+              options={(campaigns ?? []).map((c) => ({
+                value: String(c.id),
+                label: `${c.title} (${formatIDR(c.current_amount)} / ${formatIDR(c.target_amount)})`,
+              }))}
+            />
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-primary-dark">Nominal</label>
-              <div className="grid grid-cols-3 gap-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slateText">
+                Nominal Zakat (IDR)
+              </label>
+              <div className="grid grid-cols-2 gap-2">
                 {QUICK_AMOUNTS.map((v) => (
                   <button
                     key={v}
+                    type="button"
                     onClick={() => handleQuickAmount(v)}
-                    className={`min-h-[44px] rounded-xl border-2 px-3 py-2 text-sm font-bold text-primary-dark transition-colors ${quickAmount === v ? 'bg-primary-bg border-primary' : 'bg-cream border-transparent hover:border-primary-dark/30'}`}
+                    className={`min-h-[42px] rounded-[10px] border px-3 py-2 text-xs font-semibold transition-colors tabular-nums ${
+                      quickAmount === v
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-cream border-slate-200 text-forest-dark hover:bg-mint'
+                    }`}
                   >
                     {formatIDR(v)}
                   </button>
                 ))}
                 <button
-                  onClick={() => { setQuickAmount(null); setError(''); }}
-                  className={`min-h-[44px] rounded-xl border-2 px-3 py-2 text-sm font-bold text-primary-dark transition-colors ${quickAmount === null && amount ? 'bg-primary-bg border-primary' : 'bg-cream border-transparent hover:border-primary-dark/30'}`}
+                  type="button"
+                  onClick={() => {
+                    setQuickAmount(null);
+                    setError('');
+                  }}
+                  className={`min-h-[42px] rounded-[10px] border px-3 py-2 text-xs font-semibold transition-colors ${
+                    quickAmount === null && amount
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-cream border-slate-200 text-forest-dark hover:bg-mint'
+                  }`}
                 >
-                  Lainnya
+                  Nominal Lain
                 </button>
               </div>
               {quickAmount === null && (
                 <Input
                   type="number"
-                  placeholder="Masukkan nominal"
+                  placeholder="Masukkan nominal Rupiah"
                   value={amount}
                   onChange={(e) => handleAmountChange(e.target.value)}
-                  className="mt-2"
                 />
               )}
               {quickAmount !== null && (
-                <p className="text-sm font-bold text-primary-dark">{formatIDR(quickAmount)}</p>
+                <p className="text-sm font-bold text-forest-dark tabular-nums">{formatIDR(quickAmount)}</p>
               )}
             </div>
 
             {error && (
-              <p role="alert" className="text-sm text-coral-dark bg-coral/5 rounded-xl p-3 border border-coral/30">{error}</p>
+              <p role="alert" className="text-xs text-red-800 bg-red-50 rounded-xl p-3 border border-red-200">
+                {error}
+              </p>
             )}
 
             <Button
@@ -306,153 +310,122 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
               disabled={createSession.isPending || !isAmountValid() || !effectiveSelectedCampaign || !isLoggedIn}
               onClick={handleToSummary}
             >
-              {createSession.isPending ? 'Memproses...' : isLoggedIn ? 'Lanjut ke ringkasan' : 'Masuk untuk berdonasi'}
+              {createSession.isPending ? 'Memproses…' : isLoggedIn ? 'Lanjut ke Ringkasan' : 'Masuk untuk Berdonasi'}
             </Button>
           </div>
         )}
 
-        {/* Step 2: Ringkasan */}
         {step === 'ringkasan' && effectiveSelectedCampaign && (
-          <div className="p-4 space-y-4">
-            <Card variant="highlight" className="p-4">
-              <div className="flex justify-between items-start mb-3">
+          <div className="p-5 space-y-5">
+            <Card variant="highlight" className="p-4 space-y-3">
+              <div className="flex justify-between items-start gap-2">
                 <div>
-                  <p className="text-sm font-medium text-primary-dark">{effectiveSelectedCampaign.title}</p>
-                  <p className="text-xs text-primary-dark/70">Kampanye yang dipilih</p>
+                  <p className="text-sm font-bold text-forest-dark">{effectiveSelectedCampaign.title}</p>
+                  <p className="text-xs text-slate-500">Program dipilih</p>
                 </div>
-                <Badge tone="primary">Aktif</Badge>
+                <Badge tone="success">Aktif</Badge>
               </div>
-              <div className="flex justify-between items-baseline mb-1">
-                <span className="text-primary-dark/70 text-sm">Nominal donasi</span>
-                <span className="text-2xl font-extrabold text-primary-dark">{formatIDR(numericAmount)}</span>
+              <div className="flex justify-between items-baseline pt-2 border-t border-slate-100">
+                <span className="text-xs text-slate-600">Nominal Pembayaran</span>
+                <span className="text-xl font-extrabold text-forest-dark tabular-nums">{formatIDR(numericAmount)}</span>
               </div>
             </Card>
 
-            <div className="bg-cream rounded-xl p-4 space-y-2">
-              <p className="text-sm text-primary-dark/70 font-medium">Catatan jujur</p>
-              <p className="text-sm text-primary-dark">
-                Donasi tercatat setelah pembayaran terkonfirmasi.
-              </p>
-              <p className="text-xs text-primary-dark/70">{ON_CHAIN_NOTE}</p>
+            <div className="bg-cream rounded-xl p-4 space-y-1.5 border border-slate-200/70">
+              <p className="text-xs font-bold text-forest-dark">Informasi Transparansi</p>
+              <p className="text-xs text-slate-600">Donasi tercatat di riwayat Anda setelah pembayaran terkonfirmasi.</p>
+              <p className="text-[11px] text-slate-500">{ON_CHAIN_NOTE}</p>
             </div>
 
             {error && (
-              <p role="alert" className="text-sm text-coral-dark bg-coral/5 rounded-xl p-3 border border-coral/30">{error}</p>
+              <p role="alert" className="text-xs text-red-800 bg-red-50 rounded-xl p-3 border border-red-200">
+                {error}
+              </p>
             )}
 
-            <Button className="w-full" onClick={handlePay}>
-              {createSession.isPending ? 'Memproses...' : 'Lanjut bayar'}
-              <ArrowRight size={16} className="ml-2" />
+            <Button variant="gold" loading={createSession.isPending} onClick={handlePay} className="w-full">
+              Buat Kode Pembayaran QRIS <ArrowRight size={15} />
             </Button>
-            <button
-              onClick={() => setStep('pilih')}
-              className="w-full min-h-[44px] rounded-xl border-2 border-transparent bg-transparent text-sm font-bold text-primary-dark/70 hover:bg-primary-bg"
-            >
-              Kembali ke pilihan nominal
-            </button>
+            <Button variant="ghost" onClick={() => setStep('pilih')} className="w-full">
+              Kembali ke Pilihan Nominal
+            </Button>
           </div>
         )}
 
-        {/* Step 3: Pemantauan pembayaran */}
         {step === 'pembayaran' && paymentData && (
-          <div className="p-4 space-y-4">
+          <div className="p-5 space-y-5">
             <JourneyTracker currentStep={trackerStep} rejected={trackerRejected} size="md" />
 
-            <div className="text-center">
-              <div className="flex justify-center items-center gap-2 text-primary mb-4">
-                <QrCode size={24} />
-                <span className="font-bold text-sm text-primary-dark">Pembayaran QRIS</span>
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center gap-2 text-primary font-bold text-sm">
+                <QrCode size={18} /> Pembayaran QRIS Sandbox
               </div>
-              <div className="bg-white p-4 rounded-2xl inline-block mx-auto shadow-card">
-                <div className="w-52 h-52 bg-cream rounded-lg flex items-center justify-center text-primary-dark/70 font-bold text-center p-4 text-xs break-all">
+              <div className="bg-cream p-3 rounded-2xl inline-block border border-slate-200">
+                <div className="w-48 h-48 bg-white rounded-xl flex items-center justify-center text-forest-dark font-mono text-xs break-all p-3 border border-slate-200">
                   {paymentData.paymentData.qris_url}
                 </div>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-2xl font-extrabold text-primary-dark">{formatIDR(paymentData.paymentData.amount)}</p>
-              <div className="flex items-center justify-center gap-2 text-xs text-primary-dark/70">
-                <Clock size={12} />
-                <span>Berlaku hingga: {formatDateTime(paymentData.paymentData.expires_at)}</span>
-              </div>
-            </div>
-
-            <div className="p-5 bg-cream rounded-xl text-sm text-left space-y-3">
-              <p className="font-bold flex items-center gap-2 text-primary-dark text-sm">
-                <Info size={14} /> Instruksi Pembayaran
+              <p className="text-2xl font-extrabold text-forest-dark tabular-nums">
+                {formatIDR(paymentData.paymentData.amount)}
               </p>
-              <ul className="space-y-2 text-primary-dark/70 list-decimal list-inside">
-                <li>Pindai kode QRIS menggunakan aplikasi pembayaran (GOPAY, OVO, Dana, dll)</li>
-                <li>Pastikan nominal sesuai dengan yang tertera</li>
-                <li>Sistem akan memverifikasi pembayaran secara otomatis</li>
-              </ul>
+              <p className="text-xs text-slate-500 flex items-center justify-center gap-1.5">
+                <Clock size={12} /> Berlaku hingga {formatDateTime(paymentData.paymentData.expires_at)}
+              </p>
             </div>
 
-            {pollExpired ? (
-              <div className="bg-coral/5 rounded-xl p-4 border border-coral/30">
-                <Badge tone="coral">Sesi pembayaran kedaluwarsa</Badge>
-                <p className="text-sm text-primary-dark/70 mt-3">Sesi pembayaran telah melebihi batas waktu 5 menit.</p>
-                <button
-                  onClick={handlePayAgain}
-                  className="w-full min-h-[44px] mt-3 rounded-xl border-2 border-coral bg-transparent text-sm font-bold text-coral-dark hover:bg-coral/10"
-                >
-                  Buat sesi baru
-                </button>
-              </div>
-            ) : currentStatus === 'FAILED' || currentStatus === 'EXPIRED' ? (
-              <div className="bg-coral/5 rounded-xl p-4 border border-coral/30">
-                <Badge tone="coral">{currentStatus === 'FAILED' ? 'Pembayaran gagal' : 'Sesi kedaluwarsa'}</Badge>
-                <p className="text-sm text-primary-dark/70 mt-3">
-                  {currentStatus === 'FAILED' ? 'Pembayaran gagal diproses.' : 'Sesi pembayaran telah kedaluwarsa.'}
+            <div className="p-4 bg-cream rounded-xl text-xs text-slate-600 space-y-2 border border-slate-200/70">
+              <p className="font-bold flex items-center gap-1.5 text-forest-dark">
+                <Info size={14} className="text-primary" /> Instruksi Pembayaran
+              </p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Pindai kode QRIS dengan aplikasi e-wallet atau m-banking.</li>
+                <li>Pastikan nominal IDR sesuai dengan tagihan.</li>
+                <li>Status akan diperbarui otomatis setelah konfirmasi sistem.</li>
+              </ol>
+            </div>
+
+            {pollExpired || currentStatus === 'FAILED' || currentStatus === 'EXPIRED' ? (
+              <div className="bg-red-50 rounded-xl p-4 border border-red-200 space-y-3 text-center">
+                <Badge tone="danger">
+                  {currentStatus === 'FAILED' ? 'Pembayaran Gagal' : 'Sesi Kedaluwarsa'}
+                </Badge>
+                <p className="text-xs text-slate-700">
+                  Sesi pembayaran berakhir atau tidak berhasil diproses. Silakan buat sesi baru.
                 </p>
-                <button
-                  onClick={handlePayAgain}
-                  className="w-full min-h-[44px] mt-3 rounded-xl border-2 border-coral bg-transparent text-sm font-bold text-coral-dark hover:bg-coral/10"
-                >
-                  Buat sesi baru
-                </button>
+                <Button variant="danger" onClick={handlePayAgain} className="w-full">
+                  Buat Sesi Baru
+                </Button>
               </div>
             ) : (
-              <>
-                <div className="text-center">
-                  <p className="text-xs text-primary-dark/70 flex items-center justify-center gap-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-gold animate-pulse" />
-                    Menunggu konfirmasi pembayaran...
-                  </p>
-                </div>
-
-                <button
-                  onClick={handleCheckNow}
-                  className="w-full min-h-[44px] rounded-xl border-2 border-primary bg-transparent text-sm font-bold text-primary-dark hover:bg-primary-bg"
-                >
-                  Periksa sekarang
-                </button>
-              </>
+              <div className="space-y-3">
+                <p className="text-xs text-slate-600 flex items-center justify-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-gold animate-pulse" />
+                  Menunggu konfirmasi pembayaran…
+                </p>
+                <Button variant="secondary" onClick={() => void statusQuery.refetch()} className="w-full">
+                  Periksa Status Sekarang
+                </Button>
+              </div>
             )}
           </div>
         )}
 
-        {/* Step 4: Selesai */}
         {step === 'selesai' && (
-          <div className="p-4 text-center space-y-4">
-            <div className="w-20 h-20 bg-success/15 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="text-success" size={48} />
+          <div className="p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-mint text-primary rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 size={36} />
             </div>
-            <h3 className="font-extrabold text-primary-dark text-lg">Pembayaran Berhasil</h3>
-            <p className="text-sm text-primary-dark/70">
-              Pembayaran terkonfirmasi. Tercatat dalam sistem.
+            <h3 className="font-bold text-forest-dark text-lg">Pembayaran Terkonfirmasi</h3>
+            <p className="text-sm text-slate-600">
+              Jazakumullahu khairan. Transaksi zakat Anda telah tercatat dalam sistem.
             </p>
-            <div className="flex flex-col gap-2">
-              <Button className="w-full" onClick={handlePayAgain}>
-                Donasi lagi
+            <div className="flex flex-col gap-2 pt-2">
+              <Button variant="primary" onClick={handlePayAgain} className="w-full">
+                Salurkan Zakat Lagi
               </Button>
-              <button
-                onClick={handleCloseDrawer}
-                className="w-full min-h-[44px] rounded-xl border-2 border-transparent bg-transparent text-sm font-bold text-primary-dark/70 hover:bg-primary-bg"
-              >
+              <Button variant="ghost" onClick={onClose} className="w-full">
                 Tutup
-              </button>
+              </Button>
             </div>
           </div>
         )}

@@ -9,3 +9,5 @@ export * from './EmptyState';
 export * from './ErrorState';
 export * from './JourneyTracker';
 export * from './ActionPanel';
+export * from './StatCard';
+export * from './SectionHeader';

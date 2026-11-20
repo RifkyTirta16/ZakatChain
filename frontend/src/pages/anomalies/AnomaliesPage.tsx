@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import apiClient from '../../utils/api';
 import { formatDateTime } from '../../utils/format';
-import { Badge, Button, Card, EmptyState, ErrorState, Skeleton } from '../../components/ui';
-import { ON_CHAIN_NOTE } from '../../components/ui/badgeStatus';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  ON_CHAIN_NOTE,
+  SectionHeader,
+  Skeleton,
+  StatCard,
+} from '../../components/ui';
 
 interface Anomaly {
   id: number;
@@ -19,27 +28,29 @@ interface Anomaly {
 }
 
 const statusTone = (status: string) => {
-  if (status === 'OPEN') return 'coral';
-  if (status === 'RESOLVED') return 'success';
-  return 'neutral';
+  if (status === 'OPEN') return 'danger' as const;
+  if (status === 'RESOLVED') return 'success' as const;
+  return 'neutral' as const;
 };
 
 const priorityTone = (priority: string) => {
-  if (priority === 'CRITICAL') return 'coral';
-  if (priority === 'HIGH') return 'gold';
-  return 'primary';
+  if (priority === 'CRITICAL') return 'danger' as const;
+  if (priority === 'HIGH') return 'gold' as const;
+  return 'primary' as const;
 };
 
 export const AnomaliesPage = () => {
   const [resolveId, setResolveId] = useState<number | null>(null);
   const [resolveStatus, setResolveStatus] = useState<'OPEN' | 'RESOLVED' | 'CLOSED'>('RESOLVED');
   const [followUp, setFollowUp] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   const { data, isLoading, error, refetch } = useQuery<Anomaly[]>({
     queryKey: ['anomalies'],
     queryFn: async () => {
       const { data } = await apiClient.get<Anomaly[]>('/anomalies');
-      return data;
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -47,104 +58,138 @@ export const AnomaliesPage = () => {
   const openCount = anomalies.filter((a) => a.status === 'OPEN').length;
 
   const scan = async () => {
-    await apiClient.post('/anomalies/scan');
-    refetch();
+    setActionError('');
+    setScanning(true);
+    try {
+      await apiClient.post('/anomalies/scan');
+      void refetch();
+    } catch {
+      setActionError('Gagal memindai anomali. Periksa koneksi backend.');
+    } finally {
+      setScanning(false);
+    }
   };
 
   const handleResolve = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resolveId) return;
-    await apiClient.patch(`/anomalies/${resolveId}/resolve`, {
-      status: resolveStatus,
-      follow_up: followUp.trim() || undefined,
-    });
-    setResolveId(null);
-    setFollowUp('');
-    refetch();
+    setActionError('');
+    try {
+      await apiClient.patch(`/anomalies/${resolveId}/resolve`, {
+        status: resolveStatus,
+        follow_up: followUp.trim() || undefined,
+      });
+      setResolveId(null);
+      setFollowUp('');
+      void refetch();
+    } catch {
+      setActionError('Gagal menyimpan tindak lanjut anomali.');
+    }
   };
 
   if (isLoading) {
     return (
-      <Card className="rounded-2xl p-6">
-        <Skeleton lines={6} className="w-full rounded-xl" />
+      <Card>
+        <Skeleton lines={7} />
       </Card>
     );
   }
 
   if (error) {
     return (
-      <Card className="rounded-2xl p-6">
-        <ErrorState message="Gagal memuat daftar anomali." retry={() => { refetch(); }} />
-      </Card>
+      <ErrorState
+        message="Gagal memuat daftar anomali."
+        retry={() => void refetch()}
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-primary-dark mb-1">Anomali Distribusi</h1>
-        <p className="text-primary-dark/70">Temuan yang perlu tindak lanjut dari sistem deteksi backend.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <SectionHeader
+          title="Anomali Distribusi"
+          subtitle="Temuan dari sistem deteksi otomatis backend (kelengkapan bukti, duplikasi, dan kecocokan on-chain)."
+        />
+        <Button onClick={() => void scan()} loading={scanning} size="sm">
+          <RefreshCw size={14} /> Pindai Ulang
+        </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <Card variant={openCount > 0 ? 'anomaly' : 'default'} className="flex-1 min-w-[200px]">
-          <p className="text-sm text-primary-dark/70 mb-1">Anomali terbuka</p>
-          <p className="text-xl font-extrabold text-primary-dark">{openCount}</p>
-        </Card>
-        <Button onClick={() => scan()} size="sm">
-          <RefreshCw size={14} className="mr-2" /> Pindai Ulang
-        </Button>
+      {actionError && (
+        <div role="alert" className="p-3.5 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs flex items-center gap-2">
+          <AlertCircle size={15} className="text-danger shrink-0" />
+          <span>{actionError}</span>
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <StatCard
+          label="Anomali Terbuka"
+          value={`${openCount} temuan`}
+          icon={<AlertTriangle size={18} />}
+          tone={openCount > 0 ? 'danger' : 'emerald'}
+        />
+        <StatCard
+          label="Total Riwayat Temuan"
+          value={`${anomalies.length} catatan`}
+          icon={<RefreshCw size={18} />}
+          tone="neutral"
+        />
       </div>
 
       {anomalies.length === 0 ? (
         <Card>
           <EmptyState
-            icon={<AlertTriangle size={40} className="text-primary" />}
+            icon={<AlertTriangle size={24} />}
             title="Belum ada anomali tercatat"
-            description="Jalankan pemindaian anomali untuk mendeteksi ketidakcocokan data."
+            description="Jalankan pemindaian untuk mendeteksi ketidakcocokan bukti atau status on-chain."
           />
         </Card>
       ) : (
-        <Card>
-          <div className="overflow-x-auto rounded-xl border border-primary-bg">
-            <table className="w-full text-sm">
+        <Card className="p-0 sm:p-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
               <thead>
-                <tr className="bg-primary-bg text-primary-dark text-xs">
-                  <th className="px-3 py-3 text-left font-bold">ID</th>
-                  <th className="px-3 py-3 text-left font-bold">Transaksi</th>
-                  <th className="px-3 py-3 text-left font-bold">Penerima</th>
-                  <th className="px-3 py-3 text-left font-bold">Jenis</th>
-                  <th className="px-3 py-3 text-left font-bold">Prioritas</th>
-                  <th className="px-3 py-3 text-left font-bold">Alasan</th>
-                  <th className="px-3 py-3 text-left font-bold">Status</th>
-                  <th className="px-3 py-3 text-left font-bold">Terdeteksi</th>
-                  <th className="px-3 py-3 text-left font-bold">Tindakan</th>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
+                  <th className="px-4 py-3.5 font-semibold">ID</th>
+                  <th className="px-4 py-3.5 font-semibold">Transaksi</th>
+                  <th className="px-4 py-3.5 font-semibold">Penerima</th>
+                  <th className="px-4 py-3.5 font-semibold">Jenis & Alasan</th>
+                  <th className="px-4 py-3.5 font-semibold">Prioritas</th>
+                  <th className="px-4 py-3.5 font-semibold">Status</th>
+                  <th className="px-4 py-3.5 font-semibold">Terdeteksi</th>
+                  <th className="px-4 py-3.5 font-semibold">Tindakan</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {anomalies.map((a) => (
-                  <tr key={a.id} className="border-t border-primary-bg hover:bg-primary-bg/40 transition-colors">
-                    <td className="px-3 py-3 text-primary-dark/70 font-mono">#{a.id}</td>
-                    <td className="px-3 py-3 text-primary-dark font-mono">
+                  <tr key={a.id} className="hover:bg-cream/60">
+                    <td className="px-4 py-3.5 text-slate-500 font-mono">#{a.id}</td>
+                    <td className="px-4 py-3.5 text-forest-dark font-mono font-semibold">
                       {a.transaction_id === null ? '-' : `#${a.transaction_id}`}
                     </td>
-                    <td className="px-3 py-3 text-primary-dark">{a.recipient_name || 'Tanpa penerima'}</td>
-                    <td className="px-3 py-3 text-primary-dark">{a.type}</td>
-                    <td className="px-3 py-3">
-                      <Badge tone={priorityTone(a.priority)} className="text-xs">{a.priority}</Badge>
+                    <td className="px-4 py-3.5 text-forest-dark">{a.recipient_name || 'Tanpa penerima'}</td>
+                    <td className="px-4 py-3.5">
+                      <span className="font-semibold text-forest-dark block text-xs">{a.type}</span>
+                      <span className="text-xs text-slate-500">{a.reason || '-'}</span>
                     </td>
-                    <td className="px-3 py-3 text-primary-dark">{a.reason || '-'}</td>
-                    <td className="px-3 py-3">
-                      <Badge tone={statusTone(a.status)} className="text-xs">{a.status}</Badge>
+                    <td className="px-4 py-3.5">
+                      <Badge tone={priorityTone(a.priority)}>{a.priority}</Badge>
                     </td>
-                    <td className="px-3 py-3 text-primary-dark/70 whitespace-nowrap">{formatDateTime(a.detected_at)}</td>
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3.5">
+                      <Badge tone={statusTone(a.status)}>{a.status}</Badge>
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap text-xs">
+                      {formatDateTime(a.detected_at)}
+                    </td>
+                    <td className="px-4 py-3.5">
                       {a.status === 'OPEN' && resolveId === a.id ? (
-                        <form onSubmit={handleResolve} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <form onSubmit={handleResolve} className="flex flex-col gap-2">
                           <select
                             value={resolveStatus}
                             onChange={(e) => setResolveStatus(e.target.value as 'OPEN' | 'RESOLVED' | 'CLOSED')}
-                            className="bg-cream border border-primary-bg px-2 py-1 rounded-md text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary"
+                            className="bg-white border border-slate-300 px-2.5 py-1.5 rounded-[10px] text-xs text-forest-dark"
                           >
                             <option value="RESOLVED">Selesai</option>
                             <option value="CLOSED">Tutup</option>
@@ -153,28 +198,26 @@ export const AnomaliesPage = () => {
                           <input
                             value={followUp}
                             onChange={(e) => setFollowUp(e.target.value)}
-                            placeholder="Tindak lanjut (opsional)"
-                            className="bg-cream border border-primary-bg px-2 py-1 rounded-md text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary sm:w-48"
+                            placeholder="Catatan tindak lanjut"
+                            className="bg-white border border-slate-300 px-2.5 py-1.5 rounded-[10px] text-xs text-forest-dark sm:w-44"
                           />
-                          <Button type="submit" size="sm" disabled={!followUp.trim() && resolveStatus === 'RESOLVED'}>
-                            Simpan
-                          </Button>
-                          <button
-                            type="button"
-                            onClick={() => setResolveId(null)}
-                            className="text-xs text-primary-dark/60 underline underline-offset-4"
-                          >
-                            Batal
-                          </button>
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm" disabled={!followUp.trim() && resolveStatus === 'RESOLVED'}>
+                              Simpan
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setResolveId(null)}>
+                              Batal
+                            </Button>
+                          </div>
                         </form>
                       ) : (
                         <Button
                           onClick={() => setResolveId(a.id)}
                           size="sm"
                           variant="secondary"
-                          disabled={resolveId !== null}
+                          disabled={resolveId !== null || a.status !== 'OPEN'}
                         >
-                          Selesaikan
+                          {a.status === 'OPEN' ? 'Tindak Lanjut' : 'Selesai'}
                         </Button>
                       )}
                     </td>
@@ -183,7 +226,9 @@ export const AnomaliesPage = () => {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-primary-dark/70 mt-3">{ON_CHAIN_NOTE}</p>
+          <div className="px-5 py-3 bg-cream border-t border-slate-100 text-xs text-slate-500">
+            {ON_CHAIN_NOTE}
+          </div>
         </Card>
       )}
     </div>

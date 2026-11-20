@@ -5,7 +5,7 @@ import { Button, Card, Select, Skeleton } from '../../components/ui';
 import PaymentModal from '../PaymentModal';
 import { useCampaigns } from './hooks/useDashboardData';
 
-const QUICK_AMOUNTS = [50000, 100000, 250000];
+const QUICK_AMOUNTS = [50_000, 100_000, 250_000];
 
 export const QuickDonation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,7 +22,7 @@ export const QuickDonation = () => {
   const handleOpenPayment = () => {
     setError('');
     if (!isValid) {
-      setError('Masukkan nominal yang valid.');
+      setError('Masukkan nominal zakat yang valid.');
       return;
     }
     setIsOpen(true);
@@ -30,8 +30,8 @@ export const QuickDonation = () => {
 
   if (campaignsLoading) {
     return (
-      <Card className="rounded-2xl p-6">
-        <Skeleton lines={3} className="w-full rounded-xl" />
+      <Card className="h-full">
+        <Skeleton lines={7} />
       </Card>
     );
   }
@@ -42,98 +42,77 @@ export const QuickDonation = () => {
   }));
 
   return (
-    <Card className="rounded-2xl p-6 border-2 border-gold/30 bg-gold-light/20">
-      <div className="flex items-center justify-between mb-4">
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wider text-primary-dark/60">Quick Donation</p>
-          <h3 className="font-extrabold text-primary-dark text-lg">Donasi Cepat</h3>
-        </div>
-        <Button
-          variant="primary"
-          onClick={handleOpenPayment}
-          disabled={!isValid}
-          className="shadow-gold-glow"
-        >
-          <HandHeart size={16} className="mr-2" /> Donasi sekarang
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        <div className="space-y-2">
-          <label className="block text-xs uppercase tracking-wider text-primary-dark/60">
-            Kampanye
-          </label>
-          <Select
-            value={selectedCampaignId}
-            onChange={(e) => setSelectedCampaignId(e.target.value)}
-            placeholder="Pilih kampanye"
-            options={campaignOptions}
-          />
+    <Card variant="highlight" className="h-full flex flex-col justify-between gap-4">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gold/20 text-amber-900 flex items-center justify-center">
+            <HandHeart size={18} />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-forest-dark">Salurkan Zakat Cepat</h2>
+            <p className="text-xs text-slate-500">Pembayaran instan dalam Rupiah (IDR)</p>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-xs uppercase tracking-wider text-primary-dark/60">
-            Nominal
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {QUICK_AMOUNTS.map((v) => (
+        <div className="grid grid-cols-3 gap-2">
+          {QUICK_AMOUNTS.map((val) => {
+            const active = quickAmount === val;
+            return (
               <button
-                key={v}
+                key={val}
+                type="button"
                 onClick={() => {
-                  setQuickAmount(v);
+                  setQuickAmount(val);
                   setAmount('');
                   setError('');
                 }}
-                className={`min-h-[44px] rounded-xl border-2 px-3 py-2 text-sm font-bold text-primary-dark transition-colors ${
-                  quickAmount === v
-                    ? 'bg-primary-bg border-primary'
-                    : 'bg-cream border-transparent hover:border-primary-dark/30'
+                className={`min-h-[40px] rounded-[10px] border text-xs font-semibold transition-colors tabular-nums ${
+                  active
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-cream border-slate-200 text-forest-dark hover:bg-mint'
                 }`}
               >
-                {formatIDR(v)}
+                {formatIDR(val)}
               </button>
-            ))}
-            <button
-              onClick={() => {
-                setQuickAmount(null);
-                setError('');
-              }}
-              className={`min-h-[44px] rounded-xl border-2 px-3 py-2 text-sm font-bold text-primary-dark transition-colors ${
-                quickAmount === null && amount ? 'bg-primary-bg border-primary' : 'bg-cream border-transparent hover:border-primary-dark/30'
-              }`}
-            >
-              Lainnya
-            </button>
-          </div>
-          {quickAmount === null && (
-            <input
-              type="number"
-              placeholder="Masukkan nominal"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setQuickAmount(null);
-                setError('');
-              }}
-              className="w-full min-h-[44px] rounded-xl border border-transparent py-2 px-3 outline-none focus-visible:ring-2 focus-visible:ring-primary bg-cream text-primary-dark"
-            />
-          )}
-          {quickAmount !== null && (
-            <p className="text-sm font-bold text-primary-dark">{formatIDR(quickAmount)}</p>
-          )}
+            );
+          })}
         </div>
 
-        {error && (
-          <p role="alert" className="text-sm text-coral-dark bg-coral/5 rounded-xl p-3 border border-coral/30">
-            {error}
-          </p>
+        <input
+          type="number"
+          min="1000"
+          placeholder="Atau ketik nominal lain (Rp)"
+          value={amount}
+          onChange={(e) => {
+            setAmount(e.target.value);
+            setQuickAmount(null);
+            setError('');
+          }}
+          className="w-full min-h-[44px] rounded-[10px] border border-slate-300 bg-white px-3.5 py-2 text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary"
+        />
+
+        {campaignOptions.length > 0 && (
+          <Select
+            label="Tujuan Penyaluran (Opsional)"
+            placeholder="Zakat Umum (General)"
+            value={selectedCampaignId}
+            onChange={(e) => setSelectedCampaignId(e.target.value)}
+            options={[{ value: '', label: 'Zakat Umum (General)' }, ...campaignOptions]}
+          />
         )}
+
+        {error && <p className="text-xs font-medium text-danger">{error}</p>}
       </div>
+
+      <Button variant="gold" onClick={handleOpenPayment} className="w-full">
+        Lanjutkan Pembayaran
+      </Button>
 
       <PaymentModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         amount={numericAmount}
+        campaignId={selectedCampaignId ? Number(selectedCampaignId) : undefined}
       />
     </Card>
   );

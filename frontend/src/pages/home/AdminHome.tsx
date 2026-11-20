@@ -1,8 +1,32 @@
 import { useQuery } from '@tanstack/react-query';
-import { Activity, RefreshCcw, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  Activity,
+  AlertTriangle,
+  Cpu,
+  FileSearch,
+  HeartHandshake,
+  RefreshCcw,
+  ShieldCheck,
+  UserCheck,
+  Wallet,
+} from 'lucide-react';
 import apiClient from '../../utils/api';
-import { formatIDR, formatDateTime } from '../../utils/format';
-import { Badge, Card, EmptyState, ErrorState, Skeleton, ON_CHAIN_NOTE } from '../../components/ui';
+import { formatDateTime, formatIDR, shortHash } from '../../utils/format';
+import {
+  ActionPanel,
+  Badge,
+  Card,
+  EmptyState,
+  ErrorState,
+  ON_CHAIN_NOTE,
+  SectionHeader,
+  Skeleton,
+  StatCard,
+} from '../../components/ui';
+import { NetworkBadge } from '../../components/ethereum';
+import { Analytics } from '../../components/Analytics';
+import type { Transaction } from '../Dashboard';
 
 interface DashboardStats {
   kpis: {
@@ -14,7 +38,15 @@ interface DashboardStats {
     openAnomalies: number;
     balance: number;
   };
-  networkStatus: { rpc: string; contract: string; status: string };
+  networkStatus: {
+    rpc: string;
+    contract: string;
+    status: string;
+    chainId?: number | null;
+    networkName?: string;
+    contractAddress?: string;
+    blockNumber?: number | null;
+  };
 }
 
 interface ReconciliationLog {
@@ -26,128 +58,222 @@ interface ReconciliationLog {
   status: string | null;
 }
 
-const fetchStats = async (): Promise<DashboardStats> => {
-  const { data } = await apiClient.get('/dashboard/stats');
-  return data;
-};
-
-const fetchReconciliation = async (): Promise<ReconciliationLog[]> => {
-  const { data } = await apiClient.get('/reconciliation/history');
-  return data;
-};
-
-const NETWORK_TONE: Record<string, 'success' | 'gold' | 'coral'> = {
+const NETWORK_TONE: Record<string, 'success' | 'warning' | 'danger'> = {
   Healthy: 'success',
-  Degraded: 'gold',
-  Unknown: 'coral',
+  Degraded: 'warning',
+  Unknown: 'danger',
 };
 
 const AdminHome = () => {
-  const statsQuery = useQuery({
+  const statsQuery = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
-    queryFn: fetchStats,
-    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data } = await apiClient.get<DashboardStats>('/dashboard/stats');
+      return data;
+    },
+    refetchInterval: 30_000,
   });
-  const reconQuery = useQuery({
+
+  const reconQuery = useQuery<ReconciliationLog[]>({
     queryKey: ['reconciliation-history'],
-    queryFn: fetchReconciliation,
-    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data } = await apiClient.get<ReconciliationLog[]>('/reconciliation/history');
+      return Array.isArray(data) ? data : [];
+    },
+    refetchInterval: 60_000,
+  });
+
+  const txQuery = useQuery<Transaction[]>({
+    queryKey: ['admin-transactions'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<Transaction[]>('/transactions');
+      return Array.isArray(data) ? data : [];
+    },
+    refetchInterval: 30_000,
   });
 
   const stats = statsQuery.data;
   const reconLogs = reconQuery.data ?? [];
   const lastRecon = reconLogs[0];
+  const transactions = txQuery.data ?? [];
+  const pendingProofs = transactions.filter(
+    (t) =>
+      t.proof_status === null ||
+      ['DRAFT', 'PENDING', 'PENDING_BLOCKCHAIN'].includes(t.proof_status ?? ''),
+  ).length;
+
   const loading = statsQuery.isPending || reconQuery.isPending;
   const error = statsQuery.isError || reconQuery.isError;
-
-  const retryAll = () => {
-    statsQuery.refetch();
-    reconQuery.refetch();
-  };
 
   if (error) {
     return (
       <ErrorState
-        message="Gagal memuat ringkasan sistem. Periksa koneksi ke server."
-        retry={retryAll}
+        message="Gagal memuat ringkasan sistem Administrator. Periksa koneksi ke server."
+        retry={() => {
+          void statsQuery.refetch();
+          void reconQuery.refetch();
+        }}
       />
     );
   }
 
+  const tasks = stats
+    ? [
+        { label: 'Bukti Menunggu Review', jumlah: pendingProofs, href: '/proofs', tone: 'sky' as const },
+        { label: 'Anomali Terbuka', jumlah: stats.kpis.openAnomalies, href: '/anomalies', tone: 'coral' as const },
+        { label: 'Laporan Tertunda On-Chain', jumlah: stats.kpis.pendingReports, href: '/explorer', tone: 'gold' as const },
+      ]
+    : [];
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-primary-dark mb-1">Ringkasan sistem</h1>
-        <p className="text-primary-dark/70">Kesehatan platform secara keseluruhan.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <SectionHeader
+          title="Konsol Administrator ZakatChain"
+          subtitle="Pemantauan kesehatan platform, status jaringan Ethereum, rekonsiliasi dana, dan tata kelola sistem."
+        />
+        <NetworkBadge />
       </div>
 
       {loading ? (
-        <Skeleton lines={8} className="w-full rounded-xl" />
+        <Skeleton lines={8} />
       ) : !stats ? (
-        <Card>
-          <EmptyState
-            icon={<Activity size={36} className="text-primary" />}
-            title="Ringkasan belum tersedia"
-            description="Data sistem akan muncul setelah server merespons."
-            action={
-              <button
-                onClick={retryAll}
-                className="inline-flex items-center min-h-[44px] rounded-full border-2 border-primary px-6 font-bold text-sm text-primary-dark"
-              >
-                Coba lagi
-              </button>
-            }
-          />
-        </Card>
+        <EmptyState
+          icon={<Activity size={24} />}
+          title="Ringkasan sistem belum tersedia"
+          description="Data akan muncul setelah backend merespons."
+        />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <p className="text-sm text-primary-dark/70 mb-1">Total donasi terkonfirmasi</p>
-              <p className="text-xl font-extrabold text-primary-dark">{formatIDR(stats.kpis.totalDonations)}</p>
+            <StatCard
+              label="Donasi Terkonfirmasi"
+              value={formatIDR(stats.kpis.totalDonations)}
+              icon={<HeartHandshake size={18} />}
+              tone="emerald"
+            />
+            <StatCard
+              label="Dana Tersalurkan"
+              value={formatIDR(stats.kpis.totalDistributed)}
+              icon={<Wallet size={18} />}
+              tone="forest"
+            />
+            <StatCard
+              label="Anomali Terbuka"
+              value={`${stats.kpis.openAnomalies} temuan`}
+              icon={<AlertTriangle size={18} />}
+              tone={stats.kpis.openAnomalies > 0 ? 'danger' : 'neutral'}
+            />
+            <StatCard
+              label="Jaringan Ethereum"
+              value={stats.networkStatus.networkName || stats.networkStatus.status}
+              sublabel={`RPC: ${stats.networkStatus.rpc} · Kontrak: ${stats.networkStatus.contract}`}
+              icon={<Cpu size={18} />}
+              tone={stats.networkStatus.status === 'Healthy' ? 'emerald' : 'gold'}
+            />
+          </div>
+
+          <ActionPanel tasks={tasks} />
+
+          <div className="grid gap-6 lg:grid-cols-12">
+            <Card className="lg:col-span-6 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-base font-bold text-forest-dark flex items-center gap-2">
+                  <ShieldCheck size={17} className="text-primary" /> Status Smart Contract & RPC
+                </h2>
+                <Badge tone={NETWORK_TONE[stats.networkStatus.status] ?? 'warning'}>
+                  {stats.networkStatus.status}
+                </Badge>
+              </div>
+              <div className="space-y-2 text-xs font-mono bg-cream rounded-xl p-4 border border-slate-200">
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">Jaringan</span>
+                  <span className="font-bold text-forest-dark">
+                    {stats.networkStatus.networkName || 'Jaringan Tidak Tersedia'}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">Chain ID</span>
+                  <span className="font-bold text-forest-dark">{stats.networkStatus.chainId ?? '-'}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">Kontrak Target</span>
+                  <span className="font-bold text-forest-dark">
+                    {shortHash(stats.networkStatus.contractAddress, 10, 8)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">Nomor Blok</span>
+                  <span className="font-bold text-forest-dark">{stats.networkStatus.blockNumber ?? '-'}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  to="/network"
+                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-300 px-3 text-xs font-semibold text-forest-dark hover:bg-mint"
+                >
+                  <Cpu size={14} /> Detail Jaringan & Kontrak
+                </Link>
+                <Link
+                  to="/roles"
+                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-300 px-3 text-xs font-semibold text-forest-dark hover:bg-mint"
+                >
+                  <UserCheck size={14} /> Peran & Kebijakan Akses
+                </Link>
+              </div>
             </Card>
-            <Card>
-              <p className="text-sm text-primary-dark/70 mb-1">Total terdistribusi</p>
-              <p className="text-xl font-extrabold text-primary-dark">{formatIDR(stats.kpis.totalDistributed)}</p>
-            </Card>
-            <Card variant={stats.kpis.openAnomalies > 0 ? 'anomaly' : 'default'}>
-              <p className="text-sm text-primary-dark/70 mb-1">Anomali terbuka</p>
-              <p className="text-xl font-extrabold text-primary-dark">{stats.kpis.openAnomalies} anomali</p>
-            </Card>
-            <Card>
-              <p className="text-sm text-primary-dark/70 mb-1 flex items-center gap-1">
-                <Activity size={14} /> Kesehatan chain
-              </p>
-              <p className="text-lg font-extrabold text-primary-dark mb-2">{stats.networkStatus.status}</p>
-              <Badge tone={NETWORK_TONE[stats.networkStatus.status] ?? 'coral'}>
-                RPC {stats.networkStatus.rpc}
-              </Badge>
+
+            <Card className="lg:col-span-6 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-base font-bold text-forest-dark flex items-center gap-2">
+                  <RefreshCcw size={17} className="text-primary" /> Rekonsiliasi Terakhir
+                </h2>
+                <Link to="/reconciliation" className="text-xs font-semibold text-primary hover:underline">
+                  Kelola →
+                </Link>
+              </div>
+
+              {!lastRecon ? (
+                <EmptyState
+                  icon={<FileSearch size={22} />}
+                  title="Belum ada riwayat rekonsiliasi"
+                  description="Jalankan rekonsiliasi saldo dari halaman Rekonsiliasi Dana."
+                />
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2.5 text-xs">
+                    <div className="p-3 rounded-xl bg-mint border border-primary/20">
+                      <span className="text-slate-500 block">Donasi</span>
+                      <span className="font-bold text-forest-dark tabular-nums">
+                        {formatIDR(lastRecon.total_donations ?? 0)}
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-xl bg-cream border border-slate-200">
+                      <span className="text-slate-500 block">Distribusi</span>
+                      <span className="font-bold text-forest-dark tabular-nums">
+                        {formatIDR(lastRecon.total_distributions ?? 0)}
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-xl bg-cream border border-slate-200">
+                      <span className="text-slate-500 block">Saldo Net</span>
+                      <span className="font-bold text-forest-dark tabular-nums">
+                        {formatIDR(lastRecon.balance ?? 0)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span>{formatDateTime(lastRecon.reconciliation_date)}</span>
+                    <Badge tone={lastRecon.status === 'BALANCED' ? 'success' : 'gold'}>
+                      {lastRecon.status || 'Tidak diketahui'}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+              <p className="text-[11px] text-slate-500 pt-2 border-t border-slate-100">{ON_CHAIN_NOTE}</p>
             </Card>
           </div>
 
-          <Card>
-            <h2 className="font-bold text-primary-dark mb-3 flex items-center gap-2">
-              <RefreshCcw size={16} className="text-primary" /> Rekonsiliasi terakhir
-            </h2>
-            {!lastRecon ? (
-              <EmptyState
-                icon={<Users size={36} className="text-primary" />}
-                title="Belum ada riwayat rekonsiliasi"
-                description="Jalankan rekonsiliasi pertama dari menu Rekonsiliasi."
-              />
-            ) : (
-              <div className="space-y-1 text-sm text-primary-dark">
-                <p>
-                  {formatDateTime(lastRecon.reconciliation_date)} ·{' '}
-                  <Badge tone={lastRecon.status === 'BALANCED' ? 'success' : 'gold'}>
-                    {lastRecon.status || 'Tidak diketahui'}
-                  </Badge>
-                </p>
-                <p>Selisih: {formatIDR(lastRecon.balance === null ? null : Number(lastRecon.balance))}</p>
-              </div>
-            )}
-            <p className="text-xs text-primary-dark/70 mt-3">{ON_CHAIN_NOTE}</p>
-          </Card>
+          <Analytics transactions={transactions} />
         </>
       )}
     </div>

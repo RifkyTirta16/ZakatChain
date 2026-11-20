@@ -1,10 +1,20 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileSearch, RefreshCw } from 'lucide-react';
+import { AlertCircle, FileSearch, RefreshCw } from 'lucide-react';
 import apiClient from '../../utils/api';
-import { formatIDR, formatDateTime } from '../../utils/format';
-import { Badge, Button, Card, EmptyState, ErrorState, Skeleton } from '../../components/ui';
-import { proofBadge, ON_CHAIN_NOTE } from '../../components/ui/badgeStatus';
+import { formatDateTime, formatIDR } from '../../utils/format';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  ON_CHAIN_NOTE,
+  SectionHeader,
+  Skeleton,
+  StatCard,
+  proofBadge,
+} from '../../components/ui';
 import type { Transaction } from '../Dashboard';
 
 const needsReview = (t: Transaction) =>
@@ -15,12 +25,13 @@ export const ProofsPage = () => {
   const [verifyId, setVerifyId] = useState<number | null>(null);
   const [verifyStatus, setVerifyStatus] = useState<'APPROVED' | 'REJECTED'>('APPROVED');
   const [rejectReason, setRejectReason] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const { data, isLoading, error, refetch } = useQuery<Transaction[]>({
     queryKey: ['proof-verification'],
     queryFn: async () => {
       const { data } = await apiClient.get<Transaction[]>('/transactions');
-      return data;
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -30,95 +41,113 @@ export const ProofsPage = () => {
   const verify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!verifyId) return;
-    const body: { status: 'APPROVED' | 'REJECTED'; reason?: string } = { status: verifyStatus };
-    if (verifyStatus === 'REJECTED' && rejectReason.trim()) {
-      body.reason = rejectReason.trim();
+    if (verifyStatus === 'REJECTED' && !rejectReason.trim()) return;
+    setActionError('');
+    try {
+      const body: { status: 'APPROVED' | 'REJECTED'; reason?: string } = { status: verifyStatus };
+      if (verifyStatus === 'REJECTED') body.reason = rejectReason.trim();
+      await apiClient.patch(`/proofs/verify/${verifyId}`, body);
+      setVerifyId(null);
+      setRejectReason('');
+      void refetch();
+    } catch {
+      setActionError('Gagal memperbarui status bukti penyaluran.');
     }
-    if (verifyStatus === 'REJECTED' && !rejectReason.trim()) {
-      return;
-    }
-    await apiClient.patch(`/proofs/verify/${verifyId}`, body);
-    setVerifyId(null);
-    setRejectReason('');
-    refetch();
   };
 
   if (isLoading) {
     return (
-      <Card className="rounded-2xl p-6">
-        <Skeleton lines={6} className="w-full rounded-xl" />
+      <Card>
+        <Skeleton lines={6} />
       </Card>
     );
   }
 
   if (error) {
     return (
-      <Card className="rounded-2xl p-6">
-        <ErrorState message="Gagal memuat antrean verifikasi bukti." retry={() => { refetch(); }} />
-      </Card>
+      <ErrorState
+        message="Gagal memuat antrean verifikasi bukti."
+        retry={() => void refetch()}
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-primary-dark mb-1">Verifikasi Bukti</h1>
-        <p className="text-primary-dark/70">Setujui atau tolak bukti penyaluran yang menunggu review.</p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-4">
-        <Card variant={pendingCount > 0 ? 'anomaly' : 'default'} className="flex-1 min-w-[200px]">
-          <p className="text-sm text-primary-dark/70 mb-1">Menunggu review</p>
-          <p className="text-xl font-extrabold text-primary-dark">{pendingCount} bukti</p>
-        </Card>
-        <Button onClick={refetch} size="sm">
-          <RefreshCw size={14} className="mr-2" /> Segarkan
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <SectionHeader
+          title="Verifikasi Bukti Penyaluran"
+          subtitle="Setujui atau tolak berkas bukti penyaluran yang menunggu tinjauan Auditor."
+        />
+        <Button variant="secondary" size="sm" onClick={() => void refetch()}>
+          <RefreshCw size={14} /> Segarkan
         </Button>
       </div>
+
+      {actionError && (
+        <div role="alert" className="p-3.5 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs flex items-center gap-2">
+          <AlertCircle size={15} className="text-danger shrink-0" />
+          <span>{actionError}</span>
+        </div>
+      )}
+
+      <StatCard
+        label="Antrean Menunggu Review"
+        value={`${pendingCount} bukti`}
+        icon={<FileSearch size={18} />}
+        tone={pendingCount > 0 ? 'gold' : 'emerald'}
+        className="max-w-xs"
+      />
 
       {transactions.length === 0 ? (
         <Card>
           <EmptyState
-            icon={<FileSearch size={40} className="text-primary" />}
+            icon={<FileSearch size={24} />}
             title="Semua bukti telah ditinjau"
-            description="Tidak ada bukti penyaluran yang menunggu persetujuan."
+            description="Tidak ada bukti penyaluran yang menunggu persetujuan saat ini."
           />
         </Card>
       ) : (
-        <Card>
-          <div className="overflow-x-auto rounded-xl border border-primary-bg">
-            <table className="w-full text-sm">
+        <Card className="p-0 sm:p-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
               <thead>
-                <tr className="bg-primary-bg text-primary-dark text-xs">
-                  <th className="px-3 py-3 text-left font-bold">ID</th>
-                  <th className="px-3 py-3 text-left font-bold">Penerima</th>
-                  <th className="px-3 py-3 text-left font-bold">Nilai</th>
-                  <th className="px-3 py-3 text-left font-bold">Wilayah</th>
-                  <th className="px-3 py-3 text-left font-bold">Waktu</th>
-                  <th className="px-3 py-3 text-left font-bold">Status Bukti</th>
-                  <th className="px-3 py-3 text-left font-bold">Tindakan</th>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
+                  <th className="px-4 py-3.5 font-semibold">ID</th>
+                  <th className="px-4 py-3.5 font-semibold">Penerima</th>
+                  <th className="px-4 py-3.5 font-semibold text-right">Nilai</th>
+                  <th className="px-4 py-3.5 font-semibold">Wilayah</th>
+                  <th className="px-4 py-3.5 font-semibold">Waktu</th>
+                  <th className="px-4 py-3.5 font-semibold">Status Bukti</th>
+                  <th className="px-4 py-3.5 font-semibold">Tindakan</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {transactions.map((t) => {
-                  const badge = proofBadge(t.proof_status ?? '');
+                  const badge = proofBadge(t.proof_status ?? 'PENDING');
                   return (
-                    <tr key={t.id} className="border-t border-primary-bg hover:bg-primary-bg/40 transition-colors">
-                      <td className="px-3 py-3 text-primary-dark/70 font-mono">#{t.id}</td>
-                      <td className="px-3 py-3 text-primary-dark">{t.recipient_name || 'Tanpa penerima'}</td>
-                      <td className="px-3 py-3 text-right text-primary-dark">{formatIDR(t.amount)}</td>
-                      <td className="px-3 py-3 text-primary-dark">{t.region || '-'}</td>
-                      <td className="px-3 py-3 text-primary-dark/70 whitespace-nowrap">{formatDateTime(t.timestamp)}</td>
-                      <td className="px-3 py-3">
-                        <Badge tone={badge.tone} className="text-xs">{badge.label}</Badge>
+                    <tr key={t.id} className="hover:bg-cream/60">
+                      <td className="px-4 py-3.5 text-slate-500 font-mono">#{t.id}</td>
+                      <td className="px-4 py-3.5 font-semibold text-forest-dark">
+                        {t.recipient_name || 'Tanpa penerima'}
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-3.5 text-right font-bold text-forest-dark tabular-nums">
+                        {formatIDR(t.amount)}
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-600">{t.region || '-'}</td>
+                      <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap text-xs">
+                        {formatDateTime(t.timestamp)}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <Badge tone={badge.tone}>{badge.label}</Badge>
+                      </td>
+                      <td className="px-4 py-3.5">
                         {verifyId === t.id ? (
-                          <form onSubmit={verify} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                          <form onSubmit={verify} className="flex flex-col gap-2">
                             <select
                               value={verifyStatus}
                               onChange={(e) => setVerifyStatus(e.target.value as 'APPROVED' | 'REJECTED')}
-                              className="bg-cream border border-primary-bg px-2 py-1 rounded-md text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary"
+                              className="bg-white border border-slate-300 px-2.5 py-1.5 rounded-[10px] text-xs text-forest-dark"
                             >
                               <option value="APPROVED">Setujui</option>
                               <option value="REJECTED">Tolak</option>
@@ -128,22 +157,29 @@ export const ProofsPage = () => {
                                 value={rejectReason}
                                 onChange={(e) => setRejectReason(e.target.value)}
                                 placeholder="Alasan penolakan wajib diisi"
-                                className="bg-cream border border-primary-bg px-2 py-1 rounded-md text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary sm:w-48"
+                                className="bg-white border border-slate-300 px-2.5 py-1.5 rounded-[10px] text-xs text-forest-dark sm:w-48"
                               />
                             )}
-                            <Button type="submit" size="sm" disabled={verifyStatus === 'REJECTED' && !rejectReason.trim()}>
-                              Simpan
-                            </Button>
-                            <button
-                              type="button"
-                              onClick={() => setVerifyId(null)}
-                              className="text-xs text-primary-dark/60 underline underline-offset-4"
-                            >
-                              Batal
-                            </button>
+                            <div className="flex gap-2">
+                              <Button
+                                type="submit"
+                                size="sm"
+                                disabled={verifyStatus === 'REJECTED' && !rejectReason.trim()}
+                              >
+                                Simpan
+                              </Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setVerifyId(null)}>
+                                Batal
+                              </Button>
+                            </div>
                           </form>
                         ) : (
-                          <Button onClick={() => setVerifyId(t.id)} size="sm" variant="secondary" disabled={verifyId !== null}>
+                          <Button
+                            onClick={() => setVerifyId(t.id)}
+                            size="sm"
+                            variant="secondary"
+                            disabled={verifyId !== null}
+                          >
                             Tinjau
                           </Button>
                         )}
@@ -154,7 +190,9 @@ export const ProofsPage = () => {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-primary-dark/70 mt-3">{ON_CHAIN_NOTE}</p>
+          <div className="px-5 py-3 bg-cream border-t border-slate-100 text-xs text-slate-500">
+            {ON_CHAIN_NOTE}
+          </div>
         </Card>
       )}
     </div>
