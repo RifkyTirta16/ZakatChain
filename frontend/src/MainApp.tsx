@@ -10,13 +10,15 @@ import PublicVerify from './pages/PublicVerify';
 import Campaigns from './pages/Campaigns';
 import CampaignDetail from './pages/CampaignDetail';
 import EvidenceGraph from './pages/EvidenceGraph';
+import AnomaliesPage from './pages/anomalies/AnomaliesPage';
+import ProofsPage from './pages/proofs/ProofsPage';
+import ReconciliationPage from './pages/reconciliation/ReconciliationPage';
+import AuditPage from './pages/audit/AuditPage';
+import ExportPage from './pages/export/ExportPage';
 import RoleLayout from './components/layout/RoleLayout';
 import RequireRole from './components/layout/RequireRole';
-import { rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
+import { rolesForPath, type SessionUser } from './components/layout/navConfig';
 import DonorHome from './pages/home/DonorHome';
-import AmilHome from './pages/home/AmilHome';
-import AuditorHome from './pages/home/AuditorHome';
-import AdminHome from './pages/home/AdminHome';
 
 const MainApp = () => {
   const [user, setUser] = useState<SessionUser | null>(() => {
@@ -63,12 +65,7 @@ const MainApp = () => {
     );
   }
 
-  const role = toRole(user.role);
-  const Home =
-    role === 'AMIL' ? AmilHome
-    : role === 'AUDITOR' ? AuditorHome
-    : role === 'ADMIN' ? AdminHome
-    : DonorHome;
+  const Home = DonorHome;
 
   const guarded = (path: string, element: React.ReactNode) => (
     <RequireRole user={user} roles={rolesForPath(path)}>{element}</RequireRole>
@@ -90,18 +87,18 @@ const MainApp = () => {
           <Route path="/dashboard" element={guarded('/', <Dashboard />)} />
           <Route
             path="/anomalies"
-            element={guarded('/anomalies', <PlaceholderPage title="Anomali" />)}
+            element={guarded('/anomalies', <AnomaliesPage />)}
           />
           <Route
             path="/proofs"
-            element={guarded('/proofs', <PlaceholderPage title="Verifikasi Bukti" />)}
+            element={guarded('/proofs', <ProofsPage />)}
           />
           <Route
             path="/reconciliation"
-            element={guarded('/reconciliation', <PlaceholderPage title="Rekonsiliasi" />)}
+            element={guarded('/reconciliation', <ReconciliationPage />)}
           />
-          <Route path="/audit" element={guarded('/audit', <PlaceholderPage title="Log Audit" />)} />
-          <Route path="/export" element={guarded('/export', <PlaceholderPage title="Ekspor" />)} />
+          <Route path="/audit" element={guarded('/audit', <AuditPage />)} />
+          <Route path="/export" element={guarded('/export', <ExportPage />)} />
           <Route path="*" element={<PlaceholderPage title="Halaman" />} />
         </Routes>
       </RoleLayout>
