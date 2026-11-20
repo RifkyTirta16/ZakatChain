@@ -139,12 +139,17 @@ const PublicTransparencyPage = () => {
           ) : (
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryDistribution} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                <BarChart data={categoryDistribution} margin={{ top: 10, right: 16, left: 8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
                   <XAxis dataKey="category" tick={{ fill: '#334155', fontSize: 12 }} />
                   <YAxis
+                    width={72}
                     tick={{ fill: '#64748B', fontSize: 11 }}
-                    tickFormatter={(v) => `Rp${Math.round(Number(v) / 1000)}rb`}
+                    tickFormatter={(v) => {
+                      const n = Number(v);
+                      if (n >= 1_000_000) return `Rp${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}jt`;
+                      return `Rp${Math.round(n / 1000)}rb`;
+                    }}
                   />
                   <Tooltip
                     formatter={(val) => formatIDR(Number(val))}
