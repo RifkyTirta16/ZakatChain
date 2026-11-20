@@ -13,7 +13,7 @@ Latar bg-canvas. Jangan campur kelas wattvision-* dan token baru. Jangan ubah lo
 - [x] 6. pages/PublicVerify.tsx: input hash/ID besar, hasil di kartu dengan Badge + catatan on-chain.
 - [x] 7. pages/OnChainExplorer.tsx: tabel hash terpotong + tombol salin, filter status.
 - [x] 8. pages/EvidenceGraph.tsx: graf di tengah, panel detail saat node diklik. Library graf tidak diubah.
-- [ ] 9. pages/PovertyMapping.tsx: peta penuh, panel statistik wilayah, legenda token. Hanya pembungkus dan panel.
+- [x] 9. pages/PovertyMapping.tsx: peta penuh, panel statistik wilayah, legenda token. Hanya pembungkus dan panel.
 - [ ] 10. components/auth/*: kartu di tengah, satu aksi utama, label input, error jelas.
   Login memakai USERNAME. Logika autentikasi/token TIDAK diubah.
 - [ ] 11. components/Analytics.tsx: warna token, legenda, label sumbu. Props tidak diubah.

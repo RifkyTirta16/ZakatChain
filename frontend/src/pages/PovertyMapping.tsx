@@ -4,9 +4,9 @@ import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import type { GeoJsonObject, Feature } from 'geojson';
 import type { Layer, LeafletEvent, PathOptions, StyleFunction } from 'leaflet';
 import L from 'leaflet';
-import { Globe, Info, TrendingDown, AlertCircle, Search, Map as MapIcon, RefreshCw, Database } from 'lucide-react';
+import { Globe, Search, Map as MapIcon, RefreshCw, Database, X, TrendingUp } from 'lucide-react';
 import apiClient from '../utils/api';
-import { LoadingState, ErrorState, EmptyState, StatusBadge } from '../components/wattvision/UIComponents';
+import { Badge, Button, Card, EmptyState, ErrorState, Skeleton } from '../components/ui';
 import { formatIDR, formatNumber, formatPercent, provinceMatches, matchesProvinceField } from '../utils/format';
 import 'leaflet/dist/leaflet.css';
 import indonesiaGeoJsonRaw from '../assets/geo/indonesia_provinces.json';
@@ -45,11 +45,12 @@ const MapBoundsHandler = ({ data }: { data: GeoJsonObject }) => {
   return null;
 };
 
+// Token Warna Desain ZakatChain untuk Peta
 const povertyColor = (rate: number) =>
-  rate > 20 ? '#FF453A' : rate > 15 ? '#FF9F0A' : rate > 10 ? '#FFD60A' : rate > 5 ? '#32D74B' : '#00E5FF';
+  rate > 20 ? '#EF6C4A' : rate > 15 ? '#FF8A6A' : rate > 10 ? '#FFD23F' : rate > 5 ? '#2BA8A2' : '#3CC4BD';
 
 const priorityColor = (score: number) =>
-  score > 30 ? '#FF453A' : score > 15 ? '#FF9F0A' : score > 8 ? '#FFD60A' : '#32D74B';
+  score > 30 ? '#EF6C4A' : score > 15 ? '#FF8A6A' : score > 8 ? '#FFD23F' : '#2BA8A2';
 
 const PovertyMapping = () => {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -81,7 +82,10 @@ const PovertyMapping = () => {
     queryKey: ['mapping-transactions'],
     queryFn: async (): Promise<TxLite[]> => {
       const { data } = await apiClient.get('/transactions');
-      return (data as { region: string | null; amount: number }[]).map((t) => ({ region: t.region, amount: Number(t.amount) || 0 }));
+      return (data as { region: string | null; amount: number }[]).map((t) => ({
+        region: t.region,
+        amount: Number(t.amount) || 0,
+      }));
     },
   });
 
@@ -91,12 +95,6 @@ const PovertyMapping = () => {
     return stats.length > 0 && reco.length === 0;
   }, [statsQuery.data, recoQuery.data]);
 
-  /**
-   * Statistik wilayah dari backend digabung dengan agregasi transaksi nyata.
-   * Backend mencocokkan `transactions.region` secara eksak dengan nama provinsi,
-   * tetapi data transaksi memakai format "Provinsi, Kota" — karena itu pencocokan
-   * dilakukan di frontend dengan normalisasi prefiks provinsi.
-   */
   const enrichedStats = useMemo(() => {
     const stats = statsQuery.data || [];
     const txs = txQuery.data || [];
@@ -147,16 +145,16 @@ const PovertyMapping = () => {
       const code = feature?.properties?.code as string | undefined;
       const data = enrichedStats.find((s) => s.region_code === code);
       const fillColor = !data
-        ? '#2C2C2E'
+        ? '#CBD5E1'
         : indicatorMode === 'poverty'
           ? povertyColor(data.poverty_rate)
           : priorityColor(parseFloat(data.priority_score));
       return {
         fillColor,
         weight: 2,
-        opacity: 1,
-        color: '#00E5FF',
-        fillOpacity: 0.55,
+        opacity: 0.9,
+        color: '#1E8C86',
+        fillOpacity: 0.65,
       } as PathOptions;
     };
   }, [enrichedStats, indicatorMode]);
@@ -171,16 +169,16 @@ const PovertyMapping = () => {
       layer.on({
         mouseover: (e: LeafletEvent) => {
           const l = e.target as L.Path;
-          l.setStyle({ fillOpacity: 0.85, weight: 3, color: '#FFFFFF' });
+          l.setStyle({ fillOpacity: 0.85, weight: 3, color: '#FFD23F' });
         },
         mouseout: (e: LeafletEvent) => {
           const l = e.target as L.Path;
           const fillColor = !data
-            ? '#2C2C2E'
+            ? '#CBD5E1'
             : indicatorMode === 'poverty'
               ? povertyColor(data.poverty_rate)
               : priorityColor(parseFloat(data.priority_score));
-          l.setStyle({ fillColor, fillOpacity: 0.55, weight: 2, color: '#00E5FF', opacity: 1 });
+          l.setStyle({ fillColor, fillOpacity: 0.65, weight: 2, color: '#1E8C86', opacity: 0.9 });
         },
         click: () => {
           if (data) setSelectedCode(data.region_code);
@@ -189,7 +187,10 @@ const PovertyMapping = () => {
       if (!data) {
         layer.bindTooltip(`${name} — tanpa data kemiskinan`, { sticky: true });
       } else {
-        layer.bindTooltip(`${name}: ${indicatorMode === 'poverty' ? `${data.poverty_rate}% kemiskinan` : `skor ${data.priority_score}`}`, { sticky: true });
+        layer.bindTooltip(
+          `${name}: ${indicatorMode === 'poverty' ? `${data.poverty_rate}% kemiskinan` : `skor ${data.priority_score}`}`,
+          { sticky: true }
+        );
       }
     };
   }, [enrichedStats, indicatorMode]);
@@ -198,9 +199,9 @@ const PovertyMapping = () => {
   const error = statsQuery.error || recoQuery.error || txQuery.error;
 
   const retry = () => {
-    statsQuery.refetch();
-    recoQuery.refetch();
-    txQuery.refetch();
+    void statsQuery.refetch();
+    void recoQuery.refetch();
+    void txQuery.refetch();
   };
 
   const currentRole = (() => {
@@ -224,337 +225,419 @@ const PovertyMapping = () => {
     }
     setImportBusy(true);
     try {
-      const { data } = await apiClient.post('/mapping/import', { data: parsed });
+      await apiClient.post('/mapping/import', { data: parsed });
       setIsImportModalOpen(false);
       setImportData('');
-      alert(data?.message || 'Impor berhasil.');
       retry();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string; details?: unknown } } };
       const detail = e.response?.data?.details;
       const detailText = Array.isArray(detail)
         ? detail.map((d: { message?: string }) => d.message).filter(Boolean).join('; ')
-        : typeof detail === 'string' ? detail : '';
+        : typeof detail === 'string'
+          ? detail
+          : '';
       setImportError(`${e.response?.data?.error || 'Impor gagal.'} ${detailText}`.trim());
     } finally {
       setImportBusy(false);
     }
   };
 
-  if (isLoading) return <LoadingState label="Memuat pemetaan wilayah…" />;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F6F8F8] py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <Skeleton lines={2} className="w-64 rounded-xl" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8">
+              <Card className="rounded-3xl p-6 h-[560px]">
+                <Skeleton lines={12} className="w-full h-full rounded-2xl" />
+              </Card>
+            </div>
+            <div className="lg:col-span-4 space-y-4">
+              <Card className="rounded-3xl p-6">
+                <Skeleton lines={8} className="w-full rounded-xl" />
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
-      <ErrorState
-        message={(error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Gagal memuat data pemetaan.'}
-        onRetry={retry}
-      />
+      <div className="min-h-screen bg-[#F6F8F8] py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <ErrorState
+            message={
+              (error as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+              'Gagal memuat data pemetaan kemiskinan.'
+            }
+            retry={retry}
+          />
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <header className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase italic leading-none flex items-center gap-3">
-            <Globe className="text-wattvision-primary" size={24} />
-            Pemetaan <span className="text-wattvision-primary">Kemiskinan</span>
-          </h1>
-          <p className="text-wattvision-textSecondary text-xs uppercase tracking-widest font-medium mt-2">
-            Sumber: GET /api/mapping/stats · GET /api/mapping/recommendations · GET /api/transactions
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-wattvision-textSecondary" size={14} />
-            <input
-              type="text"
-              placeholder="Cari wilayah…"
-              className="bg-wattvision-surface border border-wattvision-border pl-9 pr-4 py-2 rounded-lg text-xs focus:outline-none focus:border-wattvision-primary transition-colors w-56"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <select
-            className="bg-wattvision-surface border border-wattvision-border px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-wattvision-primary"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">Semua Status</option>
-            <option value="CRITICAL">Critical</option>
-            <option value="WARNING">Warning</option>
-            <option value="STABLE">Stable</option>
-          </select>
-          <select
-            className="bg-wattvision-surface border border-wattvision-border px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-wattvision-primary"
-            value={indicatorMode}
-            onChange={(e) => setIndicatorMode(e.target.value as 'poverty' | 'priority')}
-          >
-            <option value="poverty">Warna: Tingkat Kemiskinan</option>
-            <option value="priority">Warna: Skor Prioritas</option>
-          </select>
-          <button
-            onClick={retry}
-            disabled={statsQuery.isFetching}
-            className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold px-4 py-2 rounded-lg border border-wattvision-border text-wattvision-textSecondary hover:border-wattvision-primary hover:text-white transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={statsQuery.isFetching ? 'animate-spin' : ''} /> Segarkan
-          </button>
-          {canImport && (
-            <button
-              onClick={() => { setImportError(''); setIsImportModalOpen(true); }}
-              className="bg-wattvision-primary text-black text-[10px] uppercase tracking-widest font-bold px-4 py-2 rounded-lg hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
-            >
-              Impor Data Kemiskinan
-            </button>
-          )}
-        </div>
-      </header>
-
-      {isDemoData && (
-        <div className="flex items-start gap-3 p-4 rounded-xl border border-yellow-500/40 bg-yellow-500/10 text-yellow-300 text-xs leading-relaxed">
-          <Database size={16} className="shrink-0 mt-0.5" />
-          <p>
-            <span className="font-bold uppercase tracking-wider">Data demonstrasi.</span>{' '}
-            Tabel <span className="font-mono">poverty_stats</span> di backend masih kosong, sehingga angka tingkat kemiskinan
-            dan populasi miskin berasal dari <span className="font-mono">fallback contoh bawaan server</span> — bukan data BPS resmi.
-            Impor data resmi (dengan sumber & tahun referensi) melalui tombol impor untuk menggantinya.
-          </p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 bg-wattvision-surface border border-wattvision-border rounded-3xl overflow-hidden relative h-[560px] shadow-2xl z-0">
-          <MapContainer
-            center={[-2.5, 118]}
-            zoom={5}
-            style={{ height: '100%', width: '100%', background: '#121212' }}
-            zoomControl={false}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; OpenStreetMap'
-            />
-            <GeoJSON data={indonesiaGeoJson} style={geoStyle} onEachFeature={onEachFeature} key={indicatorMode} />
-            <MapBoundsHandler data={indonesiaGeoJson} />
-          </MapContainer>
-
-          <div className="absolute bottom-4 left-4 z-[1000] bg-wattvision-surface/90 backdrop-blur-md border border-wattvision-border p-4 rounded-2xl shadow-xl">
-            <p className="text-[10px] uppercase tracking-widest text-wattvision-textSecondary font-bold mb-3">
-              {indicatorMode === 'poverty' ? 'Tingkat Kemiskinan' : 'Skor Prioritas'}
-            </p>
-            <div className="space-y-2 text-xs">
-              {indicatorMode === 'poverty' ? (
-                <>
-                  <div className="flex items-center gap-3"><span className="w-3 h-3 bg-[#FF453A] rounded-full" /> Kritis (&gt; 20%)</div>
-                  <div className="flex items-center gap-3"><span className="w-3 h-3 bg-[#FFD60A] rounded-full" /> Sedang (10–20%)</div>
-                  <div className="flex items-center gap-3"><span className="w-3 h-3 bg-[#32D74B] rounded-full" /> Rendah (&lt; 10%)</div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3"><span className="w-3 h-3 bg-[#FF453A] rounded-full" /> Prioritas tinggi (&gt; 30)</div>
-                  <div className="flex items-center gap-3"><span className="w-3 h-3 bg-[#FF9F0A] rounded-full" /> Prioritas sedang (15–30)</div>
-                  <div className="flex items-center gap-3"><span className="w-3 h-3 bg-[#32D74B] rounded-full" /> Prioritas rendah (&lt; 15)</div>
-                </>
-              )}
-              <div className="flex items-center gap-3"><span className="w-3 h-3 bg-[#2C2C2E] rounded-full" /> Tanpa data</div>
+    <div className="min-h-screen bg-[#F6F8F8] py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header Pemetaan */}
+        <header className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-primary-bg flex items-center justify-center text-primary">
+                <Globe size={22} />
+              </div>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-primary-dark">
+                Pemetaan Kemiskinan
+              </h1>
             </div>
-          </div>
-
-          <div className="absolute top-4 right-4 z-[1000] bg-wattvision-surface/90 backdrop-blur-md border border-wattvision-border px-3 py-2 rounded-xl shadow-xl max-w-[260px]">
-            <p className="text-[9px] text-wattvision-textSecondary uppercase tracking-widest leading-relaxed">
-              Geometri peta: poligon skematis 8 provinsi dari aset lokal (bukan batas administratif resmi).
+            <p className="text-xs sm:text-sm text-primary-dark/70">
+              Analisis spasial kebutuhan zakat berbasis tingkat kemiskinan dan capaian distribusi regional.
             </p>
           </div>
-        </div>
 
-        <div className="lg:col-span-4 space-y-6">
-          {selectedRegion ? (
-            <div className="bg-wattvision-surface border border-wattvision-border p-6 rounded-3xl shadow-xl">
-              <div className="flex justify-between items-start mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-wattvision-primary rounded-lg flex items-center justify-center text-black">
-                    <MapIcon size={16} />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold uppercase italic tracking-tight leading-none">{selectedRegion.region}</h2>
-                    <p className="text-wattvision-textSecondary text-[10px] uppercase tracking-widest mt-1">
-                      {selectedRegion.province || 'Wilayah'} · kode {selectedRegion.region_code}
-                    </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Pencarian Wilayah */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-dark/40" size={14} />
+              <input
+                type="text"
+                placeholder="Cari wilayah…"
+                className="bg-white border border-slate-200/80 pl-9 pr-3 py-2 rounded-xl text-xs sm:text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary/20 w-48 sm:w-56"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Filter Status */}
+            <select
+              className="bg-white border border-slate-200/80 px-3 py-2 rounded-xl text-xs sm:text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-medium"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">Semua Status</option>
+              <option value="CRITICAL">Kritis (Critical)</option>
+              <option value="WARNING">Perhatian (Warning)</option>
+              <option value="STABLE">Tercukupi (Stable)</option>
+            </select>
+
+            {/* Mode Indikator */}
+            <select
+              className="bg-white border border-slate-200/80 px-3 py-2 rounded-xl text-xs sm:text-sm text-primary-dark outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-medium"
+              value={indicatorMode}
+              onChange={(e) => setIndicatorMode(e.target.value as 'poverty' | 'priority')}
+            >
+              <option value="poverty">Warna: Tingkat Kemiskinan</option>
+              <option value="priority">Warna: Skor Prioritas</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={retry}
+              disabled={statsQuery.isFetching}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white text-primary-dark hover:bg-primary-bg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={13} className={statsQuery.isFetching ? 'animate-spin' : ''} /> Segarkan
+            </button>
+
+            {canImport && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setImportError('');
+                  setIsImportModalOpen(true);
+                }}
+              >
+                Impor Data Kemiskinan
+              </Button>
+            )}
+          </div>
+        </header>
+
+        {isDemoData && (
+          <div className="flex items-start gap-3 p-4 rounded-2xl border border-gold/40 bg-gold/10 text-primary-dark text-xs leading-relaxed">
+            <Database size={16} className="text-primary-dark shrink-0 mt-0.5" />
+            <p>
+              <span className="font-bold">Data Demonstrasi:</span> Tabel{' '}
+              <span className="font-mono">poverty_stats</span> di basis data masih kosong sehingga angka tingkat kemiskinan dan populasi miskin berasal dari nilai bawaan server. Admin atau Amil dapat mengimpor data resmi melalui tombol impor.
+            </p>
+          </div>
+        )}
+
+        {/* Layout Peta & Panel Statistik */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Peta Penuh (lg:col-span-8) */}
+          <div className="lg:col-span-8">
+            <Card className="rounded-3xl p-0 overflow-hidden relative h-[560px] bg-white border border-slate-200/70 shadow-card z-0">
+              <MapContainer
+                center={[-2.5, 118]}
+                zoom={5}
+                style={{ height: '100%', width: '100%', background: '#E2E8F0' }}
+                zoomControl={false}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap"
+                />
+                <GeoJSON
+                  data={indonesiaGeoJson}
+                  style={geoStyle}
+                  onEachFeature={onEachFeature}
+                  key={indicatorMode}
+                />
+                <MapBoundsHandler data={indonesiaGeoJson} />
+              </MapContainer>
+
+              {/* Legenda Token di Kiri Bawah Peta */}
+              <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur-md border border-slate-200/90 p-3.5 rounded-2xl shadow-card text-xs">
+                <p className="text-[10px] uppercase tracking-wider text-primary-dark/70 font-bold mb-2">
+                  {indicatorMode === 'poverty' ? 'Tingkat Kemiskinan' : 'Skor Prioritas'}
+                </p>
+                <div className="space-y-1.5 font-medium text-[11px] text-primary-dark">
+                  {indicatorMode === 'poverty' ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#EF6C4A' }} />
+                        <span>Kritis (&gt; 20%)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FFD23F' }} />
+                        <span>Sedang (10–20%)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#2BA8A2' }} />
+                        <span>Rendah (&lt; 10%)</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#EF6C4A' }} />
+                        <span>Prioritas Tinggi (&gt; 30)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FF8A6A' }} />
+                        <span>Prioritas Sedang (15–30)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#2BA8A2' }} />
+                        <span>Prioritas Terpenuhi (&lt; 15)</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex items-center gap-2 pt-0.5 border-t border-slate-100">
+                    <span className="w-3 h-3 rounded-full bg-slate-300" />
+                    <span>Tanpa data</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setSelectedCode(null)}
-                  className="text-wattvision-textSecondary hover:text-white transition-colors"
-                  aria-label="Tutup detail"
-                >
-                  ✕
-                </button>
               </div>
+            </Card>
+          </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="p-3 bg-wattvision-bg rounded-xl border border-wattvision-border">
-                  <p className="text-wattvision-textSecondary text-[10px] uppercase tracking-widest mb-1">Tingkat Kemiskinan</p>
-                  <p className="text-lg font-bold font-mono text-wattvision-primary">{formatPercent(selectedRegion.poverty_rate)}</p>
-                </div>
-                <div className="p-3 bg-wattvision-bg rounded-xl border border-wattvision-border">
-                  <p className="text-wattvision-textSecondary text-[10px] uppercase tracking-widest mb-1">Jangkauan Distribusi</p>
-                  <p className="text-lg font-bold font-mono">{formatPercent(selectedRegion.reach_percentage, 2)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="p-3 bg-wattvision-bg rounded-xl border border-wattvision-border">
-                  <div className="flex justify-between text-[10px] uppercase tracking-widest mb-2">
-                    <span className="text-wattvision-textSecondary">Celah Pendanaan</span>
-                    <span className="text-wattvision-alert font-bold font-mono">{formatIDR(selectedRegion.gap)}</span>
+          {/* Panel Statistik Wilayah di Samping (lg:col-span-4) */}
+          <div className="lg:col-span-4 space-y-5">
+            {selectedRegion ? (
+              <Card className="rounded-3xl p-6 bg-white border border-primary/30 shadow-card space-y-4">
+                <div className="flex justify-between items-start gap-2 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-primary-bg flex items-center justify-center text-primary shrink-0">
+                      <MapIcon size={16} />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-extrabold text-primary-dark leading-tight">
+                        {selectedRegion.region}
+                      </h2>
+                      <p className="text-[10px] uppercase tracking-wider text-primary-dark/60 font-semibold mt-0.5">
+                        {selectedRegion.province || 'Wilayah'} · Kode {selectedRegion.region_code}
+                      </p>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCode(null)}
+                    aria-label="Tutup detail"
+                    className="p-1 rounded-lg text-primary-dark/60 hover:text-primary-dark hover:bg-primary-bg"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Angka Kunci */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-primary-bg/30 rounded-xl border border-primary-bg">
+                    <span className="text-[10px] uppercase tracking-wider text-primary-dark/60 font-semibold block mb-0.5">
+                      Tingkat Kemiskinan
+                    </span>
+                    <span className="text-base font-extrabold text-primary-dark tabular-nums">
+                      {formatPercent(selectedRegion.poverty_rate)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-cream/70 rounded-xl border border-cream">
+                    <span className="text-[10px] uppercase tracking-wider text-primary-dark/60 font-semibold block mb-0.5">
+                      Jangkauan Zakat
+                    </span>
+                    <span className="text-base font-extrabold text-primary-dark tabular-nums">
+                      {formatPercent(selectedRegion.reach_percentage, 1)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress Celah Pendanaan */}
+                <div className="p-3.5 bg-primary-bg/20 rounded-xl border border-primary-bg space-y-1.5 text-xs">
+                  <div className="flex justify-between text-[11px] font-semibold text-primary-dark">
+                    <span>Celah Pendanaan:</span>
+                    <span className="font-extrabold">{formatIDR(selectedRegion.gap)}</span>
+                  </div>
+                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                     <div
-                      className={`h-full transition-all ${selectedRegion.reach_percentage < 30 ? 'bg-wattvision-alert' : 'bg-wattvision-success'}`}
+                      className={`h-full transition-all ${
+                        selectedRegion.reach_percentage < 30 ? 'bg-coral' : 'bg-primary'
+                      }`}
                       style={{ width: `${Math.min(selectedRegion.reach_percentage, 100)}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="p-3 bg-wattvision-bg rounded-xl border border-wattvision-border space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-wattvision-textSecondary uppercase tracking-widest text-[10px]">Populasi Miskin</span>
-                    <span className="font-mono font-bold">{formatNumber(selectedRegion.poor_population)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-wattvision-textSecondary uppercase tracking-widest text-[10px]">Terdistribusi (transaksi)</span>
-                    <span className="font-mono font-bold text-wattvision-success">{formatIDR(selectedRegion.total_distributed)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-wattvision-textSecondary uppercase tracking-widest text-[10px]">Jumlah laporan</span>
-                    <span className="font-mono font-bold">{formatNumber(selectedRegion.total_reports)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-wattvision-textSecondary uppercase tracking-widest text-[10px]">Target backend</span>
-                    <span className="font-mono font-bold">{formatIDR(selectedRegion.target_amount)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-wattvision-textSecondary uppercase tracking-widest text-[10px]">Status</span>
-                    <StatusBadge
-                      label={selectedRegion.status}
-                      tone={selectedRegion.status === 'CRITICAL' ? 'danger' : selectedRegion.status === 'WARNING' ? 'warning' : 'success'}
-                    />
-                  </div>
-                </div>
-
-                <div className="p-3 bg-wattvision-bg rounded-xl border border-wattvision-border flex items-start gap-2">
-                  <AlertCircle className="text-wattvision-primary shrink-0" size={16} />
-                  <p className="text-[11px] text-wattvision-textSecondary leading-relaxed">
-                    Skor prioritas <span className="font-mono text-white">{selectedRegion.priority_score}</span> dihitung dari
-                    tingkat kemiskinan dan sisa jangkauan distribusi (bobot 0.6 / 0.4 di backend).
-                    Angka distribusi telah dinormalisasi dari transaksi berformat
-                    <span className="font-mono"> "Provinsi, Kota"</span>.
-                  </p>
-                </div>
-
-                <div className="p-3 bg-wattvision-bg rounded-xl border border-wattvision-border">
-                  <p className="text-[10px] text-wattvision-textSecondary uppercase tracking-widest mb-1">Sumber indikator kemiskinan</p>
-                  <p className="text-xs">
-                    {isDemoData
-                      ? 'Fallback contoh bawaan backend — bukan BPS. Belum ada data resmi terimpor.'
-                      : 'Data terimpor via POST /api/mapping/import (nama sumber tidak diekspor oleh API saat ini).'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-wattvision-surface border border-wattvision-border p-8 rounded-3xl text-center h-full flex flex-col items-center justify-center space-y-4 opacity-60">
-              <Info size={40} className="text-wattvision-textSecondary" />
-              <p className="text-wattvision-textSecondary text-sm uppercase tracking-widest">
-                Pilih wilayah pada peta untuk detail
-              </p>
-            </div>
-          )}
-
-          <div className="bg-wattvision-surface border border-wattvision-border p-6 rounded-3xl shadow-xl">
-            <h3 className="text-sm font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
-              <TrendingDown size={16} className="text-wattvision-primary" /> Perlu Prioritas Distribusi
-            </h3>
-            <div className="p-3 bg-wattvision-bg rounded-xl border border-wattvision-border mb-4">
-              <p className="text-[10px] text-wattvision-textSecondary uppercase tracking-widest leading-relaxed font-mono">
-                Skor = (kemiskinan × 0.6) + ((1 − jangkauan) × 40)
-              </p>
-              <p className="text-[10px] text-wattvision-textSecondary mt-2 leading-relaxed">
-                Target backend: Rp 50.000 × populasi miskin (asumsi bawaan server).
-              </p>
-            </div>
-            {filteredStats.length === 0 ? (
-              <EmptyState message="Tidak ada wilayah yang cocok dengan filter." />
-            ) : (
-              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                {filteredStats.map((region) => (
-                  <button
-                    key={region.region_code}
-                    onClick={() => setSelectedCode(region.region_code)}
-                    className="w-full flex justify-between items-center p-3 bg-wattvision-bg rounded-xl border border-wattvision-border hover:border-wattvision-primary transition-colors text-left"
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-xs font-medium uppercase tracking-tight">{region.region}</span>
-                      <span className="text-[9px] text-wattvision-textSecondary uppercase">
-                        {region.province} · {formatIDR(region.total_distributed)} terdistribusi
-                      </span>
-                    </div>
-                    <span className={`text-xs font-mono font-bold ${region.status === 'CRITICAL' ? 'text-wattvision-alert' : region.status === 'WARNING' ? 'text-yellow-400' : 'text-wattvision-success'}`}>
-                      {region.priority_score}
+                {/* Detail Angka */}
+                <div className="space-y-2 text-xs divide-y divide-slate-100 pt-1">
+                  <div className="flex justify-between py-1.5">
+                    <span className="text-primary-dark/60">Populasi Miskin</span>
+                    <span className="font-extrabold text-primary-dark">
+                      {formatNumber(selectedRegion.poor_population)} jiwa
                     </span>
-                  </button>
-                ))}
+                  </div>
+                  <div className="flex justify-between py-1.5">
+                    <span className="text-primary-dark/60">Tersalurkan Tercatat</span>
+                    <span className="font-extrabold text-primary-dark">
+                      {formatIDR(selectedRegion.total_distributed)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1.5 items-center">
+                    <span className="text-primary-dark/60">Status Kebutuhan</span>
+                    <Badge
+                      tone={
+                        selectedRegion.status === 'CRITICAL'
+                          ? 'coral'
+                          : selectedRegion.status === 'WARNING'
+                            ? 'gold'
+                            : 'success'
+                      }
+                    >
+                      {selectedRegion.status}
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <Card className="rounded-3xl p-8 bg-white border border-slate-200/70 shadow-card text-center space-y-3">
+                <div className="w-12 h-12 bg-primary-bg/50 rounded-2xl flex items-center justify-center text-primary-dark/50 mx-auto">
+                  <MapIcon size={24} />
+                </div>
+                <h3 className="text-sm font-extrabold text-primary-dark">Pilih Wilayah pada Peta</h3>
+                <p className="text-xs text-primary-dark/60 leading-relaxed">
+                  Arahkan kursor atau klik poligon provinsi di peta untuk menampilkan rincian kemiskinan dan kebutuhan zakat regional.
+                </p>
+              </Card>
+            )}
+
+            {/* Panel Daftar Prioritas */}
+            <Card className="rounded-3xl p-5 bg-white border border-slate-200/70 shadow-card space-y-3">
+              <h3 className="text-xs uppercase tracking-wider text-primary-dark font-extrabold flex items-center gap-1.5">
+                <TrendingUp size={15} className="text-primary" /> Daftar Prioritas Distribusi
+              </h3>
+
+              {filteredStats.length === 0 ? (
+                <EmptyState title="Tidak ada wilayah yang cocok" description="Coba sesuaikan kata kunci pencarian Anda." />
+              ) : (
+                <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
+                  {filteredStats.map((reg) => (
+                    <button
+                      key={reg.region_code}
+                      type="button"
+                      onClick={() => setSelectedCode(reg.region_code)}
+                      className={`w-full flex justify-between items-center p-2.5 rounded-xl border text-left transition-colors text-xs ${
+                        selectedCode === reg.region_code
+                          ? 'bg-primary-bg border-primary'
+                          : 'bg-primary-bg/20 border-primary-bg hover:bg-primary-bg/40'
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-bold text-primary-dark">{reg.region}</span>
+                        <span className="text-[10px] text-primary-dark/60">
+                          {formatIDR(reg.total_distributed)} tercatat
+                        </span>
+                      </div>
+                      <Badge
+                        tone={
+                          reg.status === 'CRITICAL' ? 'coral' : reg.status === 'WARNING' ? 'gold' : 'success'
+                        }
+                      >
+                        Skor {reg.priority_score}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
+
+        {/* Modal Impor Data (ADMIN / AMIL) */}
+        {isImportModalOpen && (
+          <div className="fixed inset-0 z-[2000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <Card className="w-full max-w-lg rounded-3xl p-6 sm:p-8 bg-white border border-slate-200 shadow-2xl space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-extrabold text-primary-dark">
+                  Impor Data Kemiskinan
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(false)}
+                  className="p-1 rounded-lg text-primary-dark/60 hover:text-primary-dark hover:bg-primary-bg"
+                >
+                  <X size={18} />
+                </button>
               </div>
-            )}
+
+              <p className="text-xs text-primary-dark/70 leading-relaxed">
+                Tempelkan array JSON hasil data resmi (mis. publikasi BPS). Setiap objek memuat{' '}
+                <span className="font-mono font-bold">region_code, region_name, poverty_rate</span>.
+              </p>
+
+              <textarea
+                className="w-full h-44 bg-cream border border-primary-bg rounded-2xl p-3 text-xs font-mono text-primary-dark outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder='[{"region_code":"32","region_name":"Jawa Barat","province_name":"Jawa Barat","poverty_rate":7.8,"poor_population":3500000}]'
+                value={importData}
+                onChange={(e) => setImportData(e.target.value)}
+              />
+
+              {importError && (
+                <p className="text-xs text-coral-dark font-medium bg-coral/10 p-2.5 rounded-xl border border-coral/30">
+                  {importError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="secondary" onClick={() => setIsImportModalOpen(false)}>
+                  Batal
+                </Button>
+                <Button
+                  loading={importBusy}
+                  disabled={importBusy || !importData.trim()}
+                  onClick={() => void handleImport()}
+                >
+                  Impor Data
+                </Button>
+              </div>
+            </Card>
           </div>
-        </div>
+        )}
       </div>
-
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-wattvision-surface border border-wattvision-border w-full max-w-lg rounded-3xl p-8 shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold uppercase italic tracking-tight">
-                Impor <span className="text-wattvision-primary">Data Kemiskinan</span>
-              </h2>
-              <button onClick={() => setIsImportModalOpen(false)} className="text-wattvision-textSecondary hover:text-white" aria-label="Tutup">
-                ✕
-              </button>
-            </div>
-
-            <p className="text-wattvision-textSecondary text-xs leading-relaxed mb-4">
-              Tempelkan array JSON hasil data resmi (mis. publikasi BPS). Setiap objek wajib memuat
-              <span className="font-mono"> region_code, region_name, poverty_rate</span>, dan sebaiknya
-              <span className="font-mono"> province_name, poor_population, reference_year, source_name, source_url</span>.
-              Endpoint: <span className="font-mono">POST /api/mapping/import</span> (peran ADMIN/AMIL).
-            </p>
-            <textarea
-              className="w-full h-44 bg-wattvision-bg border border-wattvision-border rounded-2xl p-4 text-xs font-mono text-wattvision-textMain focus:outline-none focus:border-wattvision-primary transition-colors mb-3"
-              placeholder='[{"region_code":"32","region_name":"Jawa Barat","province_name":"Jawa Barat","poverty_rate":7.8,"poor_population":3500000,"reference_year":2024,"source_name":"BPS","source_url":"https://..."}]'
-              value={importData}
-              onChange={(e) => setImportData(e.target.value)}
-            />
-            {importError && (
-              <p className="text-xs text-wattvision-alert mb-3 font-mono">{importError}</p>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsImportModalOpen(false)}
-                className="flex-1 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold text-wattvision-textSecondary hover:text-white transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleImport}
-                disabled={importBusy || !importData.trim()}
-                className="flex-1 bg-wattvision-primary text-black px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold hover:bg-cyan-400 transition-colors disabled:opacity-50"
-              >
-                {importBusy ? 'Mengirim…' : 'Impor'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
