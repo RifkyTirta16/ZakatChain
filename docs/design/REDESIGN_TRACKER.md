@@ -6,7 +6,7 @@ Latar bg-canvas. Jangan campur kelas wattvision-* dan token baru. Jangan ubah lo
 
 - [x] 1. pages/Campaigns.tsx: grid kartu (judul, progress, sisa hari, tombol Donasi yang membuka
   DonationDrawer atau mengarah ke "/" bila drawer hanya ada di sana), filter status di atas.
-- [ ] 2. pages/CampaignDetail.tsx: kiri deskripsi + riwayat donasi, kanan lengket progress + tombol Donasi.
+- [x] 2. pages/CampaignDetail.tsx: kiri deskripsi + riwayat donasi, kanan lengket progress + tombol Donasi.
 - [ ] 3. pages/DonationPayment.tsx: tetap sebagai tautan langsung, wizard 3 langkah. Alur sesi tidak diubah.
 - [ ] 4. components/PaymentModal.tsx: Modal radius xl, ringkasan nominal, Badge status, Escape menutup.
 - [ ] 5. pages/NewDistributionRecord.tsx: form satu kolom, upload bukti dengan pratinjau, ringkasan, validasi inline.
