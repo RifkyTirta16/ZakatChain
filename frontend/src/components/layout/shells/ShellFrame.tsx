@@ -47,6 +47,13 @@ const groupItems = (items: NavItem[]): [string, NavItem[]][] => {
   return Array.from(map.entries());
 };
 
+const ROLE_ACCENT_DOT: Record<Exclude<ShellTheme, 'public'>, string> = {
+  muzakki: 'bg-emerald-400',
+  amil: 'bg-gold',
+  auditor: 'bg-sky-400',
+  admin: 'bg-gold-light',
+};
+
 /**
  * Unified commercial SaaS application shell for all signed-in roles.
  * Deep Forest sidebar + clean Soft Cream workspace + top breadcrumb/network bar.
@@ -65,20 +72,23 @@ const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
   const renderNavContent = (closeOnClick: boolean) => (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="px-4 pt-5 pb-4 border-b border-white/10">
+      <div className="px-4 pt-5 pb-4 border-b border-white/10 bg-crypto-grid">
         <Link
           to="/dashboard"
           onClick={() => closeOnClick && setDrawerOpen(false)}
           className="flex items-center gap-2.5"
         >
-          <div className="w-9 h-9 rounded-[10px] bg-primary flex items-center justify-center text-white shadow-sm">
-            <ShieldCheck size={20} />
+          <div className="w-9 h-9 rounded-[10px] bg-gradient-to-b from-primary-light to-primary flex items-center justify-center text-white shadow-teal-glow border border-white/15">
+            <ShieldCheck size={19} />
           </div>
           <div>
             <span className="font-display font-extrabold text-lg text-white tracking-tight block leading-none">
               Zakat<span className="text-gold-light">Chain</span>
             </span>
-            <span className="text-[11px] text-white/60 block mt-1">{ROLE_SUBTITLE[theme]}</span>
+            <span className="text-[11px] text-white/70 inline-flex items-center gap-1.5 mt-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${ROLE_ACCENT_DOT[theme]}`} />
+              {ROLE_SUBTITLE[theme]}
+            </span>
           </div>
         </Link>
       </div>
@@ -87,7 +97,7 @@ const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
         {grouped.map(([groupName, groupList]) => (
           <div key={groupName} className="space-y-1">
-            <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-white/45">
+            <p className="px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
               {groupName}
             </p>
             {groupList.map((item) => (
@@ -97,10 +107,10 @@ const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
                 end={item.path === '/' || item.path === '/dashboard'}
                 onClick={() => closeOnClick && setDrawerOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-sm font-medium transition-colors ${
+                  `flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-white/15 text-white font-semibold border-l-2 border-gold'
-                      : 'text-white/75 hover:bg-white/10 hover:text-white'
+                      ? 'bg-white/12 text-white font-semibold border-l-2 border-gold shadow-xs'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white'
                   }`
                 }
               >
@@ -113,9 +123,9 @@ const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
       </div>
 
       {/* Sidebar Footer */}
-      <div className="p-4 border-t border-white/10 space-y-3">
+      <div className="p-4 border-t border-white/10 space-y-3 bg-black/15">
         <PoweredByEthereum variant="dark" className="w-full justify-center" />
-        <div className="flex items-center justify-between gap-2 rounded-xl bg-white/5 px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
           <div className="min-w-0">
             <p className="text-xs font-bold text-white truncate">{user.username}</p>
             <p className="text-[11px] text-white/60 truncate">
@@ -169,7 +179,7 @@ const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
       {/* Main Column */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top Utility Header */}
-        <header className="sticky top-0 z-30 h-16 bg-white/95 backdrop-blur border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between gap-3">
+        <header className="sticky top-0 z-30 h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"

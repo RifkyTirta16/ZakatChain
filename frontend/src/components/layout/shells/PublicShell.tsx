@@ -39,12 +39,12 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
   return (
     <div className="min-h-screen flex flex-col bg-cream text-slateText font-sans">
       {/* Top Bar */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <Link to="/" className="flex items-center gap-2.5 shrink-0">
-              <div className="w-9 h-9 rounded-[10px] bg-primary flex items-center justify-center text-white shadow-sm">
-                <ShieldCheck size={20} />
+            <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
+              <div className="w-9 h-9 rounded-[10px] bg-gradient-to-b from-primary-light to-primary flex items-center justify-center text-white shadow-teal-glow border border-primary/80 transition-transform group-hover:scale-[1.03]">
+                <ShieldCheck size={19} />
               </div>
               <div className="leading-tight">
                 <span className="font-display font-extrabold text-lg tracking-tight text-forest-dark">
@@ -52,23 +52,23 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
                 </span>
               </div>
             </Link>
-            <div className="hidden lg:block">
+            <div className="hidden xl:block shrink-0">
               <PoweredByEthereum />
             </div>
           </div>
 
           {/* Desktop Navigation */}
-          <nav aria-label="Navigasi publik" className="hidden lg:flex items-center gap-1">
+          <nav aria-label="Navigasi publik" className="hidden lg:flex items-center gap-0.5 rounded-xl bg-slate-100/70 p-1 border border-slate-200/60">
             {PUBLIC_NAV.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 end={item.path === '/'}
                 className={({ isActive }) =>
-                  `px-3.5 py-2 rounded-[10px] text-sm font-medium transition-colors whitespace-nowrap ${
+                  `px-2.5 xl:px-3 py-1.5 rounded-[9px] text-xs xl:text-sm font-medium transition-all whitespace-nowrap ${
                     isActive
-                      ? 'bg-mint text-primary font-semibold'
-                      : 'text-slateText hover:text-forest-dark hover:bg-slate-100'
+                      ? 'bg-white text-primary font-semibold shadow-xs'
+                      : 'text-slateText hover:text-forest-dark hover:bg-white/60'
                   }`
                 }
               >
@@ -78,12 +78,13 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
           </nav>
 
           {/* Right Actions */}
-          <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
+            <NetworkBadge compact className="hidden 2xl:inline-flex" />
             {user ? (
               <>
                 <Link
                   to="/dashboard"
-                  className="inline-flex items-center gap-1.5 min-h-[40px] rounded-[10px] bg-primary px-3.5 py-2 text-sm font-semibold text-white hover:bg-forest transition-colors"
+                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] bg-gradient-to-b from-primary-light to-primary px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-white hover:to-forest shadow-teal-glow transition-all"
                 >
                   <LayoutDashboard size={15} />
                   <span>Dashboard</span>
@@ -93,7 +94,7 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
                   type="button"
                   onClick={onLogout}
                   aria-label="Keluar"
-                  className="inline-flex items-center gap-1.5 min-h-[40px] rounded-[10px] border border-slate-200 px-3 py-2 text-xs font-semibold text-slateText hover:bg-slate-100 transition-colors"
+                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slateText hover:bg-slate-50 transition-colors"
                 >
                   <LogOut size={14} />
                   <span>Keluar</span>
@@ -103,14 +104,14 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
               <>
                 <Link
                   to="/login"
-                  className="inline-flex items-center gap-1.5 min-h-[40px] rounded-[10px] border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-forest-dark hover:bg-slate-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] border border-slate-200 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-forest-dark hover:bg-slate-50 transition-colors"
                 >
                   <LogIn size={15} />
                   <span>Masuk</span>
                 </Link>
                 <Link
                   to="/donate"
-                  className="inline-flex items-center min-h-[40px] rounded-[10px] bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-forest shadow-teal-glow transition-colors"
+                  className="inline-flex items-center min-h-[38px] rounded-[10px] bg-gradient-to-b from-primary-light to-primary px-4 py-1.5 text-xs sm:text-sm font-semibold text-white hover:to-forest shadow-teal-glow transition-all"
                 >
                   Tunaikan Zakat
                 </Link>
@@ -202,7 +203,7 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
       <main className="flex-1">{children}</main>
 
       {/* Footer with Ethereum Ecosystem Attribution */}
-      <footer className="bg-forest-dark text-white/85 border-t border-forest mt-16">
+      <footer className="relative bg-forest-dark bg-crypto-grid text-white/85 border-t border-white/10 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
           <div className="grid gap-8 md:grid-cols-12">
             <div className="md:col-span-5 space-y-4">

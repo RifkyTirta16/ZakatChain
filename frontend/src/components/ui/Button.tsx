@@ -17,19 +17,19 @@ export interface ButtonProps {
 
 const VARIANT_STYLES: Record<ButtonVariant, string> = {
   primary:
-    'bg-primary text-white hover:bg-forest shadow-teal-glow border border-primary',
+    'bg-gradient-to-b from-primary-light to-primary text-white hover:from-primary hover:to-forest shadow-teal-glow border border-primary/80',
   gold:
-    'bg-gold text-forest-dark hover:bg-gold-light shadow-gold-glow border border-gold',
+    'bg-gradient-to-b from-gold-light to-gold text-forest-dark hover:brightness-105 shadow-gold-glow border border-gold-dark/25',
   secondary:
-    'bg-white text-forest-dark border border-slate-300 hover:bg-mint hover:border-primary/40',
+    'bg-white text-forest-dark border border-slate-200/90 shadow-xs hover:bg-mint/70 hover:border-primary/35',
   ghost:
-    'bg-transparent text-slateText border border-transparent hover:bg-slate-100 hover:text-forest-dark',
+    'bg-transparent text-slateText border border-transparent hover:bg-slate-100/80 hover:text-forest-dark',
   danger:
-    'bg-danger text-white hover:bg-coral-dark shadow-coral-glow border border-danger',
+    'bg-gradient-to-b from-red-500 to-danger text-white hover:to-coral-dark shadow-coral-glow border border-danger/80',
 };
 
 const SIZE_STYLES: Record<ButtonSize, string> = {
-  sm: 'min-h-[40px] px-3.5 py-2 text-xs sm:text-sm',
+  sm: 'min-h-[38px] px-3.5 py-2 text-xs sm:text-sm',
   md: 'min-h-[44px] px-5 py-2.5 text-sm',
   lg: 'min-h-[48px] px-6 py-3 text-base',
 };

@@ -128,14 +128,27 @@ const PublicVerify = () => {
         </div>
       </header>
 
-      <Card className="p-6 sm:p-8">
-        <form onSubmit={handleVerify} className="space-y-4">
-          <label
-            htmlFor="verify-input"
-            className="block text-xs uppercase tracking-wider text-slateText font-bold"
-          >
-            Masukkan ID Laporan atau Hash Audit (64-hex / 0x…)
-          </label>
+      {/* ENS / Etherscan-style Cryptographic Lookup Command Bar */}
+      <Card variant="highlight" className="p-6 sm:p-7">
+        <form onSubmit={handleVerify} className="space-y-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label
+              htmlFor="verify-input"
+              className="block text-xs uppercase tracking-[0.1em] text-forest-dark font-bold"
+            >
+              Masukkan ID Laporan atau Hash Audit (64-hex / 0x…)
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setReportId('1');
+                setActiveQuery('1');
+              }}
+              className="text-xs font-mono font-semibold text-primary hover:underline"
+            >
+              Contoh: Uji Laporan #1 →
+            </button>
+          </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -143,12 +156,12 @@ const PublicVerify = () => {
                 id="verify-input"
                 type="text"
                 placeholder="Contoh: 1 atau hash audit 64 karakter hex"
-                className="w-full min-h-[46px] bg-cream rounded-[10px] border border-slate-300 pl-10 pr-4 text-sm text-forest-dark font-mono outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary"
+                className="w-full min-h-[48px] bg-white rounded-[10px] border border-slate-300 pl-10 pr-4 text-sm text-forest-dark font-mono outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary shadow-xs"
                 value={reportId}
                 onChange={(e) => setReportId(e.target.value)}
               />
             </div>
-            <Button type="submit" variant="primary" loading={loading} disabled={!reportId.trim()}>
+            <Button type="submit" variant="primary" size="lg" loading={loading} disabled={!reportId.trim()}>
               Cek Keabsahan
             </Button>
           </div>

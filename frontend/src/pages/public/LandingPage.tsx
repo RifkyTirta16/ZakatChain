@@ -84,14 +84,14 @@ const LandingPage = () => {
 
   return (
     <div className="bg-cream">
-      {/* 2. Hero Section */}
-      <section className="relative overflow-hidden bg-forest-dark text-white">
+      {/* 2. Hero Section — Architectural Ondo/Safe/Aave Glass Web3 Aesthetic */}
+      <section className="relative overflow-hidden bg-forest-dark bg-crypto-grid text-white border-b border-white/10">
         <div
           aria-hidden="true"
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0 opacity-30"
           style={{
             backgroundImage:
-              'radial-gradient(circle at 18% 20%, #047857 0%, transparent 45%), radial-gradient(circle at 85% 75%, #C9A45C 0%, transparent 40%)',
+              'radial-gradient(circle at 15% 18%, #047857 0%, transparent 45%), radial-gradient(circle at 86% 78%, #C9A45C 0%, transparent 38%)',
           }}
         />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 lg:py-24">
@@ -99,56 +99,68 @@ const LandingPage = () => {
             <div className="lg:col-span-7 space-y-6">
               <div className="flex flex-wrap items-center gap-2.5">
                 <PoweredByEthereum variant="dark" />
-                <span className="inline-flex items-center rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-xs font-semibold text-gold-light">
-                  Islamic Fintech × Web3 Audit
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-xs font-semibold text-gold-light">
+                  <Sparkles size={12} /> Islamic Institutional Finance × Web3 Audit
                 </span>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.12] text-white">
+              <h1 className="font-display text-3xl sm:text-5xl lg:text-[54px] font-extrabold tracking-[-0.03em] leading-[1.08] text-white">
                 Zakat Anda, Amanah Kami.{' '}
-                <span className="text-gold-light">Transparansi untuk Semua.</span>
+                <span className="text-gold-light block sm:inline">Transparansi untuk Semua.</span>
               </h1>
 
               <p className="text-base sm:text-lg text-white/80 leading-relaxed max-w-2xl">
-                Tunaikan zakat dengan mudah dalam Rupiah (IDR) dan pantau bagaimana setiap amanah
-                dikelola, diaudit, serta dicatat hash-nya secara terbuka melalui teknologi Ethereum.
+                Tunaikan zakat secara praktis dalam Rupiah (IDR), pantau sebaran wilayah penyaluran, dan verifikasi integritas setiap laporan melalui catatan hash kriptografi di smart contract Ethereum.
               </p>
 
               {/* 4. Main CTA */}
               <div className="flex flex-wrap items-center gap-3.5 pt-2">
                 <Link
                   to="/donate"
-                  className="inline-flex items-center justify-center min-h-[48px] rounded-[10px] bg-gold px-6 py-3 text-sm sm:text-base font-bold text-forest-dark hover:bg-gold-light shadow-gold-glow transition-colors"
+                  className="inline-flex items-center justify-center min-h-[48px] rounded-[10px] bg-gradient-to-b from-gold-light to-gold px-6 py-3 text-sm sm:text-base font-bold text-forest-dark hover:brightness-105 shadow-gold-glow border border-gold/40 transition-all"
                 >
                   Tunaikan Zakat
                   <ArrowRight size={17} className="ml-2" />
                 </Link>
                 <Link
                   to="/transparency"
-                  className="inline-flex items-center justify-center min-h-[48px] rounded-[10px] border border-white/25 bg-white/10 px-6 py-3 text-sm sm:text-base font-semibold text-white hover:bg-white/15 transition-colors"
+                  className="inline-flex items-center justify-center min-h-[48px] rounded-[10px] border border-white/20 bg-white/10 backdrop-blur px-6 py-3 text-sm sm:text-base font-semibold text-white hover:bg-white/15 transition-colors"
                 >
-                  Lihat Transparansi
+                  Portal Transparansi
                 </Link>
                 <Link
                   to="/calculator"
                   className="inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium text-gold-light hover:text-white transition-colors"
                 >
-                  <Calculator size={16} /> Hitung Zakat Dahulu
+                  <Calculator size={16} /> Hitung Zakat
+                </Link>
+              </div>
+
+              {/* ENS-style quick verification trust strip */}
+              <div className="pt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/65 border-t border-white/10">
+                <span className="inline-flex items-center gap-1.5">
+                  <CheckCircle2 size={14} className="text-emerald-400" /> Pembayaran QRIS Rupiah (IDR)
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <CheckCircle2 size={14} className="text-emerald-400" /> Privasi Mustahik Terlindungi
+                </span>
+                <Link to="/verify?id=1" className="inline-flex items-center gap-1 text-gold-light hover:underline font-mono">
+                  Cek Laporan #1 On-Chain →
                 </Link>
               </div>
             </div>
 
-            {/* Elegant Ethereum Visual Card */}
+            {/* Aave Glass Protocol Integrity Terminal Card */}
             <div className="lg:col-span-5">
-              <div className="rounded-2xl border border-white/15 bg-forest/80 backdrop-blur p-6 space-y-5 shadow-elevated">
+              <div className="glass-dark-card rounded-2xl p-6 space-y-5">
                 <div className="flex items-center justify-between gap-2 pb-4 border-b border-white/10">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white">
                       <EthereumLogo size={18} monochrome />
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wider text-white/60 font-semibold">
-                        Lapisan Integritas
+                      <p className="text-[10px] uppercase tracking-[0.14em] text-gold-light font-bold">
+                        Protocol Integrity Layer
                       </p>
                       <p className="text-sm font-bold text-white">Smart Contract ZakatVerify</p>
                     </div>
@@ -157,26 +169,41 @@ const LandingPage = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-white/5 border border-white/10 p-3.5">
-                    <p className="text-[11px] text-white/60">Laporan Tercatat On-Chain</p>
-                    <p className="mt-1 text-2xl font-bold text-white tabular-nums">
+                  <div className="rounded-xl bg-black/20 border border-white/10 p-3.5">
+                    <p className="text-[11px] uppercase tracking-wider text-white/55 font-semibold">Laporan On-Chain</p>
+                    <p className="mt-1.5 font-display text-2xl font-extrabold text-white tabular-nums">
                       {transparencyQuery.isPending ? '…' : formatNumber(kpis?.verifiedReports ?? 0)}
                     </p>
+                    <p className="mt-1 text-[11px] text-emerald-300/90 font-mono">
+                      dari {formatNumber(kpis?.totalReports ?? 0)} total laporan
+                    </p>
                   </div>
-                  <div className="rounded-xl bg-white/5 border border-white/10 p-3.5">
-                    <p className="text-[11px] text-white/60">Kontrak Target</p>
-                    <p className="mt-1 text-xs font-mono font-semibold text-gold-light truncate">
+                  <div className="rounded-xl bg-black/20 border border-white/10 p-3.5">
+                    <p className="text-[11px] uppercase tracking-wider text-white/55 font-semibold">Kontrak Target</p>
+                    <p className="mt-1.5 text-xs font-mono font-bold text-gold-light truncate">
                       {shortHash(network.contractAddress, 8, 6)}
                     </p>
-                    <p className="mt-1 text-[11px] text-white/60">
+                    <p className="mt-1 text-[11px] font-mono text-white/65">
                       {network.blockNumber !== null ? `Blok #${formatNumber(network.blockNumber)}` : 'Mode Audit'}
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-emeraldBrand-dark/70 border border-white/10 p-3.5 text-xs text-white/80 leading-relaxed">
+                {/* Mini 3-layer stack */}
+                <div className="rounded-xl bg-white/5 border border-white/10 p-3.5 space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-white/80">
+                    <span className="font-medium">Algoritma Bukti</span>
+                    <span className="font-mono text-gold-light">SHA-256 + bytes32</span>
+                  </div>
+                  <div className="flex items-center justify-between text-white/80">
+                    <span className="font-medium">Kontrol Pencabutan</span>
+                    <span className="font-mono text-emerald-300">Sticky Revoke Guard</span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-forest-dark/80 border border-white/10 p-3.5 text-xs text-white/80 leading-relaxed">
                   Pembayaran zakat tetap memakai <strong className="text-white">Rupiah (IDR)</strong>.
-                  Ethereum menyimpan bukti hash laporan agar riwayat audit tidak dapat diubah sepihak.
+                  Ethereum menyimpan bukti hash laporan agar riwayat audit tidak dapat dimanipulasi sepihak.
                 </div>
               </div>
             </div>
@@ -184,44 +211,97 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* 3. Clear Product Value Proposition */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
-        <SectionHeader
-          title="Mengapa ZakatChain?"
-          subtitle="Menyatukan kepatuhan pengelolaan amanah syariah dengan pencatatan audit kriptografi modern."
-          className="mb-8"
-        />
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            {
-              icon: <Calculator size={20} />,
-              title: 'Hitung & Bayar Praktis',
-              desc: 'Kalkulator zakat penghasilan, maal, dan emas dengan pembayaran Rupiah (IDR) yang familier.',
-            },
-            {
-              icon: <FileCheck2 size={20} />,
-              title: 'Audit Berlapis Amil & Auditor',
-              desc: 'Setiap laporan penyaluran dilengkapi bukti dokumen, pemindaian anomali, dan jejak log audit.',
-            },
-            {
-              icon: <Database size={20} />,
-              title: 'Hash Tercatat di Ethereum',
-              desc: 'Sidik jari laporan (SHA-256) dicatat ke smart contract ZakatVerify sehingga tidak dapat dimanipulasi.',
-            },
-            {
-              icon: <Lock size={20} />,
-              title: 'Privasi Mustahik Terjaga',
-              desc: 'Data pribadi penerima manfaat dijaga kerahasiaannya; publik memverifikasi nominal dan hash saja.',
-            },
-          ].map((item) => (
-            <Card key={item.title} className="flex flex-col gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mint text-primary flex items-center justify-center">
-                {item.icon}
+      {/* 3. Asymmetric Bento Grid — Safe & Ondo Institutional Architecture */}
+      <section className="bg-dot-matrix border-b border-slate-200/70">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
+          <SectionHeader
+            badge={
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary shadow-xs">
+                Arsitektur Kepercayaan
+              </span>
+            }
+            title="Dirancang Seperti Infrastruktur Keuangan Institusi"
+            subtitle="Memadukan kesederhanaan pembayaran syariah dengan ketelitian audit kriptografi berlapis."
+            className="mb-8"
+          />
+          <div className="grid gap-5 lg:grid-cols-12">
+            {/* Flagship Bento Left (6 cols) */}
+            <Card variant="highlight" className="lg:col-span-6 flex flex-col justify-between gap-4 p-6 sm:p-7">
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-2 rounded-lg bg-gold/15 border border-gold/30 px-2.5 py-1 text-xs font-bold text-amber-900">
+                  <FileCheck2 size={14} /> Pengawasan Independen & Audit Trail
+                </div>
+                <h3 className="font-display text-xl font-extrabold text-forest-dark">
+                  Pemisahan Peran Ketat Antara Amil, Auditor, & Admin
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Amil mencatat penyaluran beserta dokumen bukti terproteksi dan alokasi multi-daerah, Auditor independen meninjau berkas serta memindai anomali, sementara setiap keputusan tercatat abadi di log audit.
+                </p>
               </div>
-              <h3 className="text-base font-bold text-forest-dark">{item.title}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+              <div className="grid grid-cols-3 gap-2.5 pt-2 border-t border-slate-200/70 text-xs">
+                <div className="rounded-xl bg-white border border-slate-200/80 p-3">
+                  <span className="text-slate-500 block">Bukti Unggahan</span>
+                  <span className="font-bold text-forest-dark">Terproteksi JWT</span>
+                </div>
+                <div className="rounded-xl bg-white border border-slate-200/80 p-3">
+                  <span className="text-slate-500 block">Multi-Daerah</span>
+                  <span className="font-bold text-forest-dark">Lacak Proporsional</span>
+                </div>
+                <div className="rounded-xl bg-white border border-slate-200/80 p-3">
+                  <span className="text-slate-500 block">Kuitansi Resmi</span>
+                  <span className="font-bold text-forest-dark">Cetak BSZ PDF</span>
+                </div>
+              </div>
             </Card>
-          ))}
+
+            {/* Flagship Bento Right (6 cols) */}
+            <Card variant="glass" className="lg:col-span-6 bg-crypto-grid flex flex-col justify-between gap-4 p-6 sm:p-7">
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-2 rounded-lg bg-white/10 border border-white/15 px-2.5 py-1 text-xs font-bold text-gold-light">
+                  <Database size={14} /> Ethereum SHA-256 Registry
+                </div>
+                <h3 className="font-display text-xl font-extrabold text-white">
+                  Hash Tercatat Permanen, Privasi Mustahik Tetap Terjaga
+                </h3>
+                <p className="text-sm text-white/75 leading-relaxed">
+                  Smart contract <code className="font-mono text-gold-light">ZakatVerify.sol</code> hanya menyimpan digest <code className="font-mono text-white">bytes32</code> tanpa menyentuh identitas pribadi penerima manfaat, lengkap dengan mekanisme pencabutan permanen (<em>sticky revoke</em>) bila ditemukan kecurangan.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/10 text-xs">
+                <span className="font-mono text-white/70">verifyReport(bytes32) → (exists, ts, revoked)</span>
+                <Link to="/verify" className="font-semibold text-gold-light hover:underline inline-flex items-center gap-1">
+                  Coba Verifikasi <ArrowRight size={13} />
+                </Link>
+              </div>
+            </Card>
+
+            {/* 3 Supporting Bento Cards (4 cols each) */}
+            {[
+              {
+                icon: <Calculator size={19} />,
+                title: 'Kalkulator & QRIS Rupiah',
+                desc: 'Hitung nisab zakat profesi, maal, atau emas secara instan lalu tunaikan dalam Rupiah lewat kode QR yang dapat langsung dipindai.',
+              },
+              {
+                icon: <HeartHandshake size={19} />,
+                title: 'Master Data & Sebaran Wilayah',
+                desc: 'Amil mengelola daftar mustahik terverifikasi dan dapat membagi satu penyaluran ke berbagai kabupaten/kota sesuai prioritas kemiskinan.',
+              },
+              {
+                icon: <Lock size={19} />,
+                title: 'Kejujuran Bukti Digital',
+                desc: 'Kami secara terbuka membedakan verifikasi hash kriptografi di Ethereum dengan pembuktian fisik di lapangan oleh auditor.',
+              },
+            ].map((item) => (
+              <Card key={item.title} className="lg:col-span-4 flex flex-col gap-3">
+                <div className="w-10 h-10 rounded-xl bg-mint border border-primary/15 text-primary flex items-center justify-center">
+                  {item.icon}
+                </div>
+                <h3 className="font-display text-base font-bold text-forest-dark">{item.title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -349,15 +429,19 @@ const LandingPage = () => {
         )}
       </section>
 
-      {/* 7. How ZakatChain Works */}
+      {/* 7. How ZakatChain Works — Connected Protocol Pipeline */}
       <section className="bg-white border-y border-slate-200/80 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
-            title="Cara Kerja ZakatChain"
-            subtitle="Alur sederhana bagi muzakki, pengawasan ketat di sisi amil dan auditor."
-            className="mb-8"
+            title="Cara Kerja Protokol ZakatChain"
+            subtitle="Alur sederhana bagi muzakki, pengawasan terpisah dan ketat di sisi amil, auditor, serta admin."
+            className="mb-10"
           />
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="relative grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div
+              aria-hidden="true"
+              className="hidden lg:block absolute top-10 left-12 right-12 h-px bg-gradient-to-r from-primary/20 via-gold/50 to-primary/20"
+            />
             {[
               {
                 step: '01',
@@ -366,25 +450,33 @@ const LandingPage = () => {
               },
               {
                 step: '02',
-                title: 'Tunaikan dalam IDR',
-                desc: 'Pilih program dan selesaikan pembayaran Rupiah secara praktis tanpa perlu dompet kripto.',
+                title: 'Bayar QRIS dalam IDR',
+                desc: 'Pilih Zakat Umum atau program tertentu dan pindai kode QR Rupiah tanpa perlu dompet kripto.',
               },
               {
                 step: '03',
-                title: 'Penyaluran & Bukti',
-                desc: 'Amil menyalurkan dana sesuai pemetaan kemiskinan dan mengunggah dokumen bukti yang diperiksa auditor.',
+                title: 'Distribusi Multi-Daerah',
+                desc: 'Amil menyalurkan ke mustahik terverifikasi lintas wilayah; Auditor memeriksa berkas bukti.',
               },
               {
                 step: '04',
-                title: 'Hash Tercatat di Ethereum',
-                desc: 'Hash kriptografi laporan dicatat on-chain agar siapa pun dapat memverifikasi keutuhan datanya.',
+                title: 'Hash SHA-256 Ethereum',
+                desc: 'Admin/sistem mencatat digest laporan ke smart contract ZakatVerify agar dapat diaudit publik.',
               },
             ].map((s) => (
-              <div key={s.step} className="rounded-2xl border border-slate-200/80 bg-cream p-5 space-y-2.5">
-                <span className="inline-block font-display text-xs font-extrabold tracking-widest text-gold-dark bg-gold/15 px-2.5 py-1 rounded-md">
-                  LANGKAH {s.step}
-                </span>
-                <h3 className="text-base font-bold text-forest-dark">{s.title}</h3>
+              <div
+                key={s.step}
+                className="relative hairline-elevated rounded-2xl bg-cream/70 p-5 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-forest-dark font-mono text-xs font-bold text-gold-light border border-white/10 shadow-xs">
+                    {s.step}
+                  </span>
+                  <span className="text-[10px] font-mono uppercase tracking-[0.12em] text-slate-400">
+                    Stage {s.step}
+                  </span>
+                </div>
+                <h3 className="font-display text-base font-bold text-forest-dark">{s.title}</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">{s.desc}</p>
               </div>
             ))}
@@ -394,13 +486,13 @@ const LandingPage = () => {
 
       {/* 8. Ethereum Technology Introduction */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="rounded-2xl bg-forest text-white p-6 sm:p-10 grid gap-8 lg:grid-cols-12 items-center shadow-elevated">
+        <div className="rounded-2xl bg-forest-dark bg-crypto-grid text-white p-6 sm:p-10 grid gap-8 lg:grid-cols-12 items-center shadow-elevated border border-white/10">
           <div className="lg:col-span-7 space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-3 py-1 text-xs font-semibold text-gold-light">
               <EthereumLogo size={12} monochrome />
               <span>Arsitektur Teknologi Ethereum</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Integritas Data Berbasis Smart Contract Ethereum
             </h2>
             <p className="text-sm sm:text-base text-white/80 leading-relaxed">
@@ -424,7 +516,7 @@ const LandingPage = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-5 rounded-xl bg-forest-dark/80 border border-white/10 p-5 space-y-4">
+          <div className="lg:col-span-5 glass-dark-card rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-white/60">
                 Status Jaringan Saat Ini

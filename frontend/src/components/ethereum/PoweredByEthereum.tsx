@@ -13,7 +13,7 @@ export const PoweredByEthereum = ({ variant = 'light', className = '' }: Powered
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium tracking-tight ${styles} ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium tracking-tight whitespace-nowrap shrink-0 ${styles} ${className}`}
     >
       <EthereumLogo size={11} monochrome={variant === 'dark'} />
       <span>Powered by Ethereum</span>
