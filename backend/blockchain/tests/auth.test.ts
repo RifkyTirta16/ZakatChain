@@ -198,3 +198,27 @@ test('GET /api/donations/donor/:id rejects a non-numeric id', async () => {
     await db.close();
   }
 });
+
+test('authenticate rejects tokens carrying an unknown role literal such as DONOR', async () => {
+  await withSecret('test-jwt-secret', async () => {
+    const token = jwt.sign({ id: 5, username: 'legacy', role: 'DONOR' }, 'test-jwt-secret', { expiresIn: '1h' });
+    const { result, nextCalled } = callMiddleware(authenticate, { headers: { authorization: `Bearer ${token}` } } as AuthRequest);
+    assert.equal(result.statusCode, 401);
+    assert.equal(nextCalled, false);
+  });
+});
+
+test('register blocks public signups when ALLOW_PUBLIC_REGISTRATION=false', async () => {
+  const previous = process.env.ALLOW_PUBLIC_REGISTRATION;
+  process.env.ALLOW_PUBLIC_REGISTRATION = 'false';
+  const db = await initDb(':memory:');
+  try {
+    const response = mockResponse();
+    await register(req(db, { body: { username: 'newuser', password: 'supersecret1' } }), response.response);
+    assert.equal(response.result.statusCode, 403);
+  } finally {
+    if (previous === undefined) delete process.env.ALLOW_PUBLIC_REGISTRATION;
+    else process.env.ALLOW_PUBLIC_REGISTRATION = previous;
+    await db.close();
+  }
+});

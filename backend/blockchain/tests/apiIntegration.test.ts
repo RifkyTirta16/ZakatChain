@@ -483,3 +483,34 @@ test('integration: USER cannot list private transactions, donations, or uploads;
     await server.close();
   }
 });
+
+test('integration: security headers present, CORS rejects untrusted origins with 403, and contract address requires env in production', async () => {
+  const server = await startServer();
+  try {
+    const okRes = await fetch(`${server.base}/health`);
+    assert.equal(okRes.status, 200);
+    assert.equal(okRes.headers.get('x-powered-by'), null);
+    assert.equal(okRes.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(okRes.headers.get('x-frame-options'), 'DENY');
+
+    const denied = await fetch(`${server.base}/health`, {
+      headers: { Origin: 'https://evil.example.com' },
+    });
+    assert.equal(denied.status, 403);
+
+    const { getContractAddress } = await import('../utils/web3.js');
+    const prevEnv = process.env.NODE_ENV;
+    const prevAddr = process.env.ZAKAT_CONTRACT_ADDRESS;
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.ZAKAT_CONTRACT_ADDRESS;
+      assert.equal(getContractAddress(), '');
+    } finally {
+      process.env.NODE_ENV = prevEnv;
+      if (prevAddr !== undefined) process.env.ZAKAT_CONTRACT_ADDRESS = prevAddr;
+      else delete process.env.ZAKAT_CONTRACT_ADDRESS;
+    }
+  } finally {
+    await server.close();
+  }
+});

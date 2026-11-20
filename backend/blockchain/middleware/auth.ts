@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 export type Role = 'ADMIN' | 'AMIL' | 'AUDITOR' | 'USER';
+export const ALLOWED_ROLES: readonly Role[] = ['ADMIN', 'AMIL', 'AUDITOR', 'USER'];
 
 export interface AuthRequest extends Request {
   user?: { id: number; username: string; role: Role };
@@ -28,10 +29,16 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     const decoded = jwt.verify(token, jwtSecret) as any;
     // A token must carry a usable identity; reject anything malformed rather
     // than trusting arbitrary payload fields downstream.
-    if (!decoded || typeof decoded !== 'object' || typeof decoded.id !== 'number' || typeof decoded.role !== 'string') {
+    if (
+      !decoded ||
+      typeof decoded !== 'object' ||
+      typeof decoded.id !== 'number' ||
+      typeof decoded.role !== 'string' ||
+      !ALLOWED_ROLES.includes(decoded.role as Role)
+    ) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    req.user = { id: decoded.id, username: decoded.username, role: decoded.role };
+    req.user = { id: decoded.id, username: decoded.username, role: decoded.role as Role };
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token' });

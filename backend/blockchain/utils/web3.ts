@@ -1,6 +1,19 @@
 import { ethers } from 'ethers';
 
-export const CONTRACT_ADDRESS = process.env.ZAKAT_CONTRACT_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const DEV_FALLBACK_CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+
+/**
+ * Returns the configured contract address. Falls back to the local Hardhat
+ * deterministic address only outside production so production misconfiguration
+ * fails loudly instead of silently querying a local dev address.
+ */
+export const getContractAddress = (): string => {
+  const configured = process.env.ZAKAT_CONTRACT_ADDRESS?.trim();
+  if (configured) return configured;
+  return process.env.NODE_ENV === 'production' ? '' : DEV_FALLBACK_CONTRACT_ADDRESS;
+};
+
+export const CONTRACT_ADDRESS = getContractAddress();
 export const CONTRACT_ABI = [
   {
     "inputs": [
@@ -44,6 +57,15 @@ export const CONTRACT_ABI = [
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "bytes32", "name": "reportHash", "type": "bytes32" },
+      { "indexed": false, "internalType": "string", "name": "reason", "type": "string" }
+    ],
+    "name": "ReportRevoked",
+    "type": "event"
   }
 ] as const;
 
@@ -68,7 +90,11 @@ export const getBlockchainWallet = (provider: ethers.Provider) => {
 };
 
 export const getZakatContract = (provider: ethers.Provider): ZakatContract => {
-  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider) as unknown as ZakatContract;
+  const address = getContractAddress();
+  if (!address) {
+    throw new Error('ZAKAT_CONTRACT_ADDRESS is not configured');
+  }
+  return new ethers.Contract(address, CONTRACT_ABI, provider) as unknown as ZakatContract;
 };
 
 export interface NetworkProbeResult {
@@ -94,6 +120,7 @@ export const resolveNetworkName = (chainId: number | null | undefined): string =
  * with a strict timeout so unreachable nodes surface an explicit degraded state.
  */
 export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbeResult> => {
+  const contractAddress = getContractAddress();
   let provider: ReturnType<typeof getBlockchainProvider> | null = null;
   try {
     provider = getBlockchainProvider();
@@ -101,7 +128,7 @@ export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbe
       const [network, blockNumber, code] = await Promise.all([
         provider!.getNetwork(),
         provider!.getBlockNumber(),
-        provider!.getCode(CONTRACT_ADDRESS),
+        contractAddress ? provider!.getCode(contractAddress) : Promise.resolve('0x'),
       ]);
       const chainId = Number(network.chainId);
       return { chainId, blockNumber, code };
@@ -112,14 +139,14 @@ export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbe
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('RPC probe timed out')), timeoutMs)),
     ]);
 
-    const contractActive = Boolean(code && code !== '0x');
+    const contractActive = Boolean(contractAddress && code && code !== '0x');
     return {
       rpc: 'Connected',
       contract: contractActive ? 'Active' : 'No contract code',
       status: contractActive ? 'Healthy' : 'Degraded',
       chainId,
       networkName: resolveNetworkName(chainId),
-      contractAddress: CONTRACT_ADDRESS,
+      contractAddress,
       blockNumber,
     };
   } catch {
@@ -129,7 +156,7 @@ export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbe
       status: 'Degraded',
       chainId: null,
       networkName: 'Jaringan Tidak Tersedia',
-      contractAddress: CONTRACT_ADDRESS,
+      contractAddress,
       blockNumber: null,
     };
   } finally {

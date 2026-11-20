@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import {
-  CONTRACT_ADDRESS,
+  getContractAddress,
   getBlockchainProvider,
   getZakatContract,
   resolveNetworkName,
@@ -110,7 +110,7 @@ export const verifyReportProof = async (req: Request, res: Response) => {
       network: {
         chainId,
         networkName: resolveNetworkName(chainId),
-        contractAddress: CONTRACT_ADDRESS,
+        contractAddress: getContractAddress(),
       },
       blockchain: {
         exists,

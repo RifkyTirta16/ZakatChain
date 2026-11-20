@@ -14,6 +14,9 @@ const BCRYPT_ROUNDS = 10;
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
 
 export const register = async (req: Request, res: Response) => {
+  if (process.env.ALLOW_PUBLIC_REGISTRATION === 'false') {
+    return res.status(403).json({ error: 'Pendaftaran akun publik dinonaktifkan' });
+  }
   const { db } = req;
   try {
     const parsed = RegisterSchema.safeParse(req.body ?? {});

@@ -42,22 +42,38 @@ const resolveTrustProxy = (raw?: string): boolean | number | string => {
   return val;
 };
 
+app.disable('x-powered-by');
 app.set('trust proxy', resolveTrustProxy(process.env.TRUST_PROXY));
+
+// Security headers standar tanpa dependency eksternal.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
 
 const uploadDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads');
 
-const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+const rawCorsOrigins = process.env.CORS_ORIGIN?.trim()
+  || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
+
+const corsOrigin = rawCorsOrigins
   .split(',')
   .map((o) => o.trim())
-  .filter(Boolean);
+  .filter((o) => Boolean(o) && o !== '*');
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Izinkan request tanpa origin (mobile apps, curl, dll) dan origin dalam allowlist.
+    // Izinkan request tanpa origin (curl, native mobile) dan origin dalam allowlist.
     if (!origin || corsOrigin.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error(`Origin tidak diizinkan oleh kebijakan CORS: ${origin}`));
+      const err = Object.assign(new Error('Origin tidak diizinkan oleh kebijakan CORS'), {
+        statusCode: 403,
+        code: 'CORS_ORIGIN_DENIED',
+      });
+      callback(err);
     }
   },
   credentials: true,
@@ -151,6 +167,9 @@ app.use((error: any, req: express.Request, res: express.Response, _next: express
   if (error?.type === 'entity.too.large') {
     return res.status(413).json({ error: 'Payload terlalu besar.' });
   }
+  if (error?.code === 'CORS_ORIGIN_DENIED' || error?.statusCode === 403) {
+    return res.status(403).json({ error: error.message || 'Forbidden' });
+  }
   console.error('[UNHANDLED ERROR]', error?.stack || error?.message);
   if (res.headersSent) return;
   res.status(500).json({ error: 'Internal server error' });
@@ -161,6 +180,12 @@ export { app };
 if (process.env.NODE_ENV !== 'test') {
   if (!process.env.JWT_SECRET?.trim()) {
     console.warn(`[CONFIG WARNING] JWT_SECRET is not configured. Server will start, but login and protected API routes will return 503. Configure the process environment or ${backendEnvPath}.`);
+  }
+  if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN?.trim()) {
+    console.warn('[CONFIG WARNING] CORS_ORIGIN is not configured in production; cross-origin browser requests will be rejected.');
+  }
+  if (process.env.NODE_ENV === 'production' && !process.env.ZAKAT_CONTRACT_ADDRESS?.trim()) {
+    console.warn('[CONFIG WARNING] ZAKAT_CONTRACT_ADDRESS is not configured in production; on-chain verification will report Degraded.');
   }
   app.listen(PORT, (err?: Error) => {
     if (err) {
