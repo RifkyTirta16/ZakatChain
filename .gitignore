@@ -13,3 +13,5 @@ backend/database.sqlite*
 backend/uploads/
 *.bak-*
 *.save
+.test-accounts.local
+database.sqlite.bak-*
