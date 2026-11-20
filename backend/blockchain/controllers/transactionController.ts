@@ -1,10 +1,11 @@
 
 import { Request, Response } from 'express';
 import { generateRecordAuditHash } from '../utils/crypto.js';
-import { TransactionSchema, formatIssues } from '../utils/validation.js';
+import { RevokeReportSchema, TransactionSchema, formatIssues } from '../utils/validation.js';
 import { getBlockchainProvider, getBlockchainWallet, getZakatContract } from '../utils/web3.js';
 import { persistUpload, removeUpload } from '../middleware/upload.js';
 import { runInTransaction } from '../models/db.js';
+import { logActivity } from '../utils/auditLogger.js';
 import { ethers } from 'ethers';
 
 /** Escape LIKE wildcards so a search term is matched literally. */
@@ -21,27 +22,50 @@ export const getTransactions = async (req: Request, res: Response) => {
     if (typeof search === 'string' && search.trim()) {
       const term = `%${escapeLike(search.trim())}%`;
       conditions.push(
-        "(recipient_name LIKE ? ESCAPE '\\' OR donor_name LIKE ? ESCAPE '\\' OR audit_hash LIKE ? ESCAPE '\\')"
+        "(t.recipient_name LIKE ? ESCAPE '\\' OR t.donor_name LIKE ? ESCAPE '\\' OR t.audit_hash LIKE ? ESCAPE '\\')"
       );
       params.push(term, term, term);
     }
     if (typeof category === 'string' && category.trim()) {
-      conditions.push("category = ?");
+      conditions.push("t.category = ?");
       params.push(category.trim());
     }
     if (typeof region === 'string' && region.trim()) {
-      conditions.push("region = ?");
+      conditions.push("t.region = ?");
       params.push(region.trim());
     }
     if (typeof status === 'string' && status.trim()) {
-      conditions.push("blockchain_status = ?");
+      conditions.push("t.blockchain_status = ?");
       params.push(status.trim());
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const query = `SELECT * FROM transactions ${whereClause} ORDER BY timestamp DESC, id DESC`;
+    const query = `
+      SELECT t.*, c.title AS campaign_title
+      FROM transactions t
+      LEFT JOIN campaigns c ON c.id = t.campaign_id
+      ${whereClause}
+      ORDER BY t.timestamp DESC, t.id DESC
+    `;
 
     const transactions = await (db as any).all(query, params);
+    const ids = transactions.map((row: { id: number }) => row.id);
+    if (ids.length > 0) {
+      const placeholders = ids.map(() => '?').join(', ');
+      const allocRows = await (db as any).all(
+        `SELECT transaction_id, region, amount, notes FROM transaction_allocations WHERE transaction_id IN (${placeholders}) ORDER BY id ASC`,
+        ids
+      );
+      const allocByTx = new Map<number, Array<{ region: string; amount: number; notes: string | null }>>();
+      for (const a of allocRows) {
+        const list = allocByTx.get(a.transaction_id) ?? [];
+        list.push({ region: a.region, amount: a.amount, notes: a.notes ?? null });
+        allocByTx.set(a.transaction_id, list);
+      }
+      for (const tx of transactions) {
+        tx.allocations = allocByTx.get(tx.id) ?? [];
+      }
+    }
     res.json(transactions);
   } catch (error: any) {
     console.error('[GET TRANSACTIONS ERROR]', error?.message);
@@ -70,7 +94,31 @@ export const createTransaction = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Validation failed', details: formatIssues(parsed.error) });
     }
 
-    const { amount, donor_name, recipient_name, category, region } = parsed.data;
+    const { amount, donor_name, recipient_name, category, region, campaign_id, mustahik_id, allocations } = parsed.data;
+
+    if (allocations && allocations.length > 0) {
+      const allocSum = allocations.reduce((sum, item) => sum + item.amount, 0);
+      if (Math.abs(allocSum - amount) > 0.01) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: [{ path: ['allocations'], message: 'Total alokasi wilayah harus sama dengan nominal penyaluran' }],
+        });
+      }
+    }
+
+    if (campaign_id !== undefined) {
+      const campaign = await (db as any).get('SELECT id FROM campaigns WHERE id = ?', [campaign_id]);
+      if (!campaign) {
+        return res.status(404).json({ error: 'Kampanye tidak ditemukan' });
+      }
+    }
+
+    if (mustahik_id !== undefined) {
+      const mustahik = await (db as any).get('SELECT id FROM mustahik WHERE id = ?', [mustahik_id]);
+      if (!mustahik) {
+        return res.status(404).json({ error: 'Mustahik tidak ditemukan' });
+      }
+    }
 
     let proof_url: string | null = null;
     let file_hash: string | null = null;
@@ -86,12 +134,16 @@ export const createTransaction = async (req: Request, res: Response) => {
       proof_url = `/uploads/${persisted.filename}`;
     }
 
+    const summaryRegion = allocations && allocations.length > 1
+      ? `Multi-Wilayah (${allocations.length} daerah)`
+      : (allocations?.[0]?.region ?? region);
+
     const transactionData = {
       amount,
       donor_name: donor_name || null,
       recipient_name,
       category,
-      region,
+      region: summaryRegion,
       proof_url,
       file_hash,
     };
@@ -103,13 +155,36 @@ export const createTransaction = async (req: Request, res: Response) => {
     // always matches the stored row id.
     const { transactionId, audit_hash_hex } = await runInTransaction(db as any, async () => {
       const result = await (db as any).run(
-        `INSERT INTO transactions (amount, donor_name, recipient_name, category, region, proof_url, file_hash, audit_hash, anomaly_flag, anomaly_reason, blockchain_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [amount, transactionData.donor_name, recipient_name, category, region, proof_url, file_hash, null, anomaly_flag, anomaly_reason, 'PENDING_BLOCKCHAIN']
+        `INSERT INTO transactions (amount, donor_name, recipient_name, category, region, proof_url, file_hash, audit_hash, anomaly_flag, anomaly_reason, blockchain_status, campaign_id, mustahik_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          amount,
+          transactionData.donor_name,
+          recipient_name,
+          category,
+          summaryRegion,
+          proof_url,
+          file_hash,
+          null,
+          anomaly_flag,
+          anomaly_reason,
+          'PENDING_BLOCKCHAIN',
+          campaign_id ?? null,
+          mustahik_id ?? null,
+        ]
       );
       const id = result.lastID as number;
       const hash = generateRecordAuditHash(transactionData, id);
       await (db as any).run('UPDATE transactions SET audit_hash = ? WHERE id = ?', [hash, id]);
+
+      if (allocations && allocations.length > 0) {
+        for (const item of allocations) {
+          await (db as any).run(
+            'INSERT INTO transaction_allocations (transaction_id, region, amount, notes) VALUES (?, ?, ?, ?)',
+            [id, item.region, item.amount, item.notes ?? null]
+          );
+        }
+      }
       return { transactionId: id, audit_hash_hex: hash };
     });
 
@@ -282,6 +357,85 @@ export const reconcileTransaction = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(`[RECONCILIATION ERROR] ${error?.message}`);
     res.status(502).json({ error: 'Reconciliation failed; transaction remains retryable' });
+  } finally {
+    provider?.destroy();
+  }
+};
+
+export const revokeTransactionOnChain = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { db } = req;
+
+  if (!id || Array.isArray(id) || !/^\d+$/.test(id) || Number(id) < 1) {
+    return res.status(400).json({ error: 'A valid transaction ID is required' });
+  }
+  const parsed = RevokeReportSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Validation failed', details: formatIssues(parsed.error) });
+  }
+
+  const numericId = Number(id);
+  const { reason } = parsed.data;
+  let provider: ReturnType<typeof getBlockchainProvider> | null = null;
+
+  try {
+    const transaction = await (db as any).get(
+      'SELECT id, audit_hash, blockchain_status, proof_status FROM transactions WHERE id = ?',
+      [numericId]
+    );
+    if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+    if (!transaction.audit_hash) return res.status(409).json({ error: 'Transaction has no audit hash' });
+    if (transaction.blockchain_status === 'REVOKED') {
+      return res.status(409).json({ error: 'Laporan sudah dicabut di blockchain' });
+    }
+
+    provider = getBlockchainProvider();
+    const wallet = getBlockchainWallet(provider);
+    if (!wallet) return res.status(503).json({ error: 'Blockchain signer is not configured' });
+
+    const contract = getZakatContract(provider);
+    const walletContract = contract.connect(wallet) as any;
+    const formattedHash = ethers.id(transaction.audit_hash);
+
+    const reportInfo: [boolean, bigint, boolean] = await contract.verifyReport(formattedHash);
+    if (!reportInfo[0]) {
+      return res.status(409).json({ error: 'Hash laporan belum tercatat di smart contract sehingga tidak dapat dicabut' });
+    }
+    if (reportInfo[2]) {
+      await (db as any).run(
+        `UPDATE transactions SET blockchain_status = 'REVOKED', proof_status = 'REJECTED', proof_rejection_reason = ?, revoke_reason = ? WHERE id = ?`,
+        [reason, reason, numericId]
+      );
+      await logActivity(req, 'REVOKE_ON_CHAIN', 'TRANSACTION', numericId, transaction.blockchain_status, 'REVOKED');
+      return res.json({ message: 'Status pencabutan disinkronkan dari smart contract', blockchain_status: 'REVOKED' });
+    }
+
+    const tx = await walletContract.revokeReport(formattedHash, reason);
+    const receipt = await tx.wait();
+    if (!receipt || receipt.status !== 1) {
+      return res.status(502).json({ error: 'Transaksi pencabutan di blockchain gagal dikonfirmasi' });
+    }
+
+    await (db as any).run(
+      `UPDATE transactions
+       SET blockchain_status = 'REVOKED',
+           proof_status = 'REJECTED',
+           proof_rejection_reason = ?,
+           revoke_tx_hash = ?,
+           revoke_reason = ?
+       WHERE id = ?`,
+      [reason, tx.hash, reason, numericId]
+    );
+    await logActivity(req, 'REVOKE_ON_CHAIN', 'TRANSACTION', numericId, transaction.blockchain_status, 'REVOKED');
+
+    res.json({
+      message: 'Laporan berhasil dicabut secara permanen di smart contract',
+      revoke_tx_hash: tx.hash,
+      blockchain_status: 'REVOKED',
+    });
+  } catch (error: any) {
+    console.error(`[REVOKE ON CHAIN ERROR] ${error?.message}`);
+    res.status(502).json({ error: 'Gagal mencabut laporan di blockchain' });
   } finally {
     provider?.destroy();
   }

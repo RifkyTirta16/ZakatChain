@@ -514,3 +514,120 @@ test('integration: security headers present, CORS rejects untrusted origins with
     await server.close();
   }
 });
+
+test('integration: mustahik CRUD, multi-region distribution trace, QRIS scan-confirm, and revoke RBAC', async () => {
+  const server = await startServer();
+  try {
+    const donorToken = await loginAs(server.base, 'donorTrace', 'supersecret1');
+    const otherDonorToken = await loginAs(server.base, 'donorOther', 'supersecret1');
+    const amilToken = await loginAs(server.base, 'amilTrace', 'supersecret1');
+    const adminToken = await loginAs(server.base, 'adminTrace', 'supersecret1');
+
+    const { initDb } = await import('../models/db.js');
+    const db = await initDb(process.env.DATABASE_PATH as string);
+    await db.run("UPDATE users SET role = 'AMIL' WHERE username = 'amilTrace'");
+    await db.run("UPDATE users SET role = 'ADMIN' WHERE username = 'adminTrace'");
+    const campRes = await db.run(
+      "INSERT INTO campaigns (title, description, target_amount, current_amount, status) VALUES ('Program Beasiswa', 'Bantuan', 5000000, 0, 'ACTIVE')"
+    );
+    const campaignId = campRes.lastID as number;
+    await db.close();
+
+    // Refresh tokens after role update
+    const amilLogin = await request(server.base, 'POST', '/api/auth/login', { json: { username: 'amilTrace', password: 'supersecret1' } });
+    const adminLogin = await request(server.base, 'POST', '/api/auth/login', { json: { username: 'adminTrace', password: 'supersecret1' } });
+    const amilJwt = amilLogin.body.token;
+    const adminJwt = adminLogin.body.token;
+
+    // 1. Mustahik registry privacy & CRUD
+    assert.equal((await request(server.base, 'GET', '/api/mustahik', { token: donorToken })).status, 403);
+    const createdM = await request(server.base, 'POST', '/api/mustahik', {
+      token: amilJwt,
+      json: { full_name: 'Ibu Aminah', category_asnaf: 'Miskin', region: 'Jawa Barat, Bandung', phone_masked: '0812****890' },
+    });
+    assert.equal(createdM.status, 201, createdM.text);
+    const mustahikId = createdM.body.id;
+
+    // 2. Multi-region distribution validation + creation linked to campaign & mustahik
+    const badAllocForm = new FormData();
+    badAllocForm.append('amount', '1000000');
+    badAllocForm.append('recipient_name', 'Ibu Aminah');
+    badAllocForm.append('category', 'Pendidikan');
+    badAllocForm.append('region', 'Jawa Barat, Bandung');
+    badAllocForm.append('allocations', JSON.stringify([{ region: 'Jawa Barat, Bandung', amount: 400000 }]));
+    assert.equal((await request(server.base, 'POST', '/api/transactions', { token: amilJwt, form: badAllocForm })).status, 400);
+
+    const goodAllocForm = new FormData();
+    goodAllocForm.append('amount', '1000000');
+    goodAllocForm.append('recipient_name', 'Ibu Aminah');
+    goodAllocForm.append('category', 'Pendidikan');
+    goodAllocForm.append('region', 'Jawa Barat, Bandung');
+    goodAllocForm.append('campaign_id', String(campaignId));
+    goodAllocForm.append('mustahik_id', String(mustahikId));
+    goodAllocForm.append(
+      'allocations',
+      JSON.stringify([
+        { region: 'Jawa Barat, Bandung', amount: 600000 },
+        { region: 'Nusa Tenggara Timur, Kupang', amount: 400000 },
+      ])
+    );
+    const txCreated = await request(server.base, 'POST', '/api/transactions', { token: amilJwt, form: goodAllocForm });
+    assert.equal(txCreated.status, 201, txCreated.text);
+
+    // Approve proof so it counts toward verified regional trace
+    assert.equal(
+      (await request(server.base, 'PATCH', `/api/proofs/verify/${txCreated.body.id}`, { token: adminJwt, json: { status: 'APPROVED' } })).status,
+      200
+    );
+
+    // 3. QRIS Scan-to-Pay flow (create session -> scan lookup -> HMAC scan-confirm -> campaign amount updated)
+    const payRes = await request(server.base, 'POST', '/api/payments/session', {
+      token: donorToken,
+      json: { amount: 500000, campaign_id: campaignId },
+    });
+    assert.equal(payRes.status, 201);
+    const qrisUrl = new URL(payRes.body.qris_url);
+    const scanToken = qrisUrl.searchParams.get('t');
+    assert.ok(scanToken, 'QRIS URL must contain HMAC scan token');
+
+    assert.equal((await request(server.base, 'GET', `/api/payments/sandbox/session/${payRes.body.session_id}?t=wrong`)).status, 403);
+    const sessionLookup = await request(server.base, 'GET', `/api/payments/sandbox/session/${payRes.body.session_id}?t=${scanToken}`);
+    assert.equal(sessionLookup.status, 200);
+    assert.equal(sessionLookup.body.amount, 500000);
+
+    const scanConfirm = await request(server.base, 'POST', `/api/payments/sandbox/scan-confirm/${payRes.body.session_id}`, {
+      json: { token: scanToken },
+    });
+    assert.equal(scanConfirm.status, 200);
+    assert.equal(scanConfirm.body.status, 'PAID');
+
+    // 4. Multi-region donation trace: donor sees 60% Jawa Barat / 40% NTT without PII; other donor blocked
+    assert.equal((await request(server.base, 'GET', `/api/donations/${payRes.body.donationId}/trace`, { token: otherDonorToken })).status, 403);
+    const trace = await request(server.base, 'GET', `/api/donations/${payRes.body.donationId}/trace`, { token: donorToken });
+    assert.equal(trace.status, 200, trace.text);
+    assert.equal(trace.body.regions.length, 2);
+    assert.equal(trace.body.regions[0].region, 'Jawa Barat, Bandung');
+    assert.equal(trace.body.regions[0].share_percent, 60);
+    assert.equal(trace.body.regions[0].estimated_allocation_idr, 300000);
+    assert.equal(trace.body.regions[1].region, 'Nusa Tenggara Timur, Kupang');
+    assert.equal(trace.body.regions[1].estimated_allocation_idr, 200000);
+    assert.equal('recipient_name' in trace.body.reports[0], false, 'Trace must not expose recipient_name');
+
+    // 5. Revoke on-chain RBAC & validation (ADMIN required; 503 when signer absent)
+    assert.equal(
+      (await request(server.base, 'PATCH', `/api/transactions/${txCreated.body.id}/revoke`, { token: amilJwt, json: { reason: 'Alasan uji valid' } })).status,
+      403
+    );
+    assert.equal(
+      (await request(server.base, 'PATCH', `/api/transactions/${txCreated.body.id}/revoke`, { token: adminJwt, json: { reason: 'ok' } })).status,
+      400
+    );
+    const revokeNoSigner = await request(server.base, 'PATCH', `/api/transactions/${txCreated.body.id}/revoke`, {
+      token: adminJwt,
+      json: { reason: 'Bukti ditemukan ganda saat audit' },
+    });
+    assert.equal(revokeNoSigner.status, 503);
+  } finally {
+    await server.close();
+  }
+});

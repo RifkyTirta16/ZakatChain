@@ -173,6 +173,28 @@ export const initDb = async (filename = process.env.DATABASE_PATH || path.join(b
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (actor_id) REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS mustahik (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      category_asnaf TEXT NOT NULL,
+      region TEXT NOT NULL,
+      phone_masked TEXT,
+      verification_status TEXT DEFAULT 'VERIFIED',
+      notes TEXT,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS transaction_allocations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transaction_id INTEGER NOT NULL,
+      region TEXT NOT NULL,
+      amount REAL NOT NULL,
+      notes TEXT,
+      FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+    );
   `);
 
   // Additive migrations keep existing SQLite files and records intact.
@@ -182,6 +204,10 @@ export const initDb = async (filename = process.env.DATABASE_PATH || path.join(b
   await ensureColumn(db, 'transactions', 'blockchain_status', 'TEXT');
   await ensureColumn(db, 'transactions', 'tx_hash', 'TEXT');
   await ensureColumn(db, 'transactions', 'block_number', 'INTEGER');
+  await ensureColumn(db, 'transactions', 'campaign_id', 'INTEGER');
+  await ensureColumn(db, 'transactions', 'mustahik_id', 'INTEGER');
+  await ensureColumn(db, 'transactions', 'revoke_tx_hash', 'TEXT');
+  await ensureColumn(db, 'transactions', 'revoke_reason', 'TEXT');
 
   // Lookup indexes. `audit_hash` is intentionally NOT unique: two legitimate
   // distributions to the same recipient for the same amount produce identical
@@ -190,6 +216,11 @@ export const initDb = async (filename = process.env.DATABASE_PATH || path.join(b
   await db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_region ON transactions(region)');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(blockchain_status)');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions(timestamp)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_campaign ON transactions(campaign_id)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_mustahik ON transactions(mustahik_id)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_tx_allocations_tx ON transaction_allocations(transaction_id)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_tx_allocations_region ON transaction_allocations(region)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_mustahik_region ON mustahik(region)');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_anomalies_transaction ON anomalies(transaction_id, type, status)');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_donations_campaign ON donations(campaign_id)');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)');

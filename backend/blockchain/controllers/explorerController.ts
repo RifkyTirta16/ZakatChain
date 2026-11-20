@@ -86,7 +86,14 @@ export const verifyReportProof = async (req: Request, res: Response) => {
         : 'NOT_FOUND_ON_CHAIN';
 
     // `data` is what PublicVerify.tsx reads; `database` is retained for
-    // OnChainExplorer.tsx. Both include snake_case & camelCase aliases.
+    // OnChainExplorer.tsx. Both include snake_case & camelCase aliases without PII.
+    const allocations = dbInfo
+      ? await (db as any).all(
+          'SELECT region, amount FROM transaction_allocations WHERE transaction_id = ? ORDER BY id ASC',
+          [dbInfo.id]
+        )
+      : [];
+
     const database = dbInfo
       ? {
           id: dbInfo.id,
@@ -101,6 +108,9 @@ export const verifyReportProof = async (req: Request, res: Response) => {
           tx_hash: dbInfo.tx_hash,
           block_number: dbInfo.block_number ?? null,
           proof_status: dbInfo.proof_status ?? null,
+          revoke_tx_hash: dbInfo.revoke_tx_hash ?? null,
+          revoke_reason: dbInfo.revoke_reason ?? null,
+          allocations,
         }
       : null;
 

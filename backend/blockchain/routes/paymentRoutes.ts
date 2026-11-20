@@ -4,6 +4,8 @@ import {
   getPaymentStatus,
   handlePaymentWebhook,
   sandboxConfirmPayment,
+  getSandboxSessionInfo,
+  scanConfirmSandboxPayment,
 } from '../controllers/paymentController.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -20,6 +22,9 @@ router.post('/create', authenticate, createPaymentSession);
 router.get('/status/:sessionId', authenticate, getPaymentStatus);
 router.get('/verify/:paymentId', authenticate, getPaymentStatus);
 router.post('/sandbox/confirm/:sessionId', authenticate, sandboxConfirmPayment);
+// Scannable QR sandbox endpoints (non-production only, protected by per-session HMAC token).
+router.get('/sandbox/session/:sessionId', getSandboxSessionInfo);
+router.post('/sandbox/scan-confirm/:sessionId', scanConfirmSandboxPayment);
 
 // Legacy singular prefix used by CampaignDetail.tsx (POST /api/payment/generate).
 // Mounted separately in index.ts.

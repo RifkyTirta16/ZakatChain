@@ -31,6 +31,33 @@ const amountValue = z.preprocess(
 );
 
 export const CATEGORIES = ['Konsumsi', 'Kesehatan', 'Pendidikan', 'Modal Usaha'] as const;
+export const ASNAF_CATEGORIES = [
+  'Fakir',
+  'Miskin',
+  'Amil',
+  'Muallaf',
+  'Riqab',
+  'Gharimin',
+  'Fisabilillah',
+  'Ibnu Sabil',
+] as const;
+
+const optionalPositiveInt = z.preprocess(
+  (val) => (val === '' || val === null || val === undefined ? undefined : typeof val === 'string' ? Number(val) : val),
+  z.number({ message: 'ID harus berupa angka' }).int().positive().optional()
+);
+
+const allocationItemSchema = z.object({
+  region: trimmedString(MAX_TEXT).refine((value) => value.length >= 2, {
+    message: 'Wilayah alokasi harus diisi',
+  }),
+  amount: amountValue,
+  notes: z
+    .string()
+    .transform((value) => value.trim())
+    .refine((value) => value.length <= 200, { message: 'Catatan maksimal 200 karakter' })
+    .optional(),
+});
 
 export const TransactionSchema = z.object({
   amount: amountValue,
@@ -48,6 +75,22 @@ export const TransactionSchema = z.object({
   region: trimmedString(MAX_TEXT).refine((value) => value.length >= 2, {
     message: 'Wilayah harus diisi',
   }),
+  campaign_id: optionalPositiveInt,
+  mustahik_id: optionalPositiveInt,
+  allocations: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return undefined;
+      if (typeof val === 'string') {
+        try {
+          return JSON.parse(val);
+        } catch {
+          return val;
+        }
+      }
+      return val;
+    },
+    z.array(allocationItemSchema).min(1).max(20).optional()
+  ),
   // Accepted for compatibility, but the server always derives proof_url from the
   // uploaded file; a client-supplied value is never persisted.
   proof_url: z.string().max(500).optional(),
@@ -159,6 +202,44 @@ export const ReconciliationSchema = z.object({
 
 export const UserRoleUpdateSchema = z.object({
   role: z.enum(['USER', 'AMIL', 'AUDITOR', 'ADMIN'], { message: 'Role harus USER, AMIL, AUDITOR, atau ADMIN' }),
+});
+
+export const RevokeReportSchema = z.object({
+  reason: trimmedString(500).refine((value) => value.length >= 5, {
+    message: 'Alasan pencabutan minimal 5 karakter',
+  }),
+});
+
+export const MustahikSchema = z.object({
+  full_name: trimmedString(MAX_TEXT).refine((value) => value.length >= 3, {
+    message: 'Nama lengkap minimal 3 karakter',
+  }),
+  category_asnaf: z.enum(ASNAF_CATEGORIES, { message: 'Kategori asnaf tidak valid' }),
+  region: trimmedString(MAX_TEXT).refine((value) => value.length >= 2, {
+    message: 'Wilayah wajib diisi',
+  }),
+  phone_masked: z
+    .string()
+    .transform((value) => value.trim())
+    .refine((value) => value.length <= 32, { message: 'Kontak maksimal 32 karakter' })
+    .optional(),
+  verification_status: z.enum(['VERIFIED', 'PENDING', 'INACTIVE']).optional(),
+  notes: z
+    .string()
+    .transform((value) => value.trim())
+    .refine((value) => value.length <= 500, { message: 'Catatan maksimal 500 karakter' })
+    .optional(),
+});
+
+export const MustahikStatusSchema = z.object({
+  verification_status: z.enum(['VERIFIED', 'PENDING', 'INACTIVE'], {
+    message: 'Status mustahik harus VERIFIED, PENDING, atau INACTIVE',
+  }),
+  notes: z
+    .string()
+    .transform((value) => value.trim())
+    .refine((value) => value.length <= 500, { message: 'Catatan maksimal 500 karakter' })
+    .optional(),
 });
 
 /**

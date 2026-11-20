@@ -1,6 +1,11 @@
 
 import { Router } from 'express';
-import { getTransactions, createTransaction, reconcileTransaction } from '../controllers/transactionController.js';
+import {
+  getTransactions,
+  createTransaction,
+  reconcileTransaction,
+  revokeTransactionOnChain,
+} from '../controllers/transactionController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
 
@@ -10,5 +15,6 @@ const uploadSingle = upload.single('proof_file');
 router.get('/', authenticate, authorize(['AMIL', 'AUDITOR', 'ADMIN']), getTransactions);
 router.post('/', authenticate, authorize(['AMIL', 'ADMIN']), uploadSingle, createTransaction);
 router.patch('/:id/reconcile', authenticate, authorize(['ADMIN']), reconcileTransaction);
+router.patch('/:id/revoke', authenticate, authorize(['ADMIN']), revokeTransactionOnChain);
 
 export default router;
