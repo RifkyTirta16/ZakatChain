@@ -70,3 +70,69 @@ export const getBlockchainWallet = (provider: ethers.Provider) => {
 export const getZakatContract = (provider: ethers.Provider): ZakatContract => {
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider) as unknown as ZakatContract;
 };
+
+export interface NetworkProbeResult {
+  rpc: 'Connected' | 'Unreachable' | 'Unknown';
+  contract: 'Active' | 'No contract code' | 'Unknown';
+  status: 'Healthy' | 'Degraded' | 'Unknown';
+  chainId: number | null;
+  networkName: string;
+  contractAddress: string;
+  blockNumber: number | null;
+}
+
+export const resolveNetworkName = (chainId: number | null | undefined): string => {
+  if (chainId === 31337) return 'Localhost / Hardhat';
+  if (chainId === 11155111) return 'Sepolia Testnet';
+  if (chainId === 1) return 'Ethereum Mainnet';
+  if (typeof chainId === 'number' && Number.isFinite(chainId)) return `Ethereum Chain #${chainId}`;
+  return 'Jaringan Tidak Tersedia';
+};
+
+/**
+ * Probes the configured JSON-RPC provider and ZakatVerify contract bytecode
+ * with a strict timeout so unreachable nodes surface an explicit degraded state.
+ */
+export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbeResult> => {
+  let provider: ReturnType<typeof getBlockchainProvider> | null = null;
+  try {
+    provider = getBlockchainProvider();
+    const probe = (async () => {
+      const [network, blockNumber, code] = await Promise.all([
+        provider!.getNetwork(),
+        provider!.getBlockNumber(),
+        provider!.getCode(CONTRACT_ADDRESS),
+      ]);
+      const chainId = Number(network.chainId);
+      return { chainId, blockNumber, code };
+    })();
+
+    const { chainId, blockNumber, code } = await Promise.race([
+      probe,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('RPC probe timed out')), timeoutMs)),
+    ]);
+
+    const contractActive = Boolean(code && code !== '0x');
+    return {
+      rpc: 'Connected',
+      contract: contractActive ? 'Active' : 'No contract code',
+      status: contractActive ? 'Healthy' : 'Degraded',
+      chainId,
+      networkName: resolveNetworkName(chainId),
+      contractAddress: CONTRACT_ADDRESS,
+      blockNumber,
+    };
+  } catch {
+    return {
+      rpc: 'Unreachable',
+      contract: 'Unknown',
+      status: 'Degraded',
+      chainId: null,
+      networkName: 'Jaringan Tidak Tersedia',
+      contractAddress: CONTRACT_ADDRESS,
+      blockNumber: null,
+    };
+  } finally {
+    provider?.destroy();
+  }
+};

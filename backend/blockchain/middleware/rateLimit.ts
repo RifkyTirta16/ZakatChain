@@ -9,22 +9,14 @@ const WINDOW_MS = 15 * 60 * 1000; // 15 menit
 export const DEFAULT_LIMIT = 100;
 export const AUTH_LIMIT = 20;
 
-const store = new Map<string, RateLimitEntry>();
-
-// Bersihkan entri jendela yang sudah lewat agar memori tidak tumbuh tanpa batas.
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store.entries()) {
-    if (now > entry.resetTime) {
-      store.delete(key);
-    }
-  }
-}, WINDOW_MS).unref();
-
 const clientKey = (req: Request): string =>
   req.ip ?? req.socket?.remoteAddress ?? 'unknown';
 
-const checkLimit = (req: Request, limit: number): { allowed: boolean; retryAfter?: number } => {
+const checkLimit = (
+  store: Map<string, RateLimitEntry>,
+  req: Request,
+  limit: number,
+): { allowed: boolean; retryAfter?: number } => {
   const key = clientKey(req);
   const now = Date.now();
   const entry = store.get(key);
@@ -44,13 +36,26 @@ const checkLimit = (req: Request, limit: number): { allowed: boolean; retryAfter
 
 export const rateLimit = (options?: { limit?: number }) => {
   const limit = options?.limit ?? DEFAULT_LIMIT;
+  // Each limiter instance keeps its own counter store so normal API traffic
+  // does not consume the stricter /api/auth login/register quota.
+  const store = new Map<string, RateLimitEntry>();
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of store.entries()) {
+      if (now > entry.resetTime) {
+        store.delete(key);
+      }
+    }
+  }, WINDOW_MS).unref();
+
   // Dalam lingkungan tes, nonaktifkan pematok agar aliran integrasi cepat
   // tidak terhalang dan hasil tes deterministic.
   if (process.env.NODE_ENV === 'test') {
     return (_req: Request, _res: Response, next: NextFunction) => next();
   }
   return (req: Request, res: Response, next: NextFunction) => {
-    const result = checkLimit(req, limit);
+    const result = checkLimit(store, req, limit);
     if (!result.allowed) {
       res.set('Retry-After', String(result.retryAfter));
       return res.status(429).json({

@@ -1,5 +1,10 @@
 import { Request, Response } from 'express';
-import { getBlockchainProvider, getZakatContract } from '../utils/web3.js';
+import {
+  CONTRACT_ADDRESS,
+  getBlockchainProvider,
+  getZakatContract,
+  resolveNetworkName,
+} from '../utils/web3.js';
 import { ethers } from 'ethers';
 
 /**
@@ -51,15 +56,20 @@ export const verifyReportProof = async (req: Request, res: Response) => {
     let timestamp = 0n;
     let revoked = false;
     let chainUnavailable = false;
+    let chainId: number | null = null;
     let provider: ReturnType<typeof getBlockchainProvider> | null = null;
 
     try {
       provider = getBlockchainProvider();
       const contract = getZakatContract(provider);
-      const reportInfo = await contract.verifyReport(formattedHash);
+      const [reportInfo, network] = await Promise.all([
+        contract.verifyReport(formattedHash),
+        provider.getNetwork(),
+      ]);
       exists = reportInfo[0];
       timestamp = reportInfo[1];
       revoked = reportInfo[2];
+      chainId = Number(network.chainId);
     } catch (chainError: any) {
       // Surface an explicit "unknown" state instead of reporting NOT_FOUND,
       // which would be a false negative during an RPC outage.
@@ -76,7 +86,7 @@ export const verifyReportProof = async (req: Request, res: Response) => {
         : 'NOT_FOUND_ON_CHAIN';
 
     // `data` is what PublicVerify.tsx reads; `database` is retained for
-    // OnChainExplorer.tsx. Both point at the same record.
+    // OnChainExplorer.tsx. Both include snake_case & camelCase aliases.
     const database = dbInfo
       ? {
           id: dbInfo.id,
@@ -85,14 +95,23 @@ export const verifyReportProof = async (req: Request, res: Response) => {
           region: dbInfo.region,
           timestamp: dbInfo.timestamp,
           status: dbInfo.blockchain_status,
+          blockchain_status: dbInfo.blockchain_status,
           auditHash: dbInfo.audit_hash,
+          audit_hash: dbInfo.audit_hash,
           tx_hash: dbInfo.tx_hash,
+          block_number: dbInfo.block_number ?? null,
+          proof_status: dbInfo.proof_status ?? null,
         }
       : null;
 
     return res.json({
       verified: !chainUnavailable && exists,
       verified_as: 'audit_hash_present_on_chain',
+      network: {
+        chainId,
+        networkName: resolveNetworkName(chainId),
+        contractAddress: CONTRACT_ADDRESS,
+      },
       blockchain: {
         exists,
         timestamp: timestamp.toString(),
