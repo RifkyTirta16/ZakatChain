@@ -48,8 +48,9 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/tests/*.test.ts   tes (node:test)
 - backend/blockchain/seed.ts           seed 5 transaksi, TIDAK membuat user
 - backend/blockchain/seed_test_users.ts seed 4 akun uji per role (dev/test saja)
+- backend/blockchain/seed_admin.ts     CLI provisioning akun ADMIN awal (aman untuk produksi)
 - backend/database.sqlite              DB aktif (+ -shm/-wal: jangan dihapus manual)
-- backend/uploads/                     file bukti (saat ini publik via /uploads)
+- backend/uploads/                     file bukti (terproteksi AMIL/AUDITOR/ADMIN via /uploads)
 - backend/.env                         RAHASIA. Dilarang dibaca/dicetak nilainya.
   Lihat nama variabel saja: sed 's/=.*/=/' backend/.env
 

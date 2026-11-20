@@ -1,5 +1,11 @@
 # Session Log
 
+## 2026-11-20 - Hardening Risiko Produksi, Keamanan CORS/Auth, & Sinkronisasi ABI Kontrak
+- CORS & Header (`backend/blockchain/index.ts`): HTTP `403` JSON pada origin ditolak, tolak wildcard `'*'`, matikan fallback localhost di production + log warning, tambah `x-powered-by` off & `nosniff`/`DENY`/`no-referrer`.
+- Auth & Admin CLI (`middleware/auth.ts`, `authController.ts`, `seed_admin.ts`, `package.json`, `.env.example`): validasi `ALLOWED_ROLES` pada JWT, toggle `ALLOW_PUBLIC_REGISTRATION`, serta `npm run create:admin` (`ADMIN_USERNAME`/`ADMIN_PASSWORD` tervalidasi `RegisterSchema`, aman di produksi).
+- Kontrak & ABI (`backend/blockchain/utils/web3.ts`, `explorerController.ts`, `frontend/src/web3.ts`): tambah `ReportRevoked` & sinkron `uint256 reportId`/`revokeReport`, hapus fallback Hardhat `0x5FbDB...` di mode produksi.
+- Verifikasi: backend `tsc` & `74/74` tes lulus; blockchain `18/18` passing; frontend `tsc -b`, `oxlint` (`0/0`), `vite build` bersih.
+
 ## 2026-11-20 - Penyelesaian Item Minor Pra-Produksi, Chunk Splitting Vite (<500 kB), & Uji Browser Live
 - Backend: tambah `app.set('trust proxy', resolveTrustProxy(process.env.TRUST_PROXY))` (default `'loopback'`) dan penanganan error pada callback `app.listen` di `backend/blockchain/index.ts`; hapus literal `'DONOR'` yang tidak dipakai dari `middleware/auth.ts`, `types/express.d.ts`, dan `tests/auth.test.ts`.
 - Frontend: split vendor chunk di `vite.config.ts` (`vendor-react`, `vendor-web3`, `vendor-query`, `vendor-icons`, `vendor-map`, `vendor-charts`, `vendor-misc`) -> `index` `70.98 kB` dan nol peringatan `>500 kB`; rapikan lebar + format `YAxis` grafik batang `PublicTransparencyPage.tsx`.

@@ -6,7 +6,8 @@
 | Check | Scope | Command | Result |
 |---|---|---|---|
 | Backend TypeScript | `backend/` | `cd backend && npx tsc --noEmit -p .` | Pass (0 errors) |
-| Backend Test Suite | `backend/blockchain/tests/*.test.ts` | `cd backend && npm test` | **71 / 71 pass** (includes `publicTransparency.test.ts` & full RBAC/sandbox/search regression tests) |
+| Backend Test Suite | `backend/blockchain/tests/*.test.ts` | `cd backend && npm test` | **74 / 74 pass** (includes `publicTransparency`, RBAC, sandbox, CORS 403, JWT role allowlist, `ALLOW_PUBLIC_REGISTRATION`, & contract guard tests) |
+| Smart Contract Suite | `blockchain/test/ZakatVerify.test.ts` | `cd blockchain && npm test` | **18 / 18 passing** |
 | Frontend TypeScript | `frontend/src/` | `cd frontend && npx tsc -b` | Pass (0 errors) |
 | Frontend Linter | `frontend/src/` (80 files) | `cd frontend && npm run lint` | **0 warnings, 0 errors** |
 | Frontend Production Build | `frontend/` | `cd frontend && npm run build` | Pass (zero chunk `>500 kB` warnings via `manualChunks`: initial entry `70.98 kB` / `18.49 kB` gzip; largest `vendor-charts` `418.59 kB`) |
