@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { createPaymentSession, getPaymentStatus, handlePaymentWebhook } from '../controllers/paymentController.js';
+import {
+  createPaymentSession,
+  getPaymentStatus,
+  handlePaymentWebhook,
+  sandboxConfirmPayment,
+} from '../controllers/paymentController.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
@@ -14,6 +19,7 @@ router.post('/create', authenticate, createPaymentSession);
 // Session status lookups. `status` and `verify` are aliases.
 router.get('/status/:sessionId', authenticate, getPaymentStatus);
 router.get('/verify/:paymentId', authenticate, getPaymentStatus);
+router.post('/sandbox/confirm/:sessionId', authenticate, sandboxConfirmPayment);
 
 // Legacy singular prefix used by CampaignDetail.tsx (POST /api/payment/generate).
 // Mounted separately in index.ts.

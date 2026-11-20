@@ -21,9 +21,7 @@ export const getTransactions = async (req: Request, res: Response) => {
     if (typeof search === 'string' && search.trim()) {
       const term = `%${escapeLike(search.trim())}%`;
       conditions.push(
-        "(recipient_name LIKE ? ESCAPE '\\')",
-        "(donor_name LIKE ? ESCAPE '\\')",
-        "(audit_hash LIKE ? ESCAPE '\\')"
+        "(recipient_name LIKE ? ESCAPE '\\' OR donor_name LIKE ? ESCAPE '\\' OR audit_hash LIKE ? ESCAPE '\\')"
       );
       params.push(term, term, term);
     }

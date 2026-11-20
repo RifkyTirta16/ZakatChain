@@ -20,8 +20,9 @@ import exportRoutes from './routes/exportRoutes.js';
 import donationRoutes from './routes/donationRoutes.js';
 import campaignRoutes from './routes/campaignRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import { createPaymentSession } from './controllers/paymentController.js';
-import { authenticate } from './middleware/auth.js';
+import { authenticate, authorize } from './middleware/auth.js';
 import { rateLimit, AUTH_LIMIT } from './middleware/rateLimit.js';
 
 const backendEnvPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env');
@@ -59,9 +60,9 @@ app.use(express.json({
   }
 }));
 
-// Serve uploaded proof files. `dotfiles: deny` and the absence of directory
-// listing prevent the uploads directory from acting as a file browser.
-app.use('/uploads', express.static(uploadDirectory, {
+// Serve uploaded proof files only to authorized operational/oversight roles.
+// `dotfiles: deny` and `index: false` prevent directory browsing.
+app.use('/uploads', authenticate, authorize(['AMIL', 'AUDITOR', 'ADMIN']), express.static(uploadDirectory, {
   dotfiles: 'deny',
   index: false,
   maxAge: '1h',
@@ -116,6 +117,7 @@ app.use('/api/export', exportRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/users', userRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
