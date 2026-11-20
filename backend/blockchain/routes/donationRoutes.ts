@@ -4,8 +4,8 @@ import { authenticate, authorize, authorizeSelfOr } from '../middleware/auth.js'
 
 const router = Router();
 
-// The Evidence Graph fetches this list to build its graph.
-router.get('/', authenticate, getDonations);
+// Restricted to staff/oversight roles; donors read only their own rows via /donor/:donor_id.
+router.get('/', authenticate, authorize(['AMIL', 'AUDITOR', 'ADMIN']), getDonations);
 
 // A donor may read their own history; ADMIN/AUDITOR may read any.
 // Previously any authenticated user could read any donor's history by id.

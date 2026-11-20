@@ -157,6 +157,10 @@ export const ReconciliationSchema = z.object({
   period: z.string().max(64).optional(),
 });
 
+export const UserRoleUpdateSchema = z.object({
+  role: z.enum(['USER', 'AMIL', 'AUDITOR', 'ADMIN'], { message: 'Role harus USER, AMIL, AUDITOR, atau ADMIN' }),
+});
+
 /**
  * Formats zod issues into the `{ path, message }` shape the frontend already
  * consumes (NewDistributionRecord.tsx maps `details[].path[].message`).

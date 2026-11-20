@@ -15,28 +15,31 @@ export const getTransactions = async (req: Request, res: Response) => {
   try {
     const { search, category, region, status } = req.query;
 
-    let query = 'SELECT * FROM transactions WHERE 1=1';
-    const params: any[] = [];
+    const conditions: string[] = [];
+    const params: (string | number | null)[] = [];
 
     if (typeof search === 'string' && search.trim()) {
       const term = `%${escapeLike(search.trim())}%`;
-      query += " AND (recipient_name LIKE ? ESCAPE '\\' OR donor_name LIKE ? ESCAPE '\\' OR audit_hash LIKE ? ESCAPE '\\')";
+      conditions.push(
+        "(recipient_name LIKE ? ESCAPE '\\' OR donor_name LIKE ? ESCAPE '\\' OR audit_hash LIKE ? ESCAPE '\\')"
+      );
       params.push(term, term, term);
     }
     if (typeof category === 'string' && category.trim()) {
-      query += ' AND category = ?';
+      conditions.push("category = ?");
       params.push(category.trim());
     }
     if (typeof region === 'string' && region.trim()) {
-      query += ' AND region = ?';
+      conditions.push("region = ?");
       params.push(region.trim());
     }
     if (typeof status === 'string' && status.trim()) {
-      query += ' AND blockchain_status = ?';
+      conditions.push("blockchain_status = ?");
       params.push(status.trim());
     }
 
-    query += ' ORDER BY timestamp DESC, id DESC';
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const query = `SELECT * FROM transactions ${whereClause} ORDER BY timestamp DESC, id DESC`;
 
     const transactions = await (db as any).all(query, params);
     res.json(transactions);

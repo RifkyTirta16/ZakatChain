@@ -7,8 +7,8 @@ import { upload } from '../middleware/upload.js';
 const router = Router();
 const uploadSingle = upload.single('proof_file');
 
-router.get('/', authenticate, getTransactions);
-router.post('/', authenticate, authorize(['USER', 'ADMIN']), uploadSingle, createTransaction);
+router.get('/', authenticate, authorize(['AMIL', 'AUDITOR', 'ADMIN']), getTransactions);
+router.post('/', authenticate, authorize(['AMIL', 'ADMIN']), uploadSingle, createTransaction);
 router.patch('/:id/reconcile', authenticate, authorize(['ADMIN']), reconcileTransaction);
 
 export default router;

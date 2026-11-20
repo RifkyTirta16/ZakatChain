@@ -87,14 +87,13 @@ export const createPaymentSession = async (req: Request, res: Response) => {
         [sessionId, donor_name ?? null, amount, program_id ?? (campaign_id !== undefined ? String(campaign_id) : null), expiresAt]
       );
 
-      let donationId: number | null = null;
-      if (campaign_id !== undefined) {
-        const donation = await (db as any).run(
-          'INSERT INTO donations (campaign_id, donor_id, amount, payment_reference, status) VALUES (?, ?, ?, ?, ?)',
-          [campaign_id, donorId, amount, sessionId, 'PENDING']
-        );
-        donationId = donation.lastID as number;
-      }
+      // Always record a linked donation row (campaign_id is nullable for Zakat Umum)
+      // so all confirmed payments appear in MyDonations and platform donation totals.
+      const donation = await (db as any).run(
+        'INSERT INTO donations (campaign_id, donor_id, amount, payment_reference, status) VALUES (?, ?, ?, ?, ?)',
+        [campaign_id ?? null, donorId, amount, sessionId, 'PENDING']
+      );
+      const donationId = donation.lastID as number;
 
       await (db as any).run(
         'INSERT INTO payment_events (donation_id, event_type, payload) VALUES (?, ?, ?)',
@@ -210,9 +209,20 @@ export const handlePaymentWebhook = async (req: Request, res: Response) => {
 
       let donation: any = null;
       if (donationId !== null) {
-        donation = await (db as any).get('SELECT id, status FROM donations WHERE id = ?', [donationId]);
+        donation = await (db as any).get(
+          'SELECT id, campaign_id, amount, status FROM donations WHERE id = ?',
+          [donationId]
+        );
         if (!donation) return { code: 404, body: { error: 'Donation not found' } };
         if (donation.status !== 'PENDING') {
+          return { code: 409, body: { error: 'Donation has already reached a terminal status' } };
+        }
+      } else if (sessionId) {
+        donation = await (db as any).get(
+          'SELECT id, campaign_id, amount, status FROM donations WHERE payment_reference = ?',
+          [sessionId]
+        );
+        if (donation && donation.status !== 'PENDING') {
           return { code: 409, body: { error: 'Donation has already reached a terminal status' } };
         }
       }
@@ -245,6 +255,12 @@ export const handlePaymentWebhook = async (req: Request, res: Response) => {
       const nextDonationStatus = status === 'SUCCESS' ? 'CONFIRMED' : 'FAILED';
       if (donation) {
         await (db as any).run('UPDATE donations SET status = ? WHERE id = ?', [nextDonationStatus, donation.id]);
+        if (nextDonationStatus === 'CONFIRMED' && donation.campaign_id) {
+          await (db as any).run(
+            'UPDATE campaigns SET current_amount = COALESCE(current_amount, 0) + ? WHERE id = ?',
+            [Number(donation.amount) || 0, donation.campaign_id]
+          );
+        }
       }
 
       const nextPaymentStatus = status === 'SUCCESS' ? 'CONFIRMED' : 'FAILED';
@@ -262,5 +278,75 @@ export const handlePaymentWebhook = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('[PAYMENT WEBHOOK ERROR]', error?.message);
     res.status(500).json({ error: 'Webhook processing failed' });
+  }
+};
+
+/**
+ * Local development / demo sandbox helper to mark an active PENDING session as PAID.
+ * Strictly disabled in production.
+ */
+export const sandboxConfirmPayment = async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Sandbox confirmation is disabled in production' });
+  }
+  const { db } = req;
+  const sessionId = typeof req.params.sessionId === 'string' ? req.params.sessionId : '';
+  const requester = (req as AuthRequest).user;
+  if (!sessionId || sessionId.length > 120) {
+    return res.status(400).json({ error: 'A valid payment session ID is required' });
+  }
+
+  try {
+    const outcome = await runInTransaction(db as any, async () => {
+      const payment = await (db as any).get(
+        'SELECT payment_session_id, amount, status, expires_at FROM payments WHERE payment_session_id = ?',
+        [sessionId]
+      );
+      if (!payment) return { code: 404, body: { error: 'Payment session not found' } };
+      if (payment.status !== 'PENDING') {
+        return { code: 409, body: { error: 'Payment session is no longer pending' } };
+      }
+      if (payment.expires_at && Date.parse(payment.expires_at) < Date.now()) {
+        await (db as any).run(
+          "UPDATE payments SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ?",
+          [sessionId]
+        );
+        return { code: 409, body: { error: 'Payment session has expired' } };
+      }
+
+      const donation = await (db as any).get(
+        'SELECT id, donor_id, campaign_id, amount, status FROM donations WHERE payment_reference = ?',
+        [sessionId]
+      );
+      if (donation && donation.donor_id !== null && requester && requester.role !== 'ADMIN' && donation.donor_id !== requester.id) {
+        return { code: 403, body: { error: 'Insufficient permissions' } };
+      }
+
+      const providerTxId = `SANDBOX-${sessionId}`;
+      await (db as any).run(
+        `UPDATE payments SET status = 'CONFIRMED', provider_tx_id = ?, updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ?`,
+        [providerTxId, sessionId]
+      );
+      if (donation && donation.status === 'PENDING') {
+        await (db as any).run("UPDATE donations SET status = 'CONFIRMED' WHERE id = ?", [donation.id]);
+        if (donation.campaign_id) {
+          await (db as any).run(
+            'UPDATE campaigns SET current_amount = COALESCE(current_amount, 0) + ? WHERE id = ?',
+            [Number(donation.amount) || 0, donation.campaign_id]
+          );
+        }
+      }
+      await (db as any).run(
+        'INSERT INTO payment_events (donation_id, provider_tx_id, event_type, payload) VALUES (?, ?, ?, ?)',
+        [donation?.id ?? null, providerTxId, 'SANDBOX_CONFIRMED', JSON.stringify({ session_id: sessionId })]
+      );
+
+      return { code: 200, body: { status: 'PAID', session_id: sessionId, provider_tx_id: providerTxId } };
+    });
+
+    res.status(outcome.code).json(outcome.body);
+  } catch (error: any) {
+    console.error('[SANDBOX CONFIRM ERROR]', error?.message);
+    res.status(500).json({ error: 'Sandbox payment confirmation failed' });
   }
 };

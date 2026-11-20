@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getBlockchainProvider, getZakatContract } from '../utils/web3.js';
 import { AnomalyResolutionSchema, formatIssues } from '../utils/validation.js';
+import { logActivity } from '../utils/auditLogger.js';
 import { ethers } from 'ethers';
 
 interface DetectedIssue {
@@ -136,13 +137,15 @@ export const resolveAnomaly = async (req: Request, res: Response) => {
   const { status, follow_up } = parsed.data;
 
   try {
-    const result = await (db as any).run(
+    const existing = await (db as any).get('SELECT status FROM anomalies WHERE id = ?', [Number(id)]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Anomaly not found' });
+    }
+    await (db as any).run(
       `UPDATE anomalies SET status = ?, follow_up = ? WHERE id = ?`,
       [status, follow_up ?? null, Number(id)]
     );
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Anomaly not found' });
-    }
+    await logActivity(req, 'RESOLVE_ANOMALY', 'ANOMALY', Number(id), existing.status, status);
     res.json({ message: 'Anomaly status updated' });
   } catch (error: any) {
     console.error('[RESOLVE ANOMALY ERROR]', error?.message);

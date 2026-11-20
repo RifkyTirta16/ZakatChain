@@ -168,7 +168,15 @@ test('integration: frontend payment routes exist and return the expected shape',
 test('integration: distribution upload flows end to end and rejects bad files', async () => {
   const server = await startServer();
   try {
-    const token = await loginAs(server.base, 'amil01', 'supersecret1');
+    let token = await loginAs(server.base, 'amil01', 'supersecret1');
+
+    // POST /api/transactions is AMIL/ADMIN only; promote via the same DB the app uses.
+    const { initDb } = await import('../models/db.js');
+    const promoteDb = await initDb(process.env.DATABASE_PATH as string);
+    await promoteDb.run("UPDATE users SET role = 'AMIL' WHERE username = 'amil01'");
+    await promoteDb.close();
+    const amilLogin = await request(server.base, 'POST', '/api/auth/login', { json: { username: 'amil01', password: 'supersecret1' } });
+    token = amilLogin.body.token;
 
     const form = new FormData();
     form.append('amount', '500000');
@@ -192,8 +200,12 @@ test('integration: distribution upload flows end to end and rejects bad files', 
     assert.equal(stored.anomaly_flag, 0, 'a record with proof is not an anomaly');
     assert.match(stored.proof_url, /^\/uploads\/[a-f0-9]{32}\.png$/);
 
-    // The stored proof must actually be served.
-    const proof = await fetch(`${server.base}${stored.proof_url}`);
+    // The stored proof must be protected from anonymous/donor access and served to authorized roles.
+    const anonProof = await fetch(`${server.base}${stored.proof_url}`);
+    assert.equal(anonProof.status, 401);
+    const proof = await fetch(`${server.base}${stored.proof_url}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     assert.equal(proof.status, 200);
 
     // A file whose content is not a real image must be rejected.
@@ -218,6 +230,43 @@ test('integration: distribution upload flows end to end and rejects bad files', 
     assert.equal(invalid.body.error, 'Validation failed');
     assert.ok(Array.isArray(invalid.body.details));
     assert.ok(invalid.body.details.length > 0);
+  } finally {
+    await server.close();
+  }
+});
+
+test('integration: POST /api/transactions allows AMIL, rejects USER with 403 and anonymous with 401', async () => {
+  const server = await startServer();
+  try {
+    const distributionForm = () => {
+      const form = new FormData();
+      form.append('amount', '500000');
+      form.append('recipient_name', 'Budi Santoso');
+      form.append('category', 'Konsumsi');
+      form.append('region', 'Jawa Barat, Bandung');
+      return form;
+    };
+
+    // Anonymous: 401 before any role check.
+    const anonymous = await request(server.base, 'POST', '/api/transactions', { form: distributionForm() });
+    assert.equal(anonymous.status, 401);
+
+    // Registered user (role USER): authenticated but forbidden.
+    const userToken = await loginAs(server.base, 'donorRole', 'supersecret1');
+    const asUser = await request(server.base, 'POST', '/api/transactions', { token: userToken, form: distributionForm() });
+    assert.equal(asUser.status, 403);
+
+    // AMIL: allowed to create distribution records.
+    const { initDb } = await import('../models/db.js');
+    const promoteDb = await initDb(process.env.DATABASE_PATH as string);
+    await promoteDb.run("UPDATE users SET role = 'AMIL' WHERE username = 'donorRole'");
+    await promoteDb.close();
+    const amilLogin = await request(server.base, 'POST', '/api/auth/login', { json: { username: 'donorRole', password: 'supersecret1' } });
+    const amilToken = amilLogin.body.token;
+
+    const asAmil = await request(server.base, 'POST', '/api/transactions', { token: amilToken, form: distributionForm() });
+    assert.equal(asAmil.status, 201, asAmil.text);
+    assert.equal(asAmil.body.blockchain_status, 'PENDING_BLOCKCHAIN');
   } finally {
     await server.close();
   }
@@ -342,6 +391,125 @@ test('integration: webhook signature verification rejects unsigned and tampered 
     });
     // Signature is valid, but donation 1 does not exist in this fresh database.
     assert.equal(signed.status, 404);
+  } finally {
+    await server.close();
+  }
+});
+
+test('integration: USER cannot list private transactions, donations, or uploads; search uses OR; admin manages roles', async () => {
+  const server = await startServer();
+  try {
+    const donorToken = await loginAs(server.base, 'donor_sec', 'supersecret1');
+    const adminToken = await loginAs(server.base, 'admin_sec', 'supersecret1');
+    const { initDb } = await import('../models/db.js');
+    const db = await initDb(process.env.DATABASE_PATH as string);
+    await db.run("UPDATE users SET role = 'ADMIN' WHERE username = 'admin_sec'");
+    await db.run(
+      `INSERT INTO transactions (amount, donor_name, recipient_name, category, region, audit_hash)
+       VALUES (100000, 'DonaturSatu', 'MustahikRahasia', 'Konsumsi', 'Jawa Barat', ?)`,
+      ['a'.repeat(64)]
+    );
+    await db.run(
+      `INSERT INTO anomalies (transaction_id, type, reason, priority, status)
+       VALUES (1, 'MISSING_PROOF', 'Test anomaly', 'HIGH', 'OPEN')`
+    );
+    await db.close();
+
+    // Re-login as ADMIN after promotion
+    const adminRelogin = await request(server.base, 'POST', '/api/auth/login', {
+      json: { username: 'admin_sec', password: 'supersecret1' },
+    });
+    const freshAdminToken = adminRelogin.body.token;
+
+    // 1. USER blocked from PII endpoints
+    assert.equal((await request(server.base, 'GET', '/api/transactions', { token: donorToken })).status, 403);
+    assert.equal((await request(server.base, 'GET', '/api/donations', { token: donorToken })).status, 403);
+    assert.equal((await request(server.base, 'GET', '/api/users', { token: donorToken })).status, 403);
+
+    // 2. Search matches recipient_name OR donor_name OR audit_hash
+    const byRecipient = await request(server.base, 'GET', '/api/transactions?search=MustahikRahasia', { token: freshAdminToken });
+    assert.equal(byRecipient.status, 200);
+    assert.equal(byRecipient.body.length, 1);
+
+    const byDonor = await request(server.base, 'GET', '/api/transactions?search=DonaturSatu', { token: freshAdminToken });
+    assert.equal(byDonor.status, 200);
+    assert.equal(byDonor.body.length, 1);
+
+    // 3. General zakat session records in donations & sandbox confirm marks CONFIRMED
+    const generalPay = await request(server.base, 'POST', '/api/payments/session', {
+      token: donorToken,
+      json: { amount: 150000, program_id: 'zakat-penghasilan' },
+    });
+    assert.equal(generalPay.status, 201);
+    assert.ok(generalPay.body.donationId > 0);
+    const confirm = await request(server.base, 'POST', `/api/payments/sandbox/confirm/${generalPay.body.session_id}`, {
+      token: donorToken,
+    });
+    assert.equal(confirm.status, 200);
+    assert.equal(confirm.body.status, 'PAID');
+    const donorHist = await request(server.base, 'GET', '/api/donations/donor/1', { token: donorToken });
+    assert.equal(donorHist.status, 200);
+    assert.equal(donorHist.body[0].status, 'CONFIRMED');
+
+    // 4. Anomaly resolution writes audit log
+    const resolved = await request(server.base, 'PATCH', '/api/anomalies/1/resolve', {
+      token: freshAdminToken,
+      json: { status: 'RESOLVED', follow_up: 'Bukti dilengkapi' },
+    });
+    assert.equal(resolved.status, 200);
+
+    // 5. ADMIN user management: list without passwords + role update + self-update blocked
+    const usersRes = await request(server.base, 'GET', '/api/users', { token: freshAdminToken });
+    assert.equal(usersRes.status, 200);
+    assert.equal('password' in usersRes.body[0], false, 'password hash must never be exposed');
+    const selfDemote = await request(server.base, 'PATCH', '/api/users/2/role', {
+      token: freshAdminToken,
+      json: { role: 'USER' },
+    });
+    assert.equal(selfDemote.status, 409);
+    const promoteDonor = await request(server.base, 'PATCH', '/api/users/1/role', {
+      token: freshAdminToken,
+      json: { role: 'AMIL' },
+    });
+    assert.equal(promoteDonor.status, 200);
+    assert.equal(promoteDonor.body.user.role, 'AMIL');
+
+    const logs = await request(server.base, 'GET', '/api/audit', { token: freshAdminToken });
+    assert.equal(logs.status, 200);
+    const actions = logs.body.map((l: any) => l.action);
+    assert.ok(actions.includes('RESOLVE_ANOMALY'));
+    assert.ok(actions.includes('UPDATE_USER_ROLE'));
+  } finally {
+    await server.close();
+  }
+});
+
+test('integration: security headers present, CORS rejects untrusted origins with 403, and contract address requires env in production', async () => {
+  const server = await startServer();
+  try {
+    const okRes = await fetch(`${server.base}/health`);
+    assert.equal(okRes.status, 200);
+    assert.equal(okRes.headers.get('x-powered-by'), null);
+    assert.equal(okRes.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(okRes.headers.get('x-frame-options'), 'DENY');
+
+    const denied = await fetch(`${server.base}/health`, {
+      headers: { Origin: 'https://evil.example.com' },
+    });
+    assert.equal(denied.status, 403);
+
+    const { getContractAddress } = await import('../utils/web3.js');
+    const prevEnv = process.env.NODE_ENV;
+    const prevAddr = process.env.ZAKAT_CONTRACT_ADDRESS;
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.ZAKAT_CONTRACT_ADDRESS;
+      assert.equal(getContractAddress(), '');
+    } finally {
+      process.env.NODE_ENV = prevEnv;
+      if (prevAddr !== undefined) process.env.ZAKAT_CONTRACT_ADDRESS = prevAddr;
+      else delete process.env.ZAKAT_CONTRACT_ADDRESS;
+    }
   } finally {
     await server.close();
   }

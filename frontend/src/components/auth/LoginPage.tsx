@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { Zap, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import apiClient from '../../utils/api';
+import { Button, Card, Input } from '../ui';
+import { PoweredByEthereum } from '../ethereum';
 
 interface LoginPageProps {
   onLoginSuccess: (user: unknown, token: string) => void;
@@ -17,90 +20,92 @@ const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
     setError('');
     setLoading(true);
     try {
-      const { data } = await apiClient.post('/auth/login', { username, password });
+      const { data } = await apiClient.post('/auth/login', {
+        username: username.trim(),
+        password,
+      });
       onLoginSuccess(data.user, data.token);
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { error?: string } } };
-      setError(e2.response?.data?.error || 'Login gagal. Periksa koneksi ke backend (port 5000).');
+      setError(e2.response?.data?.error || 'Login gagal. Periksa username dan kata sandi Anda.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-wattvision-bg p-4">
-      <div className="w-full max-w-md bg-wattvision-surface border border-wattvision-border rounded-3xl p-8 shadow-2xl">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-wattvision-primary rounded-lg flex items-center justify-center text-black shadow-lg shadow-cyan-500/20">
-            <Zap size={22} />
+    <div className="max-w-md mx-auto px-4 py-12 sm:py-16">
+      <Card className="p-6 sm:p-8 space-y-6">
+        <div className="text-center space-y-2.5">
+          <div className="w-12 h-12 rounded-xl bg-mint text-primary flex items-center justify-center mx-auto">
+            <ShieldCheck size={26} />
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight uppercase italic leading-none">
-              Zakat<span className="text-wattvision-primary">Chain</span>
-            </h1>
-            <p className="text-wattvision-textSecondary text-[10px] uppercase tracking-widest font-medium mt-1">
-              Institutional Audit System
-            </p>
+          <h1 className="text-2xl font-extrabold text-forest-dark">Masuk ke ZakatChain</h1>
+          <p className="text-xs sm:text-sm text-slate-600">
+            Akses dashboard Muzakki, Amil, Auditor, atau Administrator sesuai peran terdaftar.
+          </p>
+          <div className="flex justify-center pt-1">
+            <PoweredByEthereum />
           </div>
         </div>
 
-        <p className="text-wattvision-textSecondary text-sm mb-6">
-          Masuk untuk mengakses dasbor dan pencatatan distribusi.
-        </p>
+        {error && (
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs sm:text-sm flex items-start gap-2 font-medium"
+          >
+            <AlertCircle size={16} className="shrink-0 mt-0.5 text-danger" />
+            <span>{error}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="username" className="block text-xs text-wattvision-textSecondary mb-1 uppercase tracking-widest">
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              required
-              autoComplete="username"
-              className="w-full bg-wattvision-bg border border-wattvision-border rounded-xl p-3 focus:outline-none focus:border-wattvision-primary transition-colors"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-xs text-wattvision-textSecondary mb-1 uppercase tracking-widest">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className="w-full bg-wattvision-bg border border-wattvision-border rounded-xl p-3 focus:outline-none focus:border-wattvision-primary transition-colors"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          {error && (
-            <div className="p-3 rounded-lg border border-wattvision-alert/30 bg-wattvision-alert/10 text-wattvision-alert text-sm text-center">
-              {error}
-            </div>
-          )}
-          <button
+          <Input
+            id="username"
+            label="Username"
+            placeholder="Masukkan username Anda"
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+
+          <Input
+            id="password"
+            type="password"
+            label="Password"
+            placeholder="Masukkan kata sandi"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <Button
             type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-wattvision-primary text-wattvision-bg rounded-xl font-bold uppercase tracking-widest text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+            variant="primary"
+            size="lg"
+            loading={loading}
+            disabled={!username.trim() || !password}
+            className="w-full"
           >
-            {loading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" /> Memeriksa…
-              </>
-            ) : (
-              'Login'
-            )}
-          </button>
+            <span>Masuk Sekarang</span>
+            <ArrowRight size={16} />
+          </Button>
         </form>
 
-        <p className="text-[10px] text-wattvision-textSecondary mt-6 text-center font-mono leading-relaxed">
-          Autentikasi: POST /api/auth/login · token disimpan di localStorage (zakat_token)
-        </p>
-      </div>
+        <div className="pt-4 border-t border-slate-100 text-center space-y-2 text-xs text-slate-600">
+          <p>
+            Belum punya akun Muzakki?{' '}
+            <Link to="/register" className="font-semibold text-primary hover:text-forest underline underline-offset-4">
+              Daftar Sekarang
+            </Link>
+          </p>
+          <p>
+            <Link to="/" className="text-slate-500 hover:text-forest-dark">
+              Kembali ke Beranda Publik
+            </Link>
+          </p>
+        </div>
+      </Card>
     </div>
   );
 };

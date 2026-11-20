@@ -1,155 +1,402 @@
 import { useState } from 'react';
-import { Search, ShieldCheck, ShieldAlert, Database, Link as LinkIcon } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { AlertCircle, Check, CheckCircle2, Copy, ExternalLink, Filter, RefreshCw, Search } from 'lucide-react';
 import apiClient from '../utils/api';
+import { formatDateTime, formatIDR, shortHash } from '../utils/format';
+import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, SectionHeader, Skeleton, proofBadge } from '../components/ui';
+import { EthereumLogo, NetworkBadge, explorerBaseForChain, useNetworkInfo } from '../components/ethereum';
+
+interface Transaction {
+  id: number;
+  amount: number;
+  category: string | null;
+  region: string | null;
+  timestamp: string;
+  tx_hash: string | null;
+  audit_hash: string | null;
+  blockchain_status: string | null;
+  block_number: number | null;
+}
+
+interface VerificationDetail {
+  status: string;
+  network?: {
+    chainId: number | null;
+    networkName: string;
+    contractAddress: string;
+  };
+  data: {
+    id: number;
+    amount: number;
+    category: string | null;
+    region: string | null;
+    timestamp: string;
+    audit_hash?: string | null;
+    auditHash?: string | null;
+    tx_hash: string | null;
+    blockchain_status?: string | null;
+    status?: string | null;
+    block_number?: number | null;
+  } | null;
+}
 
 const OnChainExplorer = () => {
-  const [query, setQuery] = useState('');
-  const [result, setResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const network = useNetworkInfo();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [copiedHash, setCopiedHash] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<VerificationDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+  const [reconcilingId, setReconcilingId] = useState<number | null>(null);
+  const [reconcileMsg, setReconcileMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
-  const handleSearch = async () => {
-    if (!query) return;
-    setLoading(true);
-    setError('');
-    setResult(null);
+  let isAdmin = false;
+  try {
+    const raw = localStorage.getItem('zakat_user');
+    isAdmin = raw ? (JSON.parse(raw) as { role?: string }).role === 'ADMIN' : false;
+  } catch {
+    isAdmin = false;
+  }
+
+  const { data: transactions, isLoading, isError, refetch } = useQuery<Transaction[]>({
+    queryKey: ['explorer-transactions'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<Transaction[]>('/transactions');
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
+  const handleCopy = (hash: string) => {
+    navigator.clipboard.writeText(hash);
+    setCopiedHash(hash);
+    setTimeout(() => setCopiedHash(null), 2000);
+  };
+
+  const verifyItem = async (tx: Transaction) => {
+    setDetailLoading(true);
+    setDetailError('');
+    setSelectedDetail(null);
     try {
-      const endpoint = query.startsWith('0x') ? `/explorer/verify/hash/${query}` : `/explorer/verify/${query}`;
-      const response = await apiClient.get(endpoint);
-      setResult(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Verification failed');
+      const endpoint = tx.audit_hash
+        ? `/explorer/verify/hash/${encodeURIComponent(tx.audit_hash)}`
+        : `/explorer/verify/${encodeURIComponent(String(tx.id))}`;
+      const { data } = await apiClient.get<VerificationDetail>(endpoint);
+      setSelectedDetail(data);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      setDetailError(e.response?.data?.error || 'Gagal memverifikasi catatan on-chain.');
     } finally {
-      setLoading(false);
+      setDetailLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-wattvision-bg p-8 text-wattvision-textMain font-sans">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold flex justify-center items-center gap-3 mb-4">
-            <ShieldCheck className="text-wattvision-primary" size={32} /> On-Chain Proof Explorer
-          </h1>
-          <p className="text-wattvision-textSecondary">Verifikasi integritas laporan penyaluran zakat secara transparan melalui blockchain.</p>
-        </div>
+  const retryOnChain = async (id: number) => {
+    setReconcilingId(id);
+    setReconcileMsg(null);
+    try {
+      const { data } = await apiClient.patch<{ message?: string; tx_hash?: string }>(
+        `/transactions/${id}/reconcile`,
+      );
+      setReconcileMsg({
+        type: 'ok',
+        text: `Transaksi #${id} berhasil direkonsiliasi ke Ethereum (${shortHash(data.tx_hash, 8, 6)}).`,
+      });
+      void refetch();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      setReconcileMsg({
+        type: 'err',
+        text: e.response?.data?.error || `Gagal mengirim transaksi #${id} ke Ethereum.`,
+      });
+    } finally {
+      setReconcilingId(null);
+    }
+  };
 
-        {/* Search Box */}
-        <div className="flex gap-3 mb-12">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-wattvision-textSecondary" size={20} />
-            <input 
-              type="text" 
-              placeholder="Masukkan ID Laporan atau Audit Hash (0x...)" 
-              className="w-full bg-wattvision-surface border border-wattvision-border rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-wattvision-primary transition-colors font-mono text-sm"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+  const list = transactions ?? [];
+  const statusOptions = Array.from(new Set(list.map((t) => t.blockchain_status).filter(Boolean))) as string[];
+
+  const filtered = list.filter((t) => {
+    const matchStatus = statusFilter ? t.blockchain_status === statusFilter : true;
+    const term = searchTerm.toLowerCase().trim();
+    const matchSearch = term
+      ? String(t.id).includes(term) ||
+        (t.tx_hash && t.tx_hash.toLowerCase().includes(term)) ||
+        (t.audit_hash && t.audit_hash.toLowerCase().includes(term)) ||
+        (t.category && t.category.toLowerCase().includes(term)) ||
+        (t.region && t.region.toLowerCase().includes(term))
+      : true;
+    return matchStatus && matchSearch;
+  });
+
+  if (isError) {
+    return (
+      <ErrorState
+        message="Gagal memuat catatan transaksi on-chain. Periksa koneksi ke backend."
+        retry={() => void refetch()}
+      />
+    );
+  }
+
+  const detailData = selectedDetail?.data ?? null;
+  const detailNetName = selectedDetail?.network?.networkName || network.label;
+  const detailChainId = selectedDetail?.network?.chainId ?? network.chainId;
+  const detailExplorer = explorerBaseForChain(detailChainId);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <SectionHeader
+          badge={
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-mint border border-primary/25 px-3 py-1 text-xs font-semibold text-forest">
+              <EthereumLogo size={11} /> Ethereum Explorer
+            </span>
+          }
+          title="On-Chain Proof Explorer"
+          subtitle="Penjelajah catatan hash audit penyaluran dan status pencatatannya pada smart contract Ethereum."
+        />
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <NetworkBadge compact />
+          <div className="inline-flex items-center gap-2 bg-white px-3 py-2 rounded-[10px] border border-slate-300">
+            <Filter size={14} className="text-slate-500" />
+            <select
+              aria-label="Filter status on-chain"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent text-xs sm:text-sm text-forest-dark font-medium outline-none cursor-pointer"
+            >
+              <option value="">Semua Status</option>
+              {statusOptions.map((st) => (
+                <option key={st} value={st}>{proofBadge(st).label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="relative min-w-[210px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+            <input
+              type="text"
+              placeholder="Cari ID, hash, wilayah…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full min-h-[40px] bg-white rounded-[10px] border border-slate-300 pl-8 pr-3 text-xs sm:text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25"
             />
           </div>
-          <button 
-            onClick={handleSearch}
-            disabled={loading}
-            className="bg-wattvision-primary text-wattvision-bg font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {loading ? 'Checking...' : 'Verify'}
-          </button>
         </div>
+      </div>
 
-        {error && (
-          <div className="bg-wattvision-alertBg border-l-4 border-wattvision-alert p-4 rounded-lg mb-8 text-wattvision-alert flex items-center gap-3">
-            <ShieldAlert size={20} /> {error}
-          </div>
-        )}
+      {reconcileMsg && (
+        <div
+          role={reconcileMsg.type === 'err' ? 'alert' : 'status'}
+          className={`p-3.5 rounded-xl border text-xs sm:text-sm flex items-center gap-2 font-medium ${
+            reconcileMsg.type === 'ok'
+              ? 'bg-mint border-primary/25 text-forest'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          {reconcileMsg.type === 'ok' ? (
+            <CheckCircle2 size={16} className="text-primary shrink-0" />
+          ) : (
+            <AlertCircle size={16} className="text-danger shrink-0" />
+          )}
+          <span>{reconcileMsg.text}</span>
+        </div>
+      )}
 
-        {result && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Blockchain Status Card */}
-            <div className="bg-wattvision-surface p-6 rounded-2xl border border-wattvision-border">
-              <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 border-b border-wattvision-border pb-3">
-                <LinkIcon className="text-wattvision-primary" size={20} /> Blockchain Proof
-              </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-wattvision-textSecondary text-sm">Status</span>
-                  <span className={`font-bold px-2 py-1 rounded text-xs ${
-                    result.status === 'VERIFIED' ? 'bg-wattvision-success/20 text-wattvision-success' : 
-                    result.status === 'REVOKED' ? 'bg-wattvision-alert/20 text-wattvision-alert' : 
-                    'bg-gray-700 text-gray-300'
-                  }`}>
-                    {result.status}
-                  </span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-wattvision-textSecondary text-sm">Verified Hash</span>
-                  <span className="font-mono text-xs text-right max-w-[200px] break-all">{result.blockchain.formattedHash}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-wattvision-textSecondary text-sm">Block Timestamp</span>
-                  <span className="font-mono text-xs">{result.blockchain.timestamp}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-wattvision-textSecondary text-sm">Is Revoked</span>
-                  <span className="font-mono text-xs">{result.blockchain.revoked ? 'Yes' : 'No'}</span>
-                </div>
-              </div>
+      {detailLoading && (
+        <Card>
+          <Skeleton lines={4} />
+        </Card>
+      )}
+
+      {detailError && (
+        <div role="alert" className="p-4 rounded-2xl border border-red-200 bg-red-50 text-red-800 text-xs sm:text-sm flex items-center gap-2 font-medium">
+          <AlertCircle size={16} className="text-danger shrink-0" />
+          <span>{detailError}</span>
+        </div>
+      )}
+
+      {selectedDetail && detailData && (
+        <Card variant="highlight" className="space-y-4">
+          <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-bold text-forest-dark">
+                Detail Verifikasi Transaksi #{detailData.id}
+              </h2>
+              <p className="text-xs text-slate-500">Jaringan: {detailNetName}</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setSelectedDetail(null)}
+              className="text-xs font-semibold text-slate-600 hover:text-forest-dark"
+            >
+              Tutup
+            </button>
+          </div>
 
-            {/* Database Info Card */}
-            <div className="bg-wattvision-surface p-6 rounded-2xl border border-wattvision-border">
-              <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 border-b border-wattvision-border pb-3">
-                <Database className="text-wattvision-primary" size={20} /> Database Record
-              </h3>
-              {result.database ? (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-wattvision-textSecondary text-sm">Report ID</span>
-                    <span className="font-mono text-sm">{result.database.id}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-wattvision-textSecondary text-sm">Amount</span>
-                    <span className="font-bold text-wattvision-primary font-mono">{result.database.amount}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-wattvision-textSecondary text-sm">Category</span>
-                    <span className="text-sm">{result.database.category}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-wattvision-textSecondary text-sm">Region</span>
-                    <span className="text-sm">{result.database.region}</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-wattvision-textSecondary italic text-sm">
-                  No corresponding record found in local database.
-                </div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+            <div>
+              <span className="text-slate-500 block">Nominal</span>
+              <span className="font-bold text-sm text-forest-dark tabular-nums">{formatIDR(detailData.amount)}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Status Database</span>
+              <Badge tone={proofBadge(detailData.blockchain_status ?? detailData.status ?? '').tone}>
+                {proofBadge(detailData.blockchain_status ?? detailData.status ?? '').label}
+              </Badge>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Status Smart Contract</span>
+              <span className="font-bold text-forest-dark">{selectedDetail.status}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Waktu Pencatatan</span>
+              <span className="font-mono">{formatDateTime(detailData.timestamp)}</span>
+            </div>
+          </div>
+
+          <div className="p-3 bg-cream rounded-xl border border-slate-200 text-xs space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">
+                Transaction Hash {detailData.block_number ? `· Blok #${detailData.block_number}` : ''}
+              </span>
+              {detailData.tx_hash && detailExplorer && (
+                <a
+                  href={`${detailExplorer}/tx/${detailData.tx_hash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                >
+                  Etherscan <ExternalLink size={12} />
+                </a>
               )}
             </div>
+            <p className="font-mono font-bold text-forest-dark break-all">
+              {detailData.tx_hash || 'Belum ada tx_hash on-chain'}
+            </p>
+          </div>
+        </Card>
+      )}
 
-            {/* Integrity Check Card */}
-            <div className="md:col-span-2 bg-wattvision-surface p-6 rounded-2xl border-2 border-dashed border-wattvision-border text-center">
-              <div className="flex justify-center items-center gap-3 mb-2">
-                {result.match ? (
-                  <ShieldCheck className="text-wattvision-success" size={32} />
-                ) : (
-                  <ShieldAlert className="text-wattvision-alert" size={32} />
-                )}
-                <h3 className="text-xl font-bold">
-                  {result.match ? 'INTEGRITY VERIFIED' : 'INTEGRITY MISMATCH'}
-                </h3>
-              </div>
-              <p className="text-wattvision-textSecondary text-sm">
-                {result.match 
-                  ? 'Data in the local database perfectly matches the cryptographically signed proof on the blockchain.' 
-                  : 'Warning: The data found in the database does not match the blockchain proof, or the proof does not exist on-chain.'}
-              </p>
-            </div>
+      <Card className="p-0 sm:p-0 overflow-hidden">
+        {isLoading ? (
+          <div className="p-6"><Skeleton lines={8} /></div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title="Tidak ada catatan transaksi"
+            description={
+              searchTerm || statusFilter
+                ? 'Tidak ada catatan transaksi yang cocok dengan filter.'
+                : 'Belum ada transaksi distribusi yang tercatat.'
+            }
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                <tr>
+                  <th className="py-3.5 px-4">ID</th>
+                  <th className="py-3.5 px-4">Tx Hash Ethereum</th>
+                  <th className="py-3.5 px-4">Audit Hash</th>
+                  <th className="py-3.5 px-4">Kategori & Wilayah</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Blok</th>
+                  <th className="py-3.5 px-4 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((t) => {
+                  const isCopiedTx = copiedHash === t.tx_hash;
+                  const isCopiedAudit = copiedHash === t.audit_hash;
+                  const isPendingChain = !t.tx_hash || t.blockchain_status !== 'CONFIRMED';
+                  return (
+                    <tr key={t.id} className="hover:bg-cream/60">
+                      <td className="py-3.5 px-4 font-mono font-bold text-forest-dark">#{t.id}</td>
+                      <td className="py-3.5 px-4 font-mono text-xs">
+                        {t.tx_hash ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-forest-dark">{shortHash(t.tx_hash, 6, 4)}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(t.tx_hash!)}
+                              aria-label="Salin tx hash"
+                              className="p-1 rounded text-slate-400 hover:text-primary hover:bg-slate-100"
+                            >
+                              {isCopiedTx ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-xs">
+                        {t.audit_hash ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-600">{shortHash(t.audit_hash, 6, 4)}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(t.audit_hash!)}
+                              aria-label="Salin audit hash"
+                              className="p-1 rounded text-slate-400 hover:text-primary hover:bg-slate-100"
+                            >
+                              {isCopiedAudit ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-semibold text-forest-dark block text-xs">{t.category || 'Umum'}</span>
+                        <span className="text-[11px] text-slate-500 block truncate max-w-[160px]">
+                          {t.region || 'Nasional'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <Badge tone={proofBadge(t.blockchain_status ?? '').tone}>
+                          {proofBadge(t.blockchain_status ?? '').label}
+                        </Badge>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-xs text-slate-600">
+                        {t.block_number ? `#${t.block_number}` : '-'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-2">
+                        {isAdmin && isPendingChain && (
+                          <Button
+                            size="sm"
+                            variant="gold"
+                            loading={reconcilingId === t.id}
+                            disabled={reconcilingId !== null}
+                            onClick={() => void retryOnChain(t.id)}
+                          >
+                            <RefreshCw size={11} /> Catat ke Ethereum
+                          </Button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void verifyItem(t)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[10px] border border-slate-300 text-xs font-semibold text-forest-dark hover:bg-mint hover:border-primary/40 transition-colors"
+                        >
+                          Periksa <ExternalLink size={11} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
+
+        <div className="p-4 bg-cream border-t border-slate-100 text-xs text-slate-600 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <p>{ON_CHAIN_NOTE}</p>
+          <span className="font-semibold text-slate-500 shrink-0">Total {filtered.length} rekaman</span>
+        </div>
+      </Card>
     </div>
   );
 };
 
 export default OnChainExplorer;
-

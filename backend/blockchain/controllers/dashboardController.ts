@@ -43,29 +43,8 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 
     // Network health is probed rather than hardcoded, so the dashboard does not
     // report "Connected/Healthy" while the RPC endpoint is actually unreachable.
-    // Bounded by a timeout so a hanging RPC cannot stall the dashboard response.
-    let networkStatus = { rpc: 'Unknown', contract: 'Unknown', status: 'Unknown' };
-    let provider: ReturnType<typeof import('../utils/web3.js').getBlockchainProvider> | null = null;
-    try {
-      const { getBlockchainProvider, getZakatContract } = await import('../utils/web3.js');
-      provider = getBlockchainProvider();
-      const probe = (async () => {
-        await provider.getBlockNumber();
-        const contract = getZakatContract(provider);
-        return provider.getCode((contract as any).target);
-      })();
-      const code = await Promise.race([
-        probe,
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('RPC probe timed out')), 3000)),
-      ]);
-      networkStatus = code && code !== '0x'
-        ? { rpc: 'Connected', contract: 'Active', status: 'Healthy' }
-        : { rpc: 'Connected', contract: 'No contract code', status: 'Degraded' };
-    } catch {
-      networkStatus = { rpc: 'Unreachable', contract: 'Unknown', status: 'Degraded' };
-    } finally {
-      provider?.destroy();
-    }
+    const { probeNetworkStatus } = await import('../utils/web3.js');
+    const networkStatus = await probeNetworkStatus(3000);
 
     res.json({
       kpis: {

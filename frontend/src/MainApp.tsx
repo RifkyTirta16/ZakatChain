@@ -1,93 +1,90 @@
-import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Zap, LogOut } from 'lucide-react';
-import Dashboard from './pages/Dashboard';
-import PovertyMapping from './pages/PovertyMapping';
-import OnChainExplorer from './pages/OnChainExplorer';
-import DonationPayment from './pages/DonationPayment';
-import NewDistributionRecord from './pages/NewDistributionRecord';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
+import {
+  BrowserRouter as Router,
+  Link,
+  Navigate,
+  Route,
+  Routes,
+} from 'react-router-dom';
+import RoleLayout from './components/layout/RoleLayout';
+import RequireRole from './components/layout/RequireRole';
+import { rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
+import { Button, Card, Skeleton } from './components/ui';
+
+// Eager Auth & Landing
 import LoginPage from './components/auth/LoginPage';
-import PublicVerify from './pages/PublicVerify';
-import Campaigns from './pages/Campaigns';
-import CampaignDetail from './pages/CampaignDetail';
-import EvidenceGraph from './pages/EvidenceGraph';
+import RegisterPage from './components/auth/RegisterPage';
+import LandingPage from './pages/public/LandingPage';
 
-interface SessionUser {
-  id?: number;
-  username?: string;
-  role?: string;
-}
+// Lazy-loaded pages for smaller initial bundle
+const ZakatCalculatorPage = lazy(() => import('./pages/public/ZakatCalculatorPage'));
+const PublicTransparencyPage = lazy(() => import('./pages/public/PublicTransparencyPage'));
+const PublicVerify = lazy(() => import('./pages/PublicVerify'));
+const Campaigns = lazy(() => import('./pages/Campaigns'));
+const CampaignDetail = lazy(() => import('./pages/CampaignDetail'));
 
-const Navigation = ({ user, onLogout }: { user: SessionUser; onLogout: () => void }) => {
-  const location = useLocation();
+const DonorHome = lazy(() => import('./pages/home/DonorHome'));
+const AmilHome = lazy(() => import('./pages/home/AmilHome'));
+const AuditorHome = lazy(() => import('./pages/home/AuditorHome'));
+const AdminHome = lazy(() => import('./pages/home/AdminHome'));
 
-  const navItems = [
-    { name: 'Dashboard', path: '/' },
-    { name: 'Pemetaan Wilayah', path: '/mapping' },
-    { name: 'Campaigns', path: '/campaigns' },
-    { name: 'Evidence Graph', path: '/graph' },
-    { name: 'Explorer', path: '/explorer' },
-    { name: 'Donasi', path: '/donate' },
-    { name: 'Input Distribusi', path: '/new-record' },
-    { name: 'Verifikasi', path: '/verify' },
-  ];
+const DonationPayment = lazy(() => import('./pages/DonationPayment'));
+const MyDonationsPage = lazy(() => import('./pages/muzakki/MyDonationsPage'));
+const NewDistributionRecord = lazy(() => import('./pages/NewDistributionRecord'));
+const PovertyMapping = lazy(() => import('./pages/PovertyMapping'));
+const OnChainExplorer = lazy(() => import('./pages/OnChainExplorer'));
+const EvidenceGraph = lazy(() => import('./pages/EvidenceGraph'));
+const AnomaliesPage = lazy(() => import('./pages/anomalies/AnomaliesPage'));
+const ProofsPage = lazy(() => import('./pages/proofs/ProofsPage'));
+const ReconciliationPage = lazy(() => import('./pages/reconciliation/ReconciliationPage'));
+const AuditPage = lazy(() => import('./pages/audit/AuditPage'));
+const ExportPage = lazy(() => import('./pages/export/ExportPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const NetworkMonitorPage = lazy(() => import('./pages/admin/NetworkMonitorPage'));
+const RolesPermissionsPage = lazy(() => import('./pages/admin/RolesPermissionsPage'));
+const ProfilePage = lazy(() => import('./pages/shared/ProfilePage'));
 
-  return (
-    <nav className="bg-wattvision-surface border-b border-wattvision-border px-4 md:px-6 py-3 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-wattvision-primary rounded-lg flex items-center justify-center text-black shadow-lg shadow-cyan-500/20">
-              <Zap size={18} />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-lg tracking-tighter uppercase italic leading-none">
-                Zakat<span className="text-wattvision-primary">Chain</span>
-              </span>
-              <span className="text-[9px] text-wattvision-textSecondary uppercase tracking-widest font-medium">
-                Institutional Audit System
-              </span>
-            </div>
+const RouteFallback = () => (
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
+    <Skeleton lines={3} />
+    <Skeleton lines={8} />
+  </div>
+);
+
+const NotFoundPage = ({ isAuthenticated }: { isAuthenticated: boolean }) => (
+  <div className="max-w-md mx-auto py-16 px-4">
+    <Card className="text-center space-y-4 p-8">
+      <p className="text-4xl font-extrabold text-primary">404</p>
+      <h1 className="text-xl font-bold text-forest-dark">Halaman Tidak Ditemukan</h1>
+      <p className="text-sm text-slate-600">
+        Tautan yang Anda buka tidak tersedia atau telah dipindahkan ke struktur menu baru.
+      </p>
+      <div className="flex justify-center gap-3 pt-2">
+        <Link to="/">
+          <Button variant="secondary" size="sm">Beranda</Button>
+        </Link>
+        {isAuthenticated && (
+          <Link to="/dashboard">
+            <Button variant="primary" size="sm">Ke Dashboard</Button>
           </Link>
-          <button
-            onClick={onLogout}
-            className="flex md:hidden items-center gap-2 text-xs uppercase tracking-widest font-bold text-wattvision-textSecondary hover:text-white transition-colors"
-          >
-            <LogOut size={16} /> Keluar
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0 -mx-1 px-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-widest transition-all duration-200 whitespace-nowrap ${
-                location.pathname === item.path
-                  ? 'bg-wattvision-primary text-black'
-                  : 'text-wattvision-textSecondary hover:bg-wattvision-border hover:text-white'
-              }`}
-            >
-              {item.name}
-            </Link>
-          ))}
-          <div className="hidden md:flex items-center gap-3 ml-2 pl-4 border-l border-wattvision-border">
-            <div className="text-right leading-tight">
-              <p className="text-[11px] font-bold text-white">{user.username || 'Pengguna'}</p>
-              <p className="text-[9px] uppercase tracking-widest text-wattvision-textSecondary font-mono">{user.role || ''}</p>
-            </div>
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-wattvision-textSecondary hover:text-white transition-colors"
-              aria-label="Keluar"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
+        )}
       </div>
-    </nav>
-  );
+    </Card>
+  </div>
+);
+
+const RoleDashboardSwitch = ({ user }: { user: SessionUser | null }) => {
+  switch (toRole(user?.role)) {
+    case 'ADMIN':
+      return <AdminHome />;
+    case 'AUDITOR':
+      return <AuditorHome />;
+    case 'AMIL':
+      return <AmilHome />;
+    case 'USER':
+    default:
+      return <DonorHome user={user} />;
+  }
 };
 
 const MainApp = () => {
@@ -115,30 +112,108 @@ const MainApp = () => {
     setUser(null);
     localStorage.removeItem('zakat_user');
     localStorage.removeItem('zakat_token');
+    sessionStorage.removeItem('zakat_redirect');
   };
 
-  if (!user) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
-  }
+  const withSuspense = (element: ReactNode) => (
+    <Suspense fallback={<RouteFallback />}>{element}</Suspense>
+  );
+
+  const guarded = (path: string, element: ReactNode) => (
+    <RoleLayout user={user} onLogout={handleLogout}>
+      <RequireRole user={user} roles={rolesForPath(path)}>
+        {withSuspense(element)}
+      </RequireRole>
+    </RoleLayout>
+  );
+
+  const publicOrWorkspace = (element: ReactNode) => (
+    <RoleLayout user={user} onLogout={handleLogout} forcePublicShell={!user}>
+      {withSuspense(element)}
+    </RoleLayout>
+  );
+
+  const alwaysPublic = (element: ReactNode) => (
+    <RoleLayout user={user} onLogout={handleLogout} forcePublicShell>
+      {withSuspense(element)}
+    </RoleLayout>
+  );
+
+  const loginRedirectTarget = () => {
+    const saved = sessionStorage.getItem('zakat_redirect');
+    if (saved) {
+      sessionStorage.removeItem('zakat_redirect');
+      return saved;
+    }
+    return '/dashboard';
+  };
 
   return (
     <Router>
-      <div className="min-h-screen bg-wattvision-bg text-wattvision-textMain font-sans">
-        <Navigation user={user} onLogout={handleLogout} />
-        <main className="p-4 md:p-6 max-w-7xl mx-auto">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/mapping" element={<PovertyMapping />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route path="/campaigns/:id" element={<CampaignDetail />} />
-            <Route path="/graph" element={<EvidenceGraph />} />
-            <Route path="/explorer" element={<OnChainExplorer />} />
-            <Route path="/donate" element={<DonationPayment />} />
-            <Route path="/new-record" element={<NewDistributionRecord />} />
-            <Route path="/verify" element={<PublicVerify />} />
-          </Routes>
-        </main>
-      </div>
+      <Routes>
+        {/* Public Website Pages */}
+        <Route path="/" element={alwaysPublic(<LandingPage />)} />
+        <Route path="/transparency" element={alwaysPublic(<PublicTransparencyPage />)} />
+        <Route path="/programs" element={publicOrWorkspace(<Campaigns />)} />
+        <Route path="/campaigns" element={publicOrWorkspace(<Campaigns />)} />
+        <Route path="/campaigns/:id" element={publicOrWorkspace(<CampaignDetail />)} />
+        <Route path="/calculator" element={publicOrWorkspace(<ZakatCalculatorPage />)} />
+        <Route path="/verify" element={publicOrWorkspace(<PublicVerify />)} />
+
+        {/* Authentication Pages */}
+        <Route
+          path="/login"
+          element={
+            user
+              ? <Navigate to={loginRedirectTarget()} replace />
+              : alwaysPublic(<LoginPage onLoginSuccess={handleLoginSuccess} />)
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            user
+              ? <Navigate to="/dashboard" replace />
+              : alwaysPublic(<RegisterPage onLoginSuccess={handleLoginSuccess} />)
+          }
+        />
+
+        {/* Role-Based Dashboard Entry */}
+        <Route
+          path="/dashboard"
+          element={guarded('/dashboard', <RoleDashboardSwitch user={user} />)}
+        />
+
+        {/* Muzakki Workspace */}
+        <Route path="/donate" element={guarded('/donate', <DonationPayment />)} />
+        <Route path="/my-donations" element={guarded('/my-donations', <MyDonationsPage user={user} />)} />
+
+        {/* Amil Operational Workspace */}
+        <Route path="/new-record" element={guarded('/new-record', <NewDistributionRecord />)} />
+        <Route path="/mapping" element={guarded('/mapping', <PovertyMapping />)} />
+        <Route path="/explorer" element={guarded('/explorer', <OnChainExplorer />)} />
+        <Route path="/graph" element={guarded('/graph', <EvidenceGraph />)} />
+        <Route path="/analytics" element={guarded('/analytics', <Dashboard />)} />
+
+        {/* Auditor & Oversight Workspace */}
+        <Route path="/anomalies" element={guarded('/anomalies', <AnomaliesPage />)} />
+        <Route path="/proofs" element={guarded('/proofs', <ProofsPage />)} />
+        <Route path="/reconciliation" element={guarded('/reconciliation', <ReconciliationPage />)} />
+        <Route path="/audit" element={guarded('/audit', <AuditPage />)} />
+        <Route path="/export" element={guarded('/export', <ExportPage />)} />
+
+        {/* Administrator Monitoring & Governance */}
+        <Route path="/network" element={guarded('/network', <NetworkMonitorPage />)} />
+        <Route path="/roles" element={guarded('/roles', <RolesPermissionsPage />)} />
+
+        {/* Shared Profile */}
+        <Route
+          path="/profile"
+          element={guarded('/profile', <ProfilePage user={user} onLogout={handleLogout} />)}
+        />
+
+        <Route path="*" element={alwaysPublic(<NotFoundPage isAuthenticated={Boolean(user)} />)} />
+      </Routes>
     </Router>
   );
 };

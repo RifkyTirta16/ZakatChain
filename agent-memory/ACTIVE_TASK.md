@@ -1,39 +1,12 @@
 # Active Task / Recovery Checkpoint
 
-**Updated:** 2026-11-12 · **Status:** Nodemon crash loop fixed; auth remains fail-closed until operator configures a secret.
+**Updated:** 2026-11-20 · **Status:** Transformasi UI/UX + hardening keamanan produksi + sinkronisasi kontrak/ABI selesai penuh di branch `feat/ui-ux-transformation`.
 
 ## Completed
+- **Fase 1–10 (UI/UX & Ethereum):** Public website, workspace per role, design system, logo resmi Ethereum & deteksi jaringan lokal/testnet/mainnet aktif (`0x5FbDB2315678afecb367f032d93F642f64180aa3` terpasang di Hardhat lokal `31337`).
+- **Paket 1–3 & Item Minor P2:** `?search=` OR fix; RBAC `/transactions`, `/donations`, `/uploads`, `/users`; `audit_logs` pada `resolveAnomaly` & `updateUserRole`; donasi "Zakat Umum" + sandbox confirm dev; retry on-chain `ADMIN`; lazy-loading + `manualChunks` Vite (`index` `70.98 kB`, nol warning `>500 kB`); `trust proxy`, handler error `app.listen`, dan pembersihan `'DONOR'`.
+- **Hardening Risiko Produksi & ABI:** CORS allowlist strict (HTTP `403`, tolak wildcard `'*'`, tanpa fallback localhost di production), security headers (`x-powered-by` off, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`), validasi `ALLOWED_ROLES` pada JWT, `ALLOW_PUBLIC_REGISTRATION` toggle, CLI `npm run create:admin` (`seed_admin.ts`), serta sinkronisasi penuh `CONTRACT_ABI` & `ZAKAT_ABI` dengan `ZakatVerify.sol` (`uint256 reportId`, `revokeReport`, `ReportRevoked`) + guard `ZAKAT_CONTRACT_ADDRESS` di production.
+- **Verifikasi:** Backend `tsc --noEmit` + **74/74** tests pass; Blockchain Hardhat **18/18** passing; Frontend `tsc -b` + `oxlint` (`0` warnings/errors, 80 files) + `vite build` tanpa chunk warning; uji live browser lulus (`docs/design/UI_TEST_REPORT.md`).
 
-- Read all requested root baseline documents and inspected current architecture/source.
-- Confirmed workspace path; no Git metadata exists. Did not initialize Git.
-- Inspected package scripts, backend app/routes/db/payment/auth/upload/blockchain code, frontend entry/API/chain config, and canonical/legacy contracts.
-- Read active SQLite schema only; integrity check `ok`; FK check returned no rows; no application rows or `.env` contents read.
-- Wrote `docs/audit/GEMINI_FULL_AUDIT.md`, `docs/security/SECURITY_REVIEW.md`, `docs/testing/TEST_REPORT.md`.
-- Fixed payment schema/attribution, request-scoped provider cleanup, integration DB reset and inaccurate fixtures, and backend strict-type diagnostics.
-- Verified backend tests 67/67, backend TypeScript check clean, frontend build succeeds, frontend lint has 7 warnings, SQLite checks pass. Hardhat compile succeeds but tests report zero; explicit TS test invocation fails to parse.
-- Follow-up auth check: live API returned HTTP 503 `Authentication is not configured`; prior root/backend/frontend `.env` presence check found none (no secret values read). Backend resolves `backend/.env` by absolute module-relative path and now logs a warning while still starting without `JWT_SECRET`. Verified alternate-port server: `/health` returns 200, protected `/api/transactions` returns 503. Backend tests remain 67/67 and typecheck clean.
-
-## Files changed in source
-
-- `backend/blockchain/utils/validation.ts`
-- `backend/blockchain/controllers/paymentController.ts`
-- `backend/blockchain/controllers/explorerController.ts`
-- `backend/blockchain/controllers/anomalyController.ts`
-- `backend/blockchain/controllers/dashboardController.ts`
-- `backend/blockchain/controllers/transactionController.ts`
-- `backend/blockchain/index.ts`
-- `backend/blockchain/tests/apiIntegration.test.ts`
-- `backend/blockchain/tests/endpoints.test.ts`
-- `backend/blockchain/index.ts` (follow-up: module-relative dotenv and startup validation)
-- Frontend build regenerated `frontend/dist/` outputs (do not hand-edit generated files).
-
-## Remaining / next action
-
-1. Operator must create `backend/.env` from `backend/.env.example`, replace `JWT_SECRET` with a unique strong random value, then restart backend and verify login/API. Do not copy the example placeholder unchanged. No secret was generated or exposed in this session. Server itself no longer crashes while awaiting this setup.
-2. Resolve private proof-file access/redaction and public-serving policy without exposing beneficiary data.
-3. Add CORS allowlist and scoped API rate limits.
-4. Decide canonical registration authorization, then make Hardhat execute nonzero `ZakatVerify` tests.
-5. Complete general payment persistence and trusted provider reconciliation.
-6. Add a safe first-admin provisioning procedure.
-
-No Git checkpoint is available; this file is the recovery record. Avoid deleting files or changing deployed contract policy until verified and approved.
+## Remaining / Next Action
+- Siap untuk di-merge ke `main`. Folder duplikat legacy `contracts/` dan `backend/contracts/` sengaja dibiarkan sesuai aturan `AGENTS.md` hingga keputusan konsolidasi.

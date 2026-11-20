@@ -84,3 +84,56 @@ fungsional, meniru elemen game.
 2. Buat komponen ui/ (Button, Card, Badge, Input dulu)
 3. Rapikan SATU halaman (Dashboard) sampai bagus, jadikan acuan, lalu halaman lain
 4. Jalankan `npm run build` dan `npm run lint` setelah tiap perubahan
+
+## Tampilan per role (workspace)
+Satu sistem token, empat "workspace". Beda role = beda shell, kepadatan, dan halaman awal.
+- DONOR/Publik: navbar atas, tanpa sidebar, latar cream/surface, kartu besar, ilustrasi dampak.
+  Halaman awal: Kampanye + "Dampak donasi saya". Maks 1 aksi utama per layar (Donasi, gold).
+- AMIL: sidebar primary (teal), latar surface. Halaman awal: Antrean Tugas.
+  Fokus form/wizard, simpan draft, validasi inline.
+- AUDITOR: sidebar slate-900, teks terang, aksen sky untuk item aktif. Tabel rapat (padding kecil),
+  filter di atas, klik baris -> panel detail kanan, aksi Setujui/Tolak dengan alasan wajib.
+  Halaman awal: Antrean Review.
+- ADMIN: sidebar primary-dark. Halaman awal: Ringkasan Sistem (pengguna, rekonsiliasi,
+  anomali, kesehatan chain/pembayaran) + akses ke semua workspace.
+ATURAN: warna status (coral/gold/success/sky) tidak dipakai sebagai identitas role.
+Komponen ui/ tetap SATU set; role hanya mengubah props density ('comfortable' | 'compact')
+dan tema shell. Dilarang menduplikasi komponen per role.
+
+## Tampilan per role (workspace)
+Satu sistem token, empat "workspace". Beda role = beda shell, kepadatan, dan halaman awal.
+- DONOR/Publik: navbar atas, tanpa sidebar, latar cream/surface, kartu besar, ilustrasi dampak.
+  Halaman awal: Kampanye + "Dampak donasi saya". Maks 1 aksi utama per layar (Donasi, gold).
+- AMIL: sidebar primary (teal), latar surface. Halaman awal: Antrean Tugas.
+  Fokus form/wizard, simpan draft, validasi inline.
+- AUDITOR: sidebar slate-900, teks terang, aksen sky untuk item aktif. Tabel rapat (padding kecil),
+  filter di atas, klik baris -> panel detail kanan, aksi Setujui/Tolak dengan alasan wajib.
+  Halaman awal: Antrean Review.
+- ADMIN: sidebar primary-dark. Halaman awal: Ringkasan Sistem (pengguna, rekonsiliasi,
+  anomali, kesehatan chain/pembayaran) + akses ke semua workspace.
+ATURAN: warna status (coral/gold/success/sky) tidak dipakai sebagai identitas role.
+Komponen ui/ tetap SATU set; role hanya mengubah props density ('comfortable' | 'compact')
+dan tema shell. Dilarang menduplikasi komponen per role.
+
+## VISUAL v2 (MENGGANTIKAN aturan yang bertentangan di atas)
+Tujuan: bersih, premium, mudah dipindai. Jangan datar, jangan ramai.
+- Latar halaman: canvas #F6F8F8 (bukan teal). Kartu: putih, border slate-200/70,
+  radius 20px (rounded-2xl), bayangan: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06).
+  Glow berwarna HANYA untuk hover tombol dan Quick Donation.
+- Teks: judul slate-900 (extra-bold), isi slate-700, label/keterangan slate-600 (minimum).
+  DILARANG teks teal muda di atas latar teal muda. Label kecil uppercase 12px, tracking-wide.
+- Garis aksen kiri HANYA untuk item daftar yang membawa status (anomali, ditolak). Kartu biasa tanpa.
+- Sidebar (admin/amil/auditor): teal tua #0E4F4B, teks putih/80, menu aktif latar putih/12 +
+  titik emas, lebar 256px. Donor: navbar atas putih, tanpa sidebar.
+- Hero (atas dashboard): gradien #0F5F5B -> #1E8C86, teks putih, bentuk dekoratif emas/teal
+  transparan di sudut, chip kaca (putih/12 + blur) untuk angka personal.
+- Quick Donation: SATU-SATUNYA elemen emas dominan. Tombol gold, teks primary-dark.
+- StatCard: ikon dalam lingkaran berwarna lembut (tint 15%), angka 32px extrabold tabular-nums,
+  chip keterangan kecil, opsional sparkline. Semua angka rata kanan atau tabular.
+- SectionHeader: judul + subjudul slate-600 + tautan "Lihat semua" di kanan.
+- Jarak: padding halaman 32px (16px mobile), gap kartu 24px, lebar maksimal 1280px.
+- Grafik: area fill 15%, gridline slate-100, bar membulat, warna dari token, legenda dan label sumbu.
+- Gerak halus: transisi 150-200ms, kartu naik 2px saat hover jika bisa diklik.
+- Kosong/Error: ikon sesuai konteks (bukan ikon orang-orang generik), 1 kalimat, 1 tombol.
+- Token tambahan (GABUNGKAN ke theme.extend.colors, jangan timpa): canvas '#F6F8F8',
+  ink '#0F172A', brand-deep '#0E4F4B', hero-from '#0F5F5B', hero-to '#1E8C86'.
