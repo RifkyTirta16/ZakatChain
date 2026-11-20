@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "type": "commonjs",
   "scripts": {
-    "test": "NODE_OPTIONS=\"--require ts-node/register/transpile-only\" npx hardhat test"
+    "test": "NODE_OPTIONS=\"--require ts-node/register/transpile-only\" npx hardhat test",
+    "deploy:local": "npx hardhat run scripts/deploy.cjs --network localhost",
+    "node:local": "node scripts/start-local-node.cjs"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.2",

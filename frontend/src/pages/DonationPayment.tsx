@@ -50,7 +50,7 @@ const DonationPayment = () => {
 
   const [step, setStep] = useState<'form' | 'review' | 'payment' | 'success'>('form');
   const [zakatType, setZakatType] = useState('zakat-penghasilan');
-  const [selectedCampaignId, setSelectedCampaignId] = useState('');
+  const [selectedCampaignId, setSelectedCampaignId] = useState('GENERAL');
   const [amount, setAmount] = useState(initialAmount);
   const [donorName, setDonorName] = useState('');
   const [paymentData, setPaymentData] = useState<PaymentSession | null>(null);
@@ -85,7 +85,9 @@ const DonationPayment = () => {
         program_id: zakatType,
       };
       if (donorName.trim()) payload.donor_name = donorName.trim();
-      if (selectedCampaignId) payload.campaign_id = Number(selectedCampaignId);
+      if (selectedCampaignId && selectedCampaignId !== 'GENERAL') {
+        payload.campaign_id = Number(selectedCampaignId);
+      }
       const { data } = await apiClient.post<PaymentSession>('/payments/session', payload);
       return data;
     },
@@ -167,12 +169,11 @@ const DonationPayment = () => {
 
           {activeCampaigns.length > 0 && (
             <Select
-              label="Salurkan ke Program Tertentu (Disarankan)"
-              placeholder="Pilih program atau biarkan umum"
+              label="Salurkan ke Program Tertentu (Opsional)"
               value={selectedCampaignId}
               onChange={(e) => setSelectedCampaignId(e.target.value)}
               options={[
-                { value: '', label: 'Zakat Umum (Tanpa Program Spesifik)' },
+                { value: 'GENERAL', label: 'Zakat Umum (Tanpa Program Spesifik)' },
                 ...activeCampaigns.map((c) => ({ value: String(c.id), label: c.title })),
               ]}
             />

@@ -25,6 +25,7 @@ export const Select = ({
 }: SelectProps) => {
   const generatedId = useId();
   const selectId = id ?? generatedId;
+  const hasEmptyOption = options?.some((opt) => opt.value === '') ?? false;
 
   return (
     <div className="space-y-1.5">
@@ -47,7 +48,9 @@ export const Select = ({
         value={value ?? ''}
         onChange={onChange}
       >
-        <option value="" disabled hidden>{placeholder}</option>
+        {placeholder && !hasEmptyOption && (
+          <option value="" disabled hidden>{placeholder}</option>
+        )}
         {options?.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
