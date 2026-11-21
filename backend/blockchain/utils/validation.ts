@@ -154,27 +154,121 @@ export const PaymentIntentSchema = z.object({
   program_id: z.string().max(120).optional(),
 });
 
+const nullableMetric = z.number().finite().nullable().optional();
+
+const indicatorMetricGroup = z.record(z.string(), nullableMetric).optional();
+
 export const PovertyImportSchema = z.object({
   data: z
     .array(
-      z.object({
-        region_code: trimmedString(32),
-        region_name: trimmedString(MAX_TEXT),
-        province_name: z.string().transform((value) => value.trim()).optional(),
-        poverty_rate: z.preprocess(
-          (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
-          z.number({ message: 'Angka kemiskinan harus berupa angka' }).finite().min(0).max(100)
-        ),
-        poor_population: z.coerce.number().int().min(0).optional(),
-        poverty_line: z.coerce.number().min(0).optional(),
-        reference_year: z.coerce.number().int().min(1900).max(2100).optional(),
-        source_name: z.string().max(MAX_TEXT).optional(),
-        source_url: z.string().max(500).optional(),
-      })
+      z
+        .object({
+          region_code: trimmedString(32),
+          region_name: trimmedString(MAX_TEXT),
+          province_code: z.string().trim().max(32).optional(),
+          province_name: z.string().transform((value) => value.trim()).optional(),
+          level: z.string().trim().max(64).optional(),
+          poverty_rate: z.preprocess(
+            (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
+            z.number({ message: 'Angka kemiskinan harus berupa angka' }).finite().min(0).max(100)
+          ).optional(),
+          poor_population: z.coerce.number().int().min(0).optional(),
+          poverty_line: z.coerce.number().min(0).optional(),
+          reference_year: z.coerce.number().int().min(1900).max(2100).optional(),
+          source_name: z.string().max(MAX_TEXT).optional(),
+          source_url: z.string().max(500).optional(),
+          poverty: z
+            .object({
+              poor_population_thousand: nullableMetric,
+              poverty_rate_percent: z.number().finite().min(0).max(100).optional(),
+              poverty_depth_index_p1: nullableMetric,
+              poverty_severity_index_p2: nullableMetric,
+              poverty_line_rp_per_capita_month: z.number().finite().min(0).optional(),
+            })
+            .optional(),
+          education_poor_age15plus_percent: indicatorMetricGroup,
+          school_participation_poor_percent: indicatorMetricGroup,
+          employment_status_poor_age15plus_percent: indicatorMetricGroup,
+          employment_sector_poor_age15plus_percent: indicatorMetricGroup,
+          food_expenditure_share_percent: indicatorMetricGroup,
+          housing_poor_households_percent: indicatorMetricGroup,
+        })
+        .superRefine((row, ctx) => {
+          const rate = row.poverty_rate ?? row.poverty?.poverty_rate_percent;
+          if (rate === undefined) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['poverty_rate'],
+              message: 'Angka kemiskinan harus berupa angka',
+            });
+          }
+        })
+        .transform((row) => {
+          const povertyRate = row.poverty_rate ?? row.poverty?.poverty_rate_percent ?? 0;
+          const poorPopulation =
+            row.poor_population !== undefined
+              ? row.poor_population
+              : row.poverty?.poor_population_thousand != null
+                ? Math.round(row.poverty.poor_population_thousand * 1000)
+                : undefined;
+          const povertyLine =
+            row.poverty_line !== undefined
+              ? row.poverty_line
+              : row.poverty?.poverty_line_rp_per_capita_month;
+
+          const indicatorsPayload = {
+            ...(row.poverty?.poverty_depth_index_p1 !== undefined ||
+            row.poverty?.poverty_severity_index_p2 !== undefined ||
+            row.poverty?.poor_population_thousand !== undefined
+              ? {
+                  poverty_depth_index_p1: row.poverty?.poverty_depth_index_p1 ?? null,
+                  poverty_severity_index_p2: row.poverty?.poverty_severity_index_p2 ?? null,
+                  poor_population_thousand: row.poverty?.poor_population_thousand ?? null,
+                }
+              : {}),
+            ...(row.education_poor_age15plus_percent
+              ? { education_poor_age15plus_percent: row.education_poor_age15plus_percent }
+              : {}),
+            ...(row.school_participation_poor_percent
+              ? { school_participation_poor_percent: row.school_participation_poor_percent }
+              : {}),
+            ...(row.employment_status_poor_age15plus_percent
+              ? { employment_status_poor_age15plus_percent: row.employment_status_poor_age15plus_percent }
+              : {}),
+            ...(row.employment_sector_poor_age15plus_percent
+              ? { employment_sector_poor_age15plus_percent: row.employment_sector_poor_age15plus_percent }
+              : {}),
+            ...(row.food_expenditure_share_percent
+              ? { food_expenditure_share_percent: row.food_expenditure_share_percent }
+              : {}),
+            ...(row.housing_poor_households_percent
+              ? { housing_poor_households_percent: row.housing_poor_households_percent }
+              : {}),
+          };
+
+          const indicatorsJson =
+            Object.keys(indicatorsPayload).length > 0 ? JSON.stringify(indicatorsPayload) : null;
+
+          return {
+            region_code: row.region_code,
+            region_name: row.region_name,
+            province_name: row.province_name ?? row.region_name,
+            level: row.level ?? 'Provinsi',
+            poverty_rate: povertyRate,
+            poor_population: poorPopulation,
+            poverty_line: povertyLine,
+            reference_year: row.reference_year,
+            source_name: row.source_name,
+            source_url: row.source_url,
+            indicators_json: indicatorsJson,
+          };
+        })
     )
     .min(1, 'Minimal satu baris data diperlukan')
     .max(5000, 'Maksimal 5000 baris per impor'),
 });
+
+export type NormalizedPovertyRow = z.infer<typeof PovertyImportSchema>['data'][number];
 
 export const RegisterSchema = z.object({
   username: z

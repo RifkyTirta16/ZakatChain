@@ -5,25 +5,11 @@ import { Link } from 'react-router-dom';
 import { Badge, Card, ErrorState, Skeleton } from '../../components/ui';
 import apiClient from '../../utils/api';
 import { formatIDR } from '../../utils/format';
+import { getProvinceCoords } from '../../utils/regions';
 import 'leaflet/dist/leaflet.css';
 
 const DEFAULT_CENTER: [number, number] = [-2.5, 118];
 const DEFAULT_ZOOM = 5;
-
-const REGION_COORDS: Record<string, [number, number]> = {
-  'DKI Jakarta': [-6.2088, 106.8456],
-  'Jawa Barat': [-7.0909, 107.6689],
-  'Jawa Tengah': [-7.1509, 110.1403],
-  'Jawa Timur': [-7.2906, 112.6321],
-  'Sumatera Utara': [3.5952, 98.6722],
-  'Sumatera Barat': [-0.9517, 101.4449],
-  'Sulawesi Selatan': [-5.1477, 119.4327],
-  'Kalimantan Timur': [0.5319, 117.0243],
-  Bali: [-8.4095, 115.1889],
-  'Nusa Tenggara Barat': [-8.6565, 117.3563],
-  'Nusa Tenggara Timur': [-8.6565, 121.2328],
-  Papua: [-2.5367, 140.7233],
-};
 
 interface RegionStat {
   region: string;
@@ -115,7 +101,7 @@ export const DistributionMap = () => {
             attribution="&copy; OpenStreetMap"
           />
           {regions.map((r) => {
-            const coords = REGION_COORDS[r.region];
+            const coords = getProvinceCoords(r.region_code, r.region) ?? getProvinceCoords(null, r.province);
             if (!coords) return null;
             return (
               <CircleMarker

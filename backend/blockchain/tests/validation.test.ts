@@ -106,6 +106,37 @@ test('poverty import schema rejects malformed rows and out-of-range rates', () =
     assert.equal(ok.data.data[0]?.poverty_rate, 7.8);
     assert.equal(ok.data.data[0]?.poor_population, 3500000);
   }
+
+  const nested = PovertyImportSchema.safeParse({
+    data: [
+      {
+        region_code: '31',
+        region_name: 'DKI Jakarta',
+        province_code: '31',
+        province_name: 'DKI Jakarta',
+        level: 'Provinsi',
+        poverty_rate: 4.28,
+        poverty: {
+          poor_population_thousand: 464.87,
+          poverty_rate_percent: 4.28,
+          poverty_depth_index_p1: 0.574,
+          poverty_severity_index_p2: 0.111,
+          poverty_line_rp_per_capita_month: 852768.0,
+        },
+        employment_sector_poor_age15plus_percent: {
+          not_working: 46.61,
+          agriculture: null,
+          non_agriculture: 51.48,
+        },
+      },
+    ],
+  });
+  assert.equal(nested.success, true);
+  if (nested.success) {
+    assert.equal(nested.data.data[0]?.poor_population, 464870);
+    assert.equal(nested.data.data[0]?.poverty_line, 852768);
+    assert.ok(nested.data.data[0]?.indicators_json?.includes('"poverty_depth_index_p1":0.574'));
+  }
 });
 
 test('login schema rejects missing credentials', () => {

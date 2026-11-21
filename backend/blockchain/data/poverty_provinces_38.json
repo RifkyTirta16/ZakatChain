@@ -1,0 +1,1636 @@
+[
+  {
+    "region_code": "11",
+    "region_name": "Aceh",
+    "province_code": "11",
+    "province_name": "Aceh",
+    "level": "Provinsi",
+    "poverty_rate": 12.33,
+    "poverty": {
+      "poor_population_thousand": 704.69,
+      "poverty_rate_percent": 12.33,
+      "poverty_depth_index_p1": 1.836,
+      "poverty_severity_index_p2": 0.42,
+      "poverty_line_rp_per_capita_month": 676247.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 5.51,
+      "sd_smp_graduate": 55.07,
+      "sma_or_higher": 39.42
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.84,
+      "age_13_15": 97.0
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 47.09,
+      "informal_sector": 34.0,
+      "formal_sector": 18.91
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 47.09,
+      "agriculture": 28.74,
+      "non_agriculture": 24.18
+    },
+    "food_expenditure_share_percent": {
+      "poor": 65.6,
+      "non_poor": 56.56,
+      "poor_and_non_poor": 57.09
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 89.43,
+      "own_or_shared_toilet": 80.01
+    }
+  },
+  {
+    "region_code": "12",
+    "region_name": "Sumatera Utara",
+    "province_code": "12",
+    "province_name": "Sumatera Utara",
+    "level": "Provinsi",
+    "poverty_rate": 7.36,
+    "poverty": {
+      "poor_population_thousand": 1140.25,
+      "poverty_rate_percent": 7.36,
+      "poverty_depth_index_p1": 1.126,
+      "poverty_severity_index_p2": 0.263,
+      "poverty_line_rp_per_capita_month": 666546.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 15.72,
+      "sd_smp_graduate": 48.99,
+      "sma_or_higher": 35.29
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.14,
+      "age_13_15": 94.26
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 38.32,
+      "informal_sector": 40.99,
+      "formal_sector": 20.68
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 38.32,
+      "agriculture": 30.97,
+      "non_agriculture": 30.71
+    },
+    "food_expenditure_share_percent": {
+      "poor": 63.38,
+      "non_poor": 54.51,
+      "poor_and_non_poor": 54.79
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 88.93,
+      "own_or_shared_toilet": 90.17
+    }
+  },
+  {
+    "region_code": "13",
+    "region_name": "Sumatera Barat",
+    "province_code": "13",
+    "province_name": "Sumatera Barat",
+    "level": "Provinsi",
+    "poverty_rate": 5.35,
+    "poverty": {
+      "poor_population_thousand": 312.35,
+      "poverty_rate_percent": 5.35,
+      "poverty_depth_index_p1": 0.736,
+      "poverty_severity_index_p2": 0.164,
+      "poverty_line_rp_per_capita_month": 729806.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 19.71,
+      "sd_smp_graduate": 52.41,
+      "sma_or_higher": 27.87
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.93,
+      "age_13_15": 90.84
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 40.19,
+      "informal_sector": 43.97,
+      "formal_sector": 15.84
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 40.19,
+      "agriculture": 30.85,
+      "non_agriculture": 28.96
+    },
+    "food_expenditure_share_percent": {
+      "poor": 63.02,
+      "non_poor": 53.05,
+      "poor_and_non_poor": 53.27
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 80.99,
+      "own_or_shared_toilet": 80.17
+    }
+  },
+  {
+    "region_code": "14",
+    "region_name": "Riau",
+    "province_code": "14",
+    "province_name": "Riau",
+    "level": "Provinsi",
+    "poverty_rate": 6.16,
+    "poverty": {
+      "poor_population_thousand": 460.96,
+      "poverty_rate_percent": 6.16,
+      "poverty_depth_index_p1": 0.873,
+      "poverty_severity_index_p2": 0.196,
+      "poverty_line_rp_per_capita_month": 713117.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 17.36,
+      "sd_smp_graduate": 54.77,
+      "sma_or_higher": 27.87
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.51,
+      "age_13_15": 89.56
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 45.77,
+      "informal_sector": 30.48,
+      "formal_sector": 23.75
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 45.77,
+      "agriculture": 27.57,
+      "non_agriculture": 26.67
+    },
+    "food_expenditure_share_percent": {
+      "poor": 60.97,
+      "non_poor": 52.23,
+      "poor_and_non_poor": 52.45
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 90.62,
+      "own_or_shared_toilet": 94.63
+    }
+  },
+  {
+    "region_code": "15",
+    "region_name": "Jambi",
+    "province_code": "15",
+    "province_name": "Jambi",
+    "level": "Provinsi",
+    "poverty_rate": 7.19,
+    "poverty": {
+      "poor_population_thousand": 270.94,
+      "poverty_rate_percent": 7.19,
+      "poverty_depth_index_p1": 0.976,
+      "poverty_severity_index_p2": 0.199,
+      "poverty_line_rp_per_capita_month": 664127.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 21.29,
+      "sd_smp_graduate": 52.72,
+      "sma_or_higher": 25.99
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.41,
+      "age_13_15": 88.73
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 45.28,
+      "informal_sector": 33.61,
+      "formal_sector": 21.11
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 45.28,
+      "agriculture": 30.31,
+      "non_agriculture": 24.4
+    },
+    "food_expenditure_share_percent": {
+      "poor": 62.25,
+      "non_poor": 52.18,
+      "poor_and_non_poor": 52.47
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 79.42,
+      "own_or_shared_toilet": 80.17
+    }
+  },
+  {
+    "region_code": "16",
+    "region_name": "Sumatera Selatan",
+    "province_code": "16",
+    "province_name": "Sumatera Selatan",
+    "level": "Provinsi",
+    "poverty_rate": 10.15,
+    "poverty": {
+      "poor_population_thousand": 919.6,
+      "poverty_rate_percent": 10.15,
+      "poverty_depth_index_p1": 1.642,
+      "poverty_severity_index_p2": 0.371,
+      "poverty_line_rp_per_capita_month": 581702.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 17.71,
+      "sd_smp_graduate": 54.51,
+      "sma_or_higher": 27.78
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.42,
+      "age_13_15": 90.56
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 42.99,
+      "informal_sector": 37.42,
+      "formal_sector": 19.59
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 42.99,
+      "agriculture": 33.23,
+      "non_agriculture": 23.78
+    },
+    "food_expenditure_share_percent": {
+      "poor": 67.51,
+      "non_poor": 53.27,
+      "poor_and_non_poor": 53.86
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 76.78,
+      "own_or_shared_toilet": 84.53
+    }
+  },
+  {
+    "region_code": "17",
+    "region_name": "Bengkulu",
+    "province_code": "17",
+    "province_name": "Bengkulu",
+    "level": "Provinsi",
+    "poverty_rate": 12.08,
+    "poverty": {
+      "poor_population_thousand": 252.97,
+      "poverty_rate_percent": 12.08,
+      "poverty_depth_index_p1": 1.83,
+      "poverty_severity_index_p2": 0.375,
+      "poverty_line_rp_per_capita_month": 683820.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 19.01,
+      "sd_smp_graduate": 53.17,
+      "sma_or_higher": 27.82
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.3,
+      "age_13_15": 91.39
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 37.8,
+      "informal_sector": 45.22,
+      "formal_sector": 16.98
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 37.8,
+      "agriculture": 36.72,
+      "non_agriculture": 25.47
+    },
+    "food_expenditure_share_percent": {
+      "poor": 61.45,
+      "non_poor": 48.82,
+      "poor_and_non_poor": 49.43
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 62.34,
+      "own_or_shared_toilet": 90.55
+    }
+  },
+  {
+    "region_code": "18",
+    "region_name": "Lampung",
+    "province_code": "18",
+    "province_name": "Lampung",
+    "level": "Provinsi",
+    "poverty_rate": 10.0,
+    "poverty": {
+      "poor_population_thousand": 887.02,
+      "poverty_rate_percent": 10.0,
+      "poverty_depth_index_p1": 1.539,
+      "poverty_severity_index_p2": 0.344,
+      "poverty_line_rp_per_capita_month": 612451.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 19.47,
+      "sd_smp_graduate": 57.52,
+      "sma_or_higher": 23.01
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.51,
+      "age_13_15": 89.56
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 41.45,
+      "informal_sector": 41.75,
+      "formal_sector": 16.8
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 41.45,
+      "agriculture": 33.33,
+      "non_agriculture": 25.22
+    },
+    "food_expenditure_share_percent": {
+      "poor": 62.69,
+      "non_poor": 53.13,
+      "poor_and_non_poor": 53.54
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 82.8,
+      "own_or_shared_toilet": 95.41
+    }
+  },
+  {
+    "region_code": "19",
+    "region_name": "Bangka Belitung",
+    "province_code": "19",
+    "province_name": "Bangka Belitung",
+    "level": "Provinsi",
+    "poverty_rate": 5.0,
+    "poverty": {
+      "poor_population_thousand": 77.71,
+      "poverty_rate_percent": 5.0,
+      "poverty_depth_index_p1": 0.649,
+      "poverty_severity_index_p2": 0.136,
+      "poverty_line_rp_per_capita_month": 956833.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 22.3,
+      "sd_smp_graduate": 50.67,
+      "sma_or_higher": 27.03
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 100.0,
+      "age_13_15": 86.55
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 44.37,
+      "informal_sector": 28.51,
+      "formal_sector": 27.12
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 44.37,
+      "agriculture": 16.41,
+      "non_agriculture": 39.22
+    },
+    "food_expenditure_share_percent": {
+      "poor": 57.3,
+      "non_poor": 51.73,
+      "poor_and_non_poor": 51.86
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 80.04,
+      "own_or_shared_toilet": 94.38
+    }
+  },
+  {
+    "region_code": "21",
+    "region_name": "Kepulauan Riau",
+    "province_code": "21",
+    "province_name": "Kepulauan Riau",
+    "level": "Provinsi",
+    "poverty_rate": 4.44,
+    "poverty": {
+      "poor_population_thousand": 117.28,
+      "poverty_rate_percent": 4.44,
+      "poverty_depth_index_p1": 0.688,
+      "poverty_severity_index_p2": 0.179,
+      "poverty_line_rp_per_capita_month": 832410.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 13.69,
+      "sd_smp_graduate": 43.26,
+      "sma_or_higher": 43.05
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.69,
+      "age_13_15": 99.56
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 46.91,
+      "informal_sector": 25.05,
+      "formal_sector": 28.05
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 46.91,
+      "agriculture": 11.92,
+      "non_agriculture": 41.17
+    },
+    "food_expenditure_share_percent": {
+      "poor": 57.51,
+      "non_poor": 42.91,
+      "poor_and_non_poor": 43.1
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 94.25,
+      "own_or_shared_toilet": 94.75
+    }
+  },
+  {
+    "region_code": "31",
+    "region_name": "DKI Jakarta",
+    "province_code": "31",
+    "province_name": "DKI Jakarta",
+    "level": "Provinsi",
+    "poverty_rate": 4.28,
+    "poverty": {
+      "poor_population_thousand": 464.87,
+      "poverty_rate_percent": 4.28,
+      "poverty_depth_index_p1": 0.574,
+      "poverty_severity_index_p2": 0.111,
+      "poverty_line_rp_per_capita_month": 852768.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 6.14,
+      "sd_smp_graduate": 49.32,
+      "sma_or_higher": 44.54
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.26,
+      "age_13_15": 96.34
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 46.61,
+      "informal_sector": 24.19,
+      "formal_sector": 29.2
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 46.61,
+      "agriculture": null,
+      "non_agriculture": 51.48
+    },
+    "food_expenditure_share_percent": {
+      "poor": 61.46,
+      "non_poor": 38.68,
+      "poor_and_non_poor": 38.93
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 99.98,
+      "own_or_shared_toilet": 89.77
+    }
+  },
+  {
+    "region_code": "32",
+    "region_name": "Jawa Barat",
+    "province_code": "32",
+    "province_name": "Jawa Barat",
+    "level": "Provinsi",
+    "poverty_rate": 7.02,
+    "poverty": {
+      "poor_population_thousand": 3654.74,
+      "poverty_rate_percent": 7.02,
+      "poverty_depth_index_p1": 1.168,
+      "poverty_severity_index_p2": 0.286,
+      "poverty_line_rp_per_capita_month": 547752.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 14.64,
+      "sd_smp_graduate": 66.03,
+      "sma_or_higher": 19.33
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.19,
+      "age_13_15": 92.04
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 48.98,
+      "informal_sector": 28.58,
+      "formal_sector": 22.44
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 48.98,
+      "agriculture": 14.34,
+      "non_agriculture": 36.67
+    },
+    "food_expenditure_share_percent": {
+      "poor": 65.28,
+      "non_poor": 47.94,
+      "poor_and_non_poor": 48.28
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 91.74,
+      "own_or_shared_toilet": 90.61
+    }
+  },
+  {
+    "region_code": "33",
+    "region_name": "Jawa Tengah",
+    "province_code": "33",
+    "province_name": "Jawa Tengah",
+    "level": "Provinsi",
+    "poverty_rate": 9.48,
+    "poverty": {
+      "poor_population_thousand": 3366.69,
+      "poverty_rate_percent": 9.48,
+      "poverty_depth_index_p1": 1.557,
+      "poverty_severity_index_p2": 0.354,
+      "poverty_line_rp_per_capita_month": 537812.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 24.32,
+      "sd_smp_graduate": 57.36,
+      "sma_or_higher": 18.33
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.43,
+      "age_13_15": 94.36
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 40.14,
+      "informal_sector": 41.21,
+      "formal_sector": 18.65
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 40.14,
+      "agriculture": 24.6,
+      "non_agriculture": 35.26
+    },
+    "food_expenditure_share_percent": {
+      "poor": 63.14,
+      "non_poor": 49.47,
+      "poor_and_non_poor": 49.93
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 94.22,
+      "own_or_shared_toilet": 95.18
+    }
+  },
+  {
+    "region_code": "34",
+    "region_name": "DI Yogyakarta",
+    "province_code": "34",
+    "province_name": "DI Yogyakarta",
+    "level": "Provinsi",
+    "poverty_rate": 10.23,
+    "poverty": {
+      "poor_population_thousand": 425.82,
+      "poverty_rate_percent": 10.23,
+      "poverty_depth_index_p1": 1.592,
+      "poverty_severity_index_p2": 0.345,
+      "poverty_line_rp_per_capita_month": 626363.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 18.61,
+      "sd_smp_graduate": 43.57,
+      "sma_or_higher": 37.83
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.4,
+      "age_13_15": 99.06
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 32.31,
+      "informal_sector": 45.13,
+      "formal_sector": 22.56
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 32.31,
+      "agriculture": 26.53,
+      "non_agriculture": 41.16
+    },
+    "food_expenditure_share_percent": {
+      "poor": 61.97,
+      "non_poor": 40.92,
+      "poor_and_non_poor": 41.57
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 95.49,
+      "own_or_shared_toilet": 98.29
+    }
+  },
+  {
+    "region_code": "35",
+    "region_name": "Jawa Timur",
+    "province_code": "35",
+    "province_name": "Jawa Timur",
+    "level": "Provinsi",
+    "poverty_rate": 9.5,
+    "poverty": {
+      "poor_population_thousand": 3875.88,
+      "poverty_rate_percent": 9.5,
+      "poverty_depth_index_p1": 1.414,
+      "poverty_severity_index_p2": 0.294,
+      "poverty_line_rp_per_capita_month": 558029.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 25.97,
+      "sd_smp_graduate": 53.76,
+      "sma_or_higher": 20.27
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.73,
+      "age_13_15": 92.24
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 37.41,
+      "informal_sector": 42.83,
+      "formal_sector": 19.76
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 37.41,
+      "agriculture": 31.4,
+      "non_agriculture": 31.19
+    },
+    "food_expenditure_share_percent": {
+      "poor": 65.82,
+      "non_poor": 49.89,
+      "poor_and_non_poor": 50.45
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 95.65,
+      "own_or_shared_toilet": 90.38
+    }
+  },
+  {
+    "region_code": "36",
+    "region_name": "Banten",
+    "province_code": "36",
+    "province_name": "Banten",
+    "level": "Provinsi",
+    "poverty_rate": 5.63,
+    "poverty": {
+      "poor_population_thousand": 772.78,
+      "poverty_rate_percent": 5.63,
+      "poverty_depth_index_p1": 0.847,
+      "poverty_severity_index_p2": 0.21,
+      "poverty_line_rp_per_capita_month": 684232.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 12.18,
+      "sd_smp_graduate": 63.05,
+      "sma_or_higher": 24.77
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.85,
+      "age_13_15": 98.24
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 50.3,
+      "informal_sector": 22.52,
+      "formal_sector": 27.18
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 50.3,
+      "agriculture": 7.34,
+      "non_agriculture": 42.36
+    },
+    "food_expenditure_share_percent": {
+      "poor": 61.67,
+      "non_poor": 49.49,
+      "poor_and_non_poor": 49.74
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 91.82,
+      "own_or_shared_toilet": 91.34
+    }
+  },
+  {
+    "region_code": "51",
+    "region_name": "Bali",
+    "province_code": "51",
+    "province_name": "Bali",
+    "level": "Provinsi",
+    "poverty_rate": 3.72,
+    "poverty": {
+      "poor_population_thousand": 173.24,
+      "poverty_rate_percent": 3.72,
+      "poverty_depth_index_p1": 0.56,
+      "poverty_severity_index_p2": 0.117,
+      "poverty_line_rp_per_capita_month": 607847.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 21.56,
+      "sd_smp_graduate": 47.45,
+      "sma_or_higher": 31.0
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 100.0,
+      "age_13_15": 94.42
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 32.91,
+      "informal_sector": 38.35,
+      "formal_sector": 28.74
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 32.91,
+      "agriculture": 21.99,
+      "non_agriculture": 45.1
+    },
+    "food_expenditure_share_percent": {
+      "poor": 56.27,
+      "non_poor": 41.94,
+      "poor_and_non_poor": 42.11
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 99.03,
+      "own_or_shared_toilet": 95.1
+    }
+  },
+  {
+    "region_code": "52",
+    "region_name": "Nusa Tenggara Barat",
+    "province_code": "52",
+    "province_name": "Nusa Tenggara Barat",
+    "level": "Provinsi",
+    "poverty_rate": 11.78,
+    "poverty": {
+      "poor_population_thousand": 654.57,
+      "poverty_rate_percent": 11.78,
+      "poverty_depth_index_p1": 1.756,
+      "poverty_severity_index_p2": 0.36,
+      "poverty_line_rp_per_capita_month": 556846.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 24.77,
+      "sd_smp_graduate": 51.42,
+      "sma_or_higher": 23.81
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.91,
+      "age_13_15": 95.57
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 37.17,
+      "informal_sector": 47.02,
+      "formal_sector": 15.81
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 37.17,
+      "agriculture": 32.5,
+      "non_agriculture": 30.33
+    },
+    "food_expenditure_share_percent": {
+      "poor": 70.59,
+      "non_poor": 53.7,
+      "poor_and_non_poor": 54.41
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 96.2,
+      "own_or_shared_toilet": 82.65
+    }
+  },
+  {
+    "region_code": "53",
+    "region_name": "Nusa Tenggara Timur",
+    "province_code": "53",
+    "province_name": "Nusa Tenggara Timur",
+    "level": "Provinsi",
+    "poverty_rate": 18.6,
+    "poverty": {
+      "poor_population_thousand": 1088.78,
+      "poverty_rate_percent": 18.6,
+      "poverty_depth_index_p1": 3.352,
+      "poverty_severity_index_p2": 0.843,
+      "poverty_line_rp_per_capita_month": 549607.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 24.35,
+      "sd_smp_graduate": 57.8,
+      "sma_or_higher": 17.85
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.32,
+      "age_13_15": 94.32
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 28.49,
+      "informal_sector": 64.69,
+      "formal_sector": 6.81
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 28.49,
+      "agriculture": 55.82,
+      "non_agriculture": 15.68
+    },
+    "food_expenditure_share_percent": {
+      "poor": 66.59,
+      "non_poor": 53.32,
+      "poor_and_non_poor": 54.42
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 84.51,
+      "own_or_shared_toilet": 87.79
+    }
+  },
+  {
+    "region_code": "61",
+    "region_name": "Kalimantan Barat",
+    "province_code": "61",
+    "province_name": "Kalimantan Barat",
+    "level": "Provinsi",
+    "poverty_rate": 6.16,
+    "poverty": {
+      "poor_population_thousand": 330.95,
+      "poverty_rate_percent": 6.16,
+      "poverty_depth_index_p1": 0.864,
+      "poverty_severity_index_p2": 0.177,
+      "poverty_line_rp_per_capita_month": 622882.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 31.17,
+      "sd_smp_graduate": 54.66,
+      "sma_or_higher": 14.17
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 97.46,
+      "age_13_15": 91.7
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 43.71,
+      "informal_sector": 37.96,
+      "formal_sector": 18.33
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 43.71,
+      "agriculture": 37.26,
+      "non_agriculture": 19.02
+    },
+    "food_expenditure_share_percent": {
+      "poor": 63.64,
+      "non_poor": 52.79,
+      "poor_and_non_poor": 53.04
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 80.34,
+      "own_or_shared_toilet": 89.74
+    }
+  },
+  {
+    "region_code": "62",
+    "region_name": "Kalimantan Tengah",
+    "province_code": "62",
+    "province_name": "Kalimantan Tengah",
+    "level": "Provinsi",
+    "poverty_rate": 5.19,
+    "poverty": {
+      "poor_population_thousand": 147.8,
+      "poverty_rate_percent": 5.19,
+      "poverty_depth_index_p1": 0.829,
+      "poverty_severity_index_p2": 0.189,
+      "poverty_line_rp_per_capita_month": 654066.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 17.49,
+      "sd_smp_graduate": 57.14,
+      "sma_or_higher": 25.37
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.39,
+      "age_13_15": 90.97
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 41.43,
+      "informal_sector": 33.44,
+      "formal_sector": 25.13
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 41.43,
+      "agriculture": 25.41,
+      "non_agriculture": 33.16
+    },
+    "food_expenditure_share_percent": {
+      "poor": 62.56,
+      "non_poor": 53.03,
+      "poor_and_non_poor": 53.21
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 69.44,
+      "own_or_shared_toilet": 88.68
+    }
+  },
+  {
+    "region_code": "63",
+    "region_name": "Kalimantan Selatan",
+    "province_code": "63",
+    "province_name": "Kalimantan Selatan",
+    "level": "Provinsi",
+    "poverty_rate": 3.84,
+    "poverty": {
+      "poor_population_thousand": 172.72,
+      "poverty_rate_percent": 3.84,
+      "poverty_depth_index_p1": 0.472,
+      "poverty_severity_index_p2": 0.095,
+      "poverty_line_rp_per_capita_month": 650675.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 24.5,
+      "sd_smp_graduate": 57.38,
+      "sma_or_higher": 18.13
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.34,
+      "age_13_15": 85.49
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 42.19,
+      "informal_sector": 37.75,
+      "formal_sector": 20.07
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 42.19,
+      "agriculture": 27.82,
+      "non_agriculture": 29.99
+    },
+    "food_expenditure_share_percent": {
+      "poor": 61.9,
+      "non_poor": 51.46,
+      "poor_and_non_poor": 51.61
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 71.16,
+      "own_or_shared_toilet": 86.65
+    }
+  },
+  {
+    "region_code": "64",
+    "region_name": "Kalimantan Timur",
+    "province_code": "64",
+    "province_name": "Kalimantan Timur",
+    "level": "Provinsi",
+    "poverty_rate": 5.17,
+    "poverty": {
+      "poor_population_thousand": 199.71,
+      "poverty_rate_percent": 5.17,
+      "poverty_depth_index_p1": 0.878,
+      "poverty_severity_index_p2": 0.222,
+      "poverty_line_rp_per_capita_month": 866193.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 9.35,
+      "sd_smp_graduate": 58.17,
+      "sma_or_higher": 32.48
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.39,
+      "age_13_15": 85.55
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 46.0,
+      "informal_sector": 34.25,
+      "formal_sector": 19.75
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 46.0,
+      "agriculture": 20.27,
+      "non_agriculture": 33.73
+    },
+    "food_expenditure_share_percent": {
+      "poor": 55.08,
+      "non_poor": 44.98,
+      "poor_and_non_poor": 45.16
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 75.14,
+      "own_or_shared_toilet": 95.7
+    }
+  },
+  {
+    "region_code": "65",
+    "region_name": "Kalimantan Utara",
+    "province_code": "65",
+    "province_name": "Kalimantan Utara",
+    "level": "Provinsi",
+    "poverty_rate": 5.54,
+    "poverty": {
+      "poor_population_thousand": 42.57,
+      "poverty_rate_percent": 5.54,
+      "poverty_depth_index_p1": 0.748,
+      "poverty_severity_index_p2": 0.289,
+      "poverty_line_rp_per_capita_month": 884970.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 18.88,
+      "sd_smp_graduate": 56.89,
+      "sma_or_higher": 24.23
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 97.85,
+      "age_13_15": 96.18
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 42.13,
+      "informal_sector": 28.95,
+      "formal_sector": 28.92
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 42.13,
+      "agriculture": 28.08,
+      "non_agriculture": 29.79
+    },
+    "food_expenditure_share_percent": {
+      "poor": 54.83,
+      "non_poor": 48.43,
+      "poor_and_non_poor": 48.59
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 84.1,
+      "own_or_shared_toilet": 94.82
+    }
+  },
+  {
+    "region_code": "71",
+    "region_name": "Sulawesi Utara",
+    "province_code": "71",
+    "province_name": "Sulawesi Utara",
+    "level": "Provinsi",
+    "poverty_rate": 6.71,
+    "poverty": {
+      "poor_population_thousand": 173.84,
+      "poverty_rate_percent": 6.71,
+      "poverty_depth_index_p1": 1.114,
+      "poverty_severity_index_p2": 0.257,
+      "poverty_line_rp_per_capita_month": 530304.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 18.06,
+      "sd_smp_graduate": 46.34,
+      "sma_or_higher": 35.6
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 95.32,
+      "age_13_15": 94.43
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 50.97,
+      "informal_sector": 30.85,
+      "formal_sector": 18.18
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 50.97,
+      "agriculture": 19.79,
+      "non_agriculture": 29.24
+    },
+    "food_expenditure_share_percent": {
+      "poor": 63.46,
+      "non_poor": 50.66,
+      "poor_and_non_poor": 50.93
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 90.97,
+      "own_or_shared_toilet": 83.93
+    }
+  },
+  {
+    "region_code": "72",
+    "region_name": "Sulawesi Tengah",
+    "province_code": "72",
+    "province_name": "Sulawesi Tengah",
+    "level": "Provinsi",
+    "poverty_rate": 10.92,
+    "poverty": {
+      "poor_population_thousand": 356.19,
+      "poverty_rate_percent": 10.92,
+      "poverty_depth_index_p1": 2.211,
+      "poverty_severity_index_p2": 0.61,
+      "poverty_line_rp_per_capita_month": 624854.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 15.76,
+      "sd_smp_graduate": 65.88,
+      "sma_or_higher": 18.36
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 95.32,
+      "age_13_15": 83.64
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 39.45,
+      "informal_sector": 48.15,
+      "formal_sector": 12.41
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 39.45,
+      "agriculture": 39.27,
+      "non_agriculture": 21.28
+    },
+    "food_expenditure_share_percent": {
+      "poor": 61.59,
+      "non_poor": 51.17,
+      "poor_and_non_poor": 51.65
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 76.04,
+      "own_or_shared_toilet": 59.9
+    }
+  },
+  {
+    "region_code": "73",
+    "region_name": "Sulawesi Selatan",
+    "province_code": "73",
+    "province_name": "Sulawesi Selatan",
+    "level": "Provinsi",
+    "poverty_rate": 7.6,
+    "poverty": {
+      "poor_population_thousand": 698.13,
+      "poverty_rate_percent": 7.6,
+      "poverty_depth_index_p1": 1.395,
+      "poverty_severity_index_p2": 0.347,
+      "poverty_line_rp_per_capita_month": 477966.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 24.97,
+      "sd_smp_graduate": 53.7,
+      "sma_or_higher": 21.33
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.02,
+      "age_13_15": 89.71
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 46.78,
+      "informal_sector": 37.45,
+      "formal_sector": 15.77
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 46.78,
+      "agriculture": 29.13,
+      "non_agriculture": 24.09
+    },
+    "food_expenditure_share_percent": {
+      "poor": 66.02,
+      "non_poor": 48.47,
+      "poor_and_non_poor": 48.9
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 86.68,
+      "own_or_shared_toilet": 94.2
+    }
+  },
+  {
+    "region_code": "74",
+    "region_name": "Sulawesi Tenggara",
+    "province_code": "74",
+    "province_name": "Sulawesi Tenggara",
+    "level": "Provinsi",
+    "poverty_rate": 10.54,
+    "poverty": {
+      "poor_population_thousand": 304.43,
+      "poverty_rate_percent": 10.54,
+      "poverty_depth_index_p1": 1.89,
+      "poverty_severity_index_p2": 0.453,
+      "poverty_line_rp_per_capita_month": 488171.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 16.06,
+      "sd_smp_graduate": 54.87,
+      "sma_or_higher": 29.06
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.76,
+      "age_13_15": 96.77
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 42.73,
+      "informal_sector": 43.08,
+      "formal_sector": 14.19
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 42.73,
+      "agriculture": 31.11,
+      "non_agriculture": 26.17
+    },
+    "food_expenditure_share_percent": {
+      "poor": 66.3,
+      "non_poor": 48.47,
+      "poor_and_non_poor": 49.12
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 91.8,
+      "own_or_shared_toilet": 90.31
+    }
+  },
+  {
+    "region_code": "75",
+    "region_name": "Gorontalo",
+    "province_code": "75",
+    "province_name": "Gorontalo",
+    "level": "Provinsi",
+    "poverty_rate": 13.24,
+    "poverty": {
+      "poor_population_thousand": 162.74,
+      "poverty_rate_percent": 13.24,
+      "poverty_depth_index_p1": 1.962,
+      "poverty_severity_index_p2": 0.441,
+      "poverty_line_rp_per_capita_month": 495576.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 34.26,
+      "sd_smp_graduate": 46.9,
+      "sma_or_higher": 18.84
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.08,
+      "age_13_15": 77.24
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 43.88,
+      "informal_sector": 39.75,
+      "formal_sector": 16.37
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 43.88,
+      "agriculture": 30.38,
+      "non_agriculture": 25.74
+    },
+    "food_expenditure_share_percent": {
+      "poor": 78.31,
+      "non_poor": 48.13,
+      "poor_and_non_poor": 49.43
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 93.34,
+      "own_or_shared_toilet": 73.93
+    }
+  },
+  {
+    "region_code": "76",
+    "region_name": "Sulawesi Barat",
+    "province_code": "76",
+    "province_name": "Sulawesi Barat",
+    "level": "Provinsi",
+    "poverty_rate": 10.41,
+    "poverty": {
+      "poor_population_thousand": 152.31,
+      "poverty_rate_percent": 10.41,
+      "poverty_depth_index_p1": 1.713,
+      "poverty_severity_index_p2": 0.407,
+      "poverty_line_rp_per_capita_month": 475488.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 23.9,
+      "sd_smp_graduate": 54.27,
+      "sma_or_higher": 21.82
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 96.49,
+      "age_13_15": 86.96
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 38.62,
+      "informal_sector": 48.48,
+      "formal_sector": 12.9
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 38.62,
+      "agriculture": 38.89,
+      "non_agriculture": 22.5
+    },
+    "food_expenditure_share_percent": {
+      "poor": 67.0,
+      "non_poor": 53.24,
+      "poor_and_non_poor": 53.81
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 78.7,
+      "own_or_shared_toilet": 81.55
+    }
+  },
+  {
+    "region_code": "81",
+    "region_name": "Maluku",
+    "province_code": "81",
+    "province_name": "Maluku",
+    "level": "Provinsi",
+    "poverty_rate": 15.38,
+    "poverty": {
+      "poor_population_thousand": 287.76,
+      "poverty_rate_percent": 15.38,
+      "poverty_depth_index_p1": 2.945,
+      "poverty_severity_index_p2": 0.804,
+      "poverty_line_rp_per_capita_month": 757600.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 9.31,
+      "sd_smp_graduate": 56.51,
+      "sma_or_higher": 34.18
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 99.54,
+      "age_13_15": 95.04
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 45.6,
+      "informal_sector": 43.28,
+      "formal_sector": 11.13
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 45.6,
+      "agriculture": 28.1,
+      "non_agriculture": 26.3
+    },
+    "food_expenditure_share_percent": {
+      "poor": 59.99,
+      "non_poor": 47.7,
+      "poor_and_non_poor": 48.55
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 89.55,
+      "own_or_shared_toilet": 71.35
+    }
+  },
+  {
+    "region_code": "82",
+    "region_name": "Maluku Utara",
+    "province_code": "82",
+    "province_name": "Maluku Utara",
+    "level": "Provinsi",
+    "poverty_rate": 5.81,
+    "poverty": {
+      "poor_population_thousand": 77.27,
+      "poverty_rate_percent": 5.81,
+      "poverty_depth_index_p1": 0.95,
+      "poverty_severity_index_p2": 0.221,
+      "poverty_line_rp_per_capita_month": 662397.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 17.46,
+      "sd_smp_graduate": 50.9,
+      "sma_or_higher": 31.64
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 98.08,
+      "age_13_15": 93.51
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 47.52,
+      "informal_sector": 39.16,
+      "formal_sector": 13.32
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 47.52,
+      "agriculture": 20.12,
+      "non_agriculture": 32.36
+    },
+    "food_expenditure_share_percent": {
+      "poor": 59.16,
+      "non_poor": 50.01,
+      "poor_and_non_poor": 50.23
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 87.61,
+      "own_or_shared_toilet": 80.88
+    }
+  },
+  {
+    "region_code": "92",
+    "region_name": "Papua Barat",
+    "province_code": "92",
+    "province_name": "Papua Barat",
+    "level": "Provinsi",
+    "poverty_rate": 20.66,
+    "poverty": {
+      "poor_population_thousand": 106.9,
+      "poverty_rate_percent": 20.66,
+      "poverty_depth_index_p1": 4.17,
+      "poverty_severity_index_p2": 1.181,
+      "poverty_line_rp_per_capita_month": 831001.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 21.21,
+      "sd_smp_graduate": 47.08,
+      "sma_or_higher": 31.71
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 96.42,
+      "age_13_15": 93.9
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 45.37,
+      "informal_sector": 42.46,
+      "formal_sector": 12.17
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 45.37,
+      "agriculture": 38.03,
+      "non_agriculture": 16.6
+    },
+    "food_expenditure_share_percent": {
+      "poor": 57.95,
+      "non_poor": 50.94,
+      "poor_and_non_poor": 51.49
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 83.37,
+      "own_or_shared_toilet": 76.33
+    }
+  },
+  {
+    "region_code": "96",
+    "region_name": "Papua Barat Daya",
+    "province_code": "96",
+    "province_name": "Papua Barat Daya",
+    "level": "Provinsi",
+    "poverty_rate": 17.95,
+    "poverty": {
+      "poor_population_thousand": 103.57,
+      "poverty_rate_percent": 17.95,
+      "poverty_depth_index_p1": 4.527,
+      "poverty_severity_index_p2": 1.723,
+      "poverty_line_rp_per_capita_month": 812630.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 14.17,
+      "sd_smp_graduate": 50.11,
+      "sma_or_higher": 35.72
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 96.54,
+      "age_13_15": 90.99
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 50.15,
+      "informal_sector": 34.96,
+      "formal_sector": 14.89
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 50.15,
+      "agriculture": 28.0,
+      "non_agriculture": 21.85
+    },
+    "food_expenditure_share_percent": {
+      "poor": 57.94,
+      "non_poor": 46.36,
+      "poor_and_non_poor": 47.18
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 75.46,
+      "own_or_shared_toilet": 69.76
+    }
+  },
+  {
+    "region_code": "91",
+    "region_name": "Papua",
+    "province_code": "91",
+    "province_name": "Papua",
+    "level": "Provinsi",
+    "poverty_rate": 19.16,
+    "poverty": {
+      "poor_population_thousand": 171.38,
+      "poverty_rate_percent": 19.16,
+      "poverty_depth_index_p1": 4.582,
+      "poverty_severity_index_p2": 1.493,
+      "poverty_line_rp_per_capita_month": 714365.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 12.48,
+      "sd_smp_graduate": 45.95,
+      "sma_or_higher": 41.58
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 97.29,
+      "age_13_15": 93.07
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 51.09,
+      "informal_sector": 38.93,
+      "formal_sector": 9.99
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 51.09,
+      "agriculture": 31.67,
+      "non_agriculture": 17.24
+    },
+    "food_expenditure_share_percent": {
+      "poor": 57.54,
+      "non_poor": 45.17,
+      "poor_and_non_poor": 45.88
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 83.0,
+      "own_or_shared_toilet": 85.86
+    }
+  },
+  {
+    "region_code": "93",
+    "region_name": "Papua Selatan",
+    "province_code": "93",
+    "province_name": "Papua Selatan",
+    "level": "Provinsi",
+    "poverty_rate": 19.71,
+    "poverty": {
+      "poor_population_thousand": 105.53,
+      "poverty_rate_percent": 19.71,
+      "poverty_depth_index_p1": 4.228,
+      "poverty_severity_index_p2": 1.143,
+      "poverty_line_rp_per_capita_month": 566052.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 35.66,
+      "sd_smp_graduate": 46.28,
+      "sma_or_higher": 18.06
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 87.28,
+      "age_13_15": 92.53
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 37.94,
+      "informal_sector": 55.81,
+      "formal_sector": 6.25
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 37.94,
+      "agriculture": 53.83,
+      "non_agriculture": 8.22
+    },
+    "food_expenditure_share_percent": {
+      "poor": 64.23,
+      "non_poor": 52.44,
+      "poor_and_non_poor": 53.08
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 55.48,
+      "own_or_shared_toilet": 56.71
+    }
+  },
+  {
+    "region_code": "94",
+    "region_name": "Papua Tengah",
+    "province_code": "94",
+    "province_name": "Papua Tengah",
+    "level": "Provinsi",
+    "poverty_rate": 28.9,
+    "poverty": {
+      "poor_population_thousand": 302.31,
+      "poverty_rate_percent": 28.9,
+      "poverty_depth_index_p1": 5.582,
+      "poverty_severity_index_p2": 1.523,
+      "poverty_line_rp_per_capita_month": 817834.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 43.09,
+      "sd_smp_graduate": 39.97,
+      "sma_or_higher": 16.94
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 77.02,
+      "age_13_15": 56.94
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 27.52,
+      "informal_sector": 69.49,
+      "formal_sector": 2.98
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 27.52,
+      "agriculture": 67.45,
+      "non_agriculture": 5.03
+    },
+    "food_expenditure_share_percent": {
+      "poor": 67.56,
+      "non_poor": 58.69,
+      "poor_and_non_poor": 59.96
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 84.8,
+      "own_or_shared_toilet": 60.71
+    }
+  },
+  {
+    "region_code": "95",
+    "region_name": "Papua Pegunungan",
+    "province_code": "95",
+    "province_name": "Papua Pegunungan",
+    "level": "Provinsi",
+    "poverty_rate": 30.03,
+    "poverty": {
+      "poor_population_thousand": 337.32,
+      "poverty_rate_percent": 30.03,
+      "poverty_depth_index_p1": 5.624,
+      "poverty_severity_index_p2": 1.437,
+      "poverty_line_rp_per_capita_month": 1132178.0
+    },
+    "education_poor_age15plus_percent": {
+      "below_sd": 55.07,
+      "sd_smp_graduate": 32.1,
+      "sma_or_higher": 12.83
+    },
+    "school_participation_poor_percent": {
+      "age_7_12": 75.46,
+      "age_13_15": 69.14
+    },
+    "employment_status_poor_age15plus_percent": {
+      "not_working": 13.87,
+      "informal_sector": 80.57,
+      "formal_sector": 5.56
+    },
+    "employment_sector_poor_age15plus_percent": {
+      "not_working": 13.87,
+      "agriculture": 84.47,
+      "non_agriculture": 1.66
+    },
+    "food_expenditure_share_percent": {
+      "poor": 73.17,
+      "non_poor": 63.16,
+      "poor_and_non_poor": 64.71
+    },
+    "housing_poor_households_percent": {
+      "proper_water": 28.38,
+      "own_or_shared_toilet": 59.44
+    }
+  }
+]

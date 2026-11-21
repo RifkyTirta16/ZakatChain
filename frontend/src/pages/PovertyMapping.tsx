@@ -1,47 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
-import type { GeoJsonObject, Feature } from 'geojson';
-import type { Layer, LeafletEvent, PathOptions, StyleFunction } from 'leaflet';
-import L from 'leaflet';
+import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap } from 'react-leaflet';
+import type { LatLngBoundsExpression } from 'leaflet';
 import { Globe, Search, Map as MapIcon, RefreshCw, Database, X, TrendingUp } from 'lucide-react';
 import apiClient from '../utils/api';
 import { Badge, Button, Card, EmptyState, ErrorState, Skeleton } from '../components/ui';
-import { formatIDR, formatNumber, formatPercent, provinceMatches, matchesProvinceField } from '../utils/format';
+import { formatIDR, provinceMatches, matchesProvinceField } from '../utils/format';
+import { getProvinceCoords } from '../utils/regions';
+import {
+  ProvinceDetailCard,
+  type RegionStatDetail,
+} from '../components/mapping/ProvinceDetailCard';
 import 'leaflet/dist/leaflet.css';
-import indonesiaGeoJsonRaw from '../assets/geo/indonesia_provinces.json';
-
-const indonesiaGeoJson = indonesiaGeoJsonRaw as unknown as GeoJsonObject;
-
-interface RegionStat {
-  region: string;
-  province: string;
-  region_code: string;
-  poverty_rate: number;
-  poor_population: number;
-  total_distributed: number;
-  total_reports: number;
-  target_amount: number;
-  gap: number;
-  reach_percentage: number;
-  priority_score: string;
-  status: 'CRITICAL' | 'WARNING' | 'STABLE';
-}
 
 interface TxLite {
   region: string | null;
   amount: number;
 }
 
-const MapBoundsHandler = ({ data }: { data: GeoJsonObject }) => {
+const INDONESIA_BOUNDS: LatLngBoundsExpression = [
+  [-11.0, 94.5],
+  [6.2, 141.3],
+];
+
+const MapBoundsHandler = () => {
   const map = useMap();
   useEffect(() => {
-    const geojsonLayer = L.geoJSON(data);
-    const bounds = geojsonLayer.getBounds();
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [40, 40] });
-    }
-  }, [data, map]);
+    map.fitBounds(INDONESIA_BOUNDS, { padding: [24, 24] });
+  }, [map]);
   return null;
 };
 
@@ -51,6 +37,13 @@ const povertyColor = (rate: number) =>
 
 const priorityColor = (score: number) =>
   score > 30 ? '#DC2626' : score > 15 ? '#D97706' : score > 8 ? '#C9A45C' : '#047857';
+
+const markerRadius = (poorPopulation: number | null | undefined, selected: boolean): number => {
+  const base = !poorPopulation || poorPopulation <= 0
+    ? 8
+    : Math.min(20, Math.max(8, Math.round(Math.sqrt(poorPopulation / 12000)) + 4));
+  return selected ? base + 3 : base;
+};
 
 const PovertyMapping = () => {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -64,7 +57,7 @@ const PovertyMapping = () => {
 
   const statsQuery = useQuery({
     queryKey: ['mapping-stats'],
-    queryFn: async (): Promise<RegionStat[]> => {
+    queryFn: async (): Promise<RegionStatDetail[]> => {
       const { data } = await apiClient.get('/mapping/stats');
       return data;
     },
@@ -110,7 +103,7 @@ const PovertyMapping = () => {
       const targetAmount = (s.poor_population || 100000) * 50000;
       const reach = targetAmount > 0 ? actualDistributed / targetAmount : 0;
       const priority = s.poverty_rate * 0.6 + (1 - Math.min(reach, 1)) * 100 * 0.4;
-      const status: RegionStat['status'] = priority > 12 ? 'CRITICAL' : priority > 6 ? 'WARNING' : 'STABLE';
+      const status: RegionStatDetail['status'] = priority > 12 ? 'CRITICAL' : priority > 6 ? 'WARNING' : 'STABLE';
       return {
         ...s,
         total_distributed: actualDistributed,
@@ -130,7 +123,11 @@ const PovertyMapping = () => {
       .filter((s) => {
         if (statusFilter && s.status !== statusFilter) return false;
         if (!term) return true;
-        return s.region.toLowerCase().includes(term) || (s.province || '').toLowerCase().includes(term);
+        return (
+          s.region.toLowerCase().includes(term) ||
+          (s.province || '').toLowerCase().includes(term) ||
+          s.region_code.toLowerCase().includes(term)
+        );
       })
       .sort((a, b) => parseFloat(b.priority_score) - parseFloat(a.priority_score));
   }, [enrichedStats, searchTerm, statusFilter]);
@@ -139,61 +136,6 @@ const PovertyMapping = () => {
     () => enrichedStats.find((s) => s.region_code === selectedCode) || null,
     [enrichedStats, selectedCode]
   );
-
-  const geoStyle = useMemo<StyleFunction>(() => {
-    return (feature?: Feature | null) => {
-      const code = feature?.properties?.code as string | undefined;
-      const data = enrichedStats.find((s) => s.region_code === code);
-      const fillColor = !data
-        ? '#CBD5E1'
-        : indicatorMode === 'poverty'
-          ? povertyColor(data.poverty_rate)
-          : priorityColor(parseFloat(data.priority_score));
-      return {
-        fillColor,
-        weight: 2,
-        opacity: 0.9,
-        color: '#064E3B',
-        fillOpacity: 0.65,
-      } as PathOptions;
-    };
-  }, [enrichedStats, indicatorMode]);
-
-  const onEachFeature = useMemo(() => {
-    return (feature: unknown, layer: Layer) => {
-      const geoFeature = feature as { properties?: { code?: string; name?: string } } | null;
-      const code = geoFeature?.properties?.code;
-      const name = geoFeature?.properties?.name || code || 'Wilayah';
-      const data = enrichedStats.find((s) => s.region_code === code);
-
-      layer.on({
-        mouseover: (e: LeafletEvent) => {
-          const l = e.target as L.Path;
-          l.setStyle({ fillOpacity: 0.85, weight: 3, color: '#C9A45C' });
-        },
-        mouseout: (e: LeafletEvent) => {
-          const l = e.target as L.Path;
-          const fillColor = !data
-            ? '#CBD5E1'
-            : indicatorMode === 'poverty'
-              ? povertyColor(data.poverty_rate)
-              : priorityColor(parseFloat(data.priority_score));
-          l.setStyle({ fillColor, fillOpacity: 0.65, weight: 2, color: '#064E3B', opacity: 0.9 });
-        },
-        click: () => {
-          if (data) setSelectedCode(data.region_code);
-        },
-      });
-      if (!data) {
-        layer.bindTooltip(`${name} — tanpa data kemiskinan`, { sticky: true });
-      } else {
-        layer.bindTooltip(
-          `${name}: ${indicatorMode === 'poverty' ? `${data.poverty_rate}% kemiskinan` : `skor ${data.priority_score}`}`,
-          { sticky: true }
-        );
-      }
-    };
-  }, [enrichedStats, indicatorMode]);
 
   const isLoading = statsQuery.isLoading || recoQuery.isLoading || txQuery.isLoading;
   const error = statsQuery.error || recoQuery.error || txQuery.error;
@@ -220,12 +162,13 @@ const PovertyMapping = () => {
     try {
       parsed = JSON.parse(importData);
     } catch {
-      setImportError('Format JSON tidak valid. Tempelkan array JSON, mis. [{"region_code":"32",...}].');
+      setImportError('Format JSON tidak valid. Tempelkan array JSON provinsi atau objek {"data": [...]}.');
       return;
     }
+    const payload = Array.isArray(parsed) ? { data: parsed } : parsed;
     setImportBusy(true);
     try {
-      await apiClient.post('/mapping/import', { data: parsed });
+      await apiClient.post('/mapping/import', payload);
       setIsImportModalOpen(false);
       setImportData('');
       retry();
@@ -383,13 +326,39 @@ const PovertyMapping = () => {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution="&copy; OpenStreetMap"
                 />
-                <GeoJSON
-                  data={indonesiaGeoJson}
-                  style={geoStyle}
-                  onEachFeature={onEachFeature}
-                  key={indicatorMode}
-                />
-                <MapBoundsHandler data={indonesiaGeoJson} />
+                {filteredStats.map((reg) => {
+                  const coords = getProvinceCoords(reg.region_code, reg.region);
+                  if (!coords) return null;
+                  const isSelected = selectedCode === reg.region_code;
+                  const fillColor =
+                    indicatorMode === 'poverty'
+                      ? povertyColor(reg.poverty_rate)
+                      : priorityColor(parseFloat(reg.priority_score));
+                  return (
+                    <CircleMarker
+                      key={reg.region_code}
+                      center={coords}
+                      radius={markerRadius(reg.poor_population, isSelected)}
+                      pathOptions={{
+                        color: isSelected ? '#C9A45C' : '#064E3B',
+                        weight: isSelected ? 3.5 : 1.5,
+                        fillColor,
+                        fillOpacity: isSelected ? 0.92 : 0.72,
+                      }}
+                      eventHandlers={{
+                        click: () => setSelectedCode(reg.region_code),
+                      }}
+                    >
+                      <Tooltip sticky>
+                        <div className="text-xs font-sans">
+                          <p className="font-bold text-forest-dark">{reg.region}</p>
+                          <p>Kemiskinan: <strong>{reg.poverty_rate}%</strong> · Skor {reg.priority_score}</p>
+                        </div>
+                      </Tooltip>
+                    </CircleMarker>
+                  );
+                })}
+                <MapBoundsHandler />
               </MapContainer>
 
               {/* Legenda Token di Kiri Bawah Peta */}
@@ -441,98 +410,7 @@ const PovertyMapping = () => {
           {/* Panel Statistik Wilayah di Samping (lg:col-span-4) */}
           <div className="lg:col-span-4 space-y-5">
             {selectedRegion ? (
-              <Card className="rounded-3xl p-6 bg-white border border-primary/30 shadow-card space-y-4">
-                <div className="flex justify-between items-start gap-2 pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-primary-bg flex items-center justify-center text-primary shrink-0">
-                      <MapIcon size={16} />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-extrabold text-primary-dark leading-tight">
-                        {selectedRegion.region}
-                      </h2>
-                      <p className="text-[10px] uppercase tracking-wider text-primary-dark/60 font-semibold mt-0.5">
-                        {selectedRegion.province || 'Wilayah'} · Kode {selectedRegion.region_code}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCode(null)}
-                    aria-label="Tutup detail"
-                    className="p-1 rounded-lg text-primary-dark/60 hover:text-primary-dark hover:bg-primary-bg"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                {/* Angka Kunci */}
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-primary-bg/30 rounded-xl border border-primary-bg">
-                    <span className="text-[10px] uppercase tracking-wider text-primary-dark/60 font-semibold block mb-0.5">
-                      Tingkat Kemiskinan
-                    </span>
-                    <span className="text-base font-extrabold text-primary-dark tabular-nums">
-                      {formatPercent(selectedRegion.poverty_rate)}
-                    </span>
-                  </div>
-
-                  <div className="p-3 bg-cream/70 rounded-xl border border-cream">
-                    <span className="text-[10px] uppercase tracking-wider text-primary-dark/60 font-semibold block mb-0.5">
-                      Jangkauan Zakat
-                    </span>
-                    <span className="text-base font-extrabold text-primary-dark tabular-nums">
-                      {formatPercent(selectedRegion.reach_percentage, 1)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Progress Celah Pendanaan */}
-                <div className="p-3.5 bg-primary-bg/20 rounded-xl border border-primary-bg space-y-1.5 text-xs">
-                  <div className="flex justify-between text-[11px] font-semibold text-primary-dark">
-                    <span>Celah Pendanaan:</span>
-                    <span className="font-extrabold">{formatIDR(selectedRegion.gap)}</span>
-                  </div>
-                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all ${
-                        selectedRegion.reach_percentage < 30 ? 'bg-coral' : 'bg-primary'
-                      }`}
-                      style={{ width: `${Math.min(selectedRegion.reach_percentage, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Detail Angka */}
-                <div className="space-y-2 text-xs divide-y divide-slate-100 pt-1">
-                  <div className="flex justify-between py-1.5">
-                    <span className="text-primary-dark/60">Populasi Miskin</span>
-                    <span className="font-extrabold text-primary-dark">
-                      {formatNumber(selectedRegion.poor_population)} jiwa
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1.5">
-                    <span className="text-primary-dark/60">Tersalurkan Tercatat</span>
-                    <span className="font-extrabold text-primary-dark">
-                      {formatIDR(selectedRegion.total_distributed)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1.5 items-center">
-                    <span className="text-primary-dark/60">Status Kebutuhan</span>
-                    <Badge
-                      tone={
-                        selectedRegion.status === 'CRITICAL'
-                          ? 'coral'
-                          : selectedRegion.status === 'WARNING'
-                            ? 'gold'
-                            : 'success'
-                      }
-                    >
-                      {selectedRegion.status}
-                    </Badge>
-                  </div>
-                </div>
-              </Card>
+              <ProvinceDetailCard region={selectedRegion} onClose={() => setSelectedCode(null)} />
             ) : (
               <Card className="rounded-3xl p-8 bg-white border border-slate-200/70 shadow-card text-center space-y-3">
                 <div className="w-12 h-12 bg-primary-bg/50 rounded-2xl flex items-center justify-center text-primary-dark/50 mx-auto">
@@ -540,15 +418,18 @@ const PovertyMapping = () => {
                 </div>
                 <h3 className="text-sm font-extrabold text-primary-dark">Pilih Wilayah pada Peta</h3>
                 <p className="text-xs text-primary-dark/60 leading-relaxed">
-                  Arahkan kursor atau klik poligon provinsi di peta untuk menampilkan rincian kemiskinan dan kebutuhan zakat regional.
+                  Klik titik provinsi di peta atau pilih dari daftar di bawah untuk menampilkan rincian kemiskinan &amp; indikator sosial ekonomi regional.
                 </p>
               </Card>
             )}
 
             {/* Panel Daftar Prioritas */}
             <Card className="rounded-3xl p-5 bg-white border border-slate-200/70 shadow-card space-y-3">
-              <h3 className="text-xs uppercase tracking-wider text-primary-dark font-extrabold flex items-center gap-1.5">
-                <TrendingUp size={15} className="text-primary" /> Daftar Prioritas Distribusi
+              <h3 className="text-xs uppercase tracking-wider text-primary-dark font-extrabold flex items-center justify-between gap-1.5">
+                <span className="inline-flex items-center gap-1.5">
+                  <TrendingUp size={15} className="text-primary" /> Daftar Prioritas Distribusi
+                </span>
+                <span className="text-[11px] font-mono font-semibold text-slate-500">{filteredStats.length} wilayah</span>
               </h3>
 
               {filteredStats.length === 0 ? (
@@ -569,7 +450,7 @@ const PovertyMapping = () => {
                       <div className="flex flex-col">
                         <span className="font-bold text-primary-dark">{reg.region}</span>
                         <span className="text-[10px] text-primary-dark/60">
-                          {formatIDR(reg.total_distributed)} tercatat
+                          {reg.poverty_rate}% miskin · {formatIDR(reg.total_distributed)} tercatat
                         </span>
                       </div>
                       <Badge
@@ -605,7 +486,7 @@ const PovertyMapping = () => {
               </div>
 
               <p className="text-xs text-primary-dark/70 leading-relaxed">
-                Tempelkan array JSON hasil data resmi (mis. publikasi BPS). Setiap objek memuat{' '}
+                Tempelkan array JSON data resmi (mendukung format datar maupun struktur bersarang BPS). Setiap objek memuat{' '}
                 <span className="font-mono font-bold">region_code, region_name, poverty_rate</span>.
               </p>
 

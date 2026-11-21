@@ -208,6 +208,8 @@ export const initDb = async (filename = process.env.DATABASE_PATH || path.join(b
   await ensureColumn(db, 'transactions', 'mustahik_id', 'INTEGER');
   await ensureColumn(db, 'transactions', 'revoke_tx_hash', 'TEXT');
   await ensureColumn(db, 'transactions', 'revoke_reason', 'TEXT');
+  await ensureColumn(db, 'poverty_stats', 'level', 'TEXT');
+  await ensureColumn(db, 'poverty_stats', 'indicators_json', 'TEXT');
 
   // Lookup indexes. `audit_hash` is intentionally NOT unique: two legitimate
   // distributions to the same recipient for the same amount produce identical
