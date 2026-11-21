@@ -9,14 +9,14 @@ interface QrCodeBoxProps {
 }
 
 /**
- * Renders a scannable ISO-18004 SVG QR code for QRIS sandbox sessions.
- * Offers a one-click LAN IP switch in local development so a phone on the same
- * WiFi network can scan the QR and trigger live status confirmation.
+ * Renders a scannable ISO-18004 SVG QR code for DOKU Sandbox / local QRIS sessions.
+ * Offers a fallback LAN IP switch in local development if a phone demo uses the local simulator.
  */
 export const QrCodeBox = ({ value, lanValue, size = 184 }: QrCodeBoxProps) => {
   const [useLan, setUseLan] = useState(false);
   const activeUrl = useLan && lanValue ? lanValue : value;
-  const isDevHttp = import.meta.env.DEV && /^https?:\/\//i.test(activeUrl);
+  const isHttp = /^https?:\/\//i.test(activeUrl);
+  const isDokuCheckout = /^https:\/\/[^/]*doku\.com\//i.test(activeUrl);
 
   return (
     <div className="inline-flex flex-col items-center gap-2.5">
@@ -32,6 +32,24 @@ export const QrCodeBox = ({ value, lanValue, size = 184 }: QrCodeBoxProps) => {
         </div>
       </div>
 
+      {isDokuCheckout && !useLan && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-mint border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-forest-dark">
+          DOKU Sandbox QRIS Ready
+        </span>
+      )}
+
+      {(import.meta.env.DEV || isDokuCheckout) && isHttp && (
+        <a
+          href={activeUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+        >
+          {isDokuCheckout && !useLan ? 'Buka Halaman QRIS DOKU Sandbox' : 'Buka Simulator Bayar QRIS'}{' '}
+          <ExternalLink size={12} />
+        </a>
+      )}
+
       {import.meta.env.DEV && lanValue && (
         <button
           type="button"
@@ -39,19 +57,12 @@ export const QrCodeBox = ({ value, lanValue, size = 184 }: QrCodeBoxProps) => {
           className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-forest-dark hover:bg-mint transition-colors"
         >
           <Smartphone size={12} className="text-primary" />
-          {useLan ? 'Mode QR: IP WiFi LAN (Siap Scan HP)' : 'Ganti QR ke IP WiFi LAN (Scan HP)'}
+          {useLan
+            ? 'Kembali ke QR DOKU / Utama'
+            : /^https:\/\/[^/]*doku\.com\//i.test(value)
+              ? 'Ganti ke Simulator QR Lokal (IP LAN)'
+              : 'Ganti QR ke IP WiFi LAN (Scan HP)'}
         </button>
-      )}
-
-      {isDevHttp && (
-        <a
-          href={activeUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
-        >
-          Buka Simulator Bayar QRIS <ExternalLink size={11} />
-        </a>
       )}
     </div>
   );

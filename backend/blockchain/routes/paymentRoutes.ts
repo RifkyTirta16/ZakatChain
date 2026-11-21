@@ -3,6 +3,7 @@ import {
   createPaymentSession,
   getPaymentStatus,
   handlePaymentWebhook,
+  handleDokuNotification,
   sandboxConfirmPayment,
   getSandboxSessionInfo,
   scanConfirmSandboxPayment,
@@ -29,8 +30,9 @@ router.post('/sandbox/scan-confirm/:sessionId', scanConfirmSandboxPayment);
 // Legacy singular prefix used by CampaignDetail.tsx (POST /api/payment/generate).
 // Mounted separately in index.ts.
 
-// Provider-facing webhook. Unauthenticated by design; authenticity is proven by
+// Provider-facing webhooks. Unauthenticated by design; authenticity is proven by
 // the HMAC signature over the raw request body.
 router.post('/webhook', handlePaymentWebhook);
+router.post('/doku/notify', handleDokuNotification);
 
 export default router;

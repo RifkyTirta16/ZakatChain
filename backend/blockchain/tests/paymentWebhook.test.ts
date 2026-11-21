@@ -3,7 +3,13 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 import type { Request, Response } from 'express';
 import { initDb } from '../models/db.js';
-import { handlePaymentWebhook, createPaymentSession, getPaymentStatus } from '../controllers/paymentController.js';
+import {
+  handlePaymentWebhook,
+  handleDokuNotification,
+  createPaymentSession,
+  getPaymentStatus,
+} from '../controllers/paymentController.js';
+import { buildDokuDigest, buildDokuSignature } from '../utils/doku.js';
 
 function mockResponse() {
   const result: { statusCode: number; body: unknown } = { statusCode: 200, body: undefined };
@@ -248,4 +254,92 @@ test('webhook refuses to resolve an expired payment session', async () => {
       await db.close();
     }
   });
+});
+
+test('DOKU HTTP notification verifies Client-Id and HMACSHA256 signature and settles session idempotently', async () => {
+  const prevClientId = process.env.DOKU_CLIENT_ID;
+  const prevSecret = process.env.DOKU_SECRET_KEY;
+  process.env.DOKU_CLIENT_ID = 'BRN-TEST-001';
+  process.env.DOKU_SECRET_KEY = 'SK-test-only-secret';
+
+  try {
+    const db = await initDb(':memory:');
+    try {
+      await db.run("INSERT INTO campaigns (title, target_amount) VALUES ('Program DOKU', 500000)");
+      await db.run(
+        "INSERT INTO payments (payment_session_id, amount, status, expires_at) VALUES ('ZCK-DOKU-1', 100000, 'PENDING', '2099-01-01T00:00:00.000Z')"
+      );
+      await db.run(
+        "INSERT INTO donations (campaign_id, amount, payment_reference, status) VALUES (1, 100000, 'ZCK-DOKU-1', 'PENDING')"
+      );
+
+      const payload = {
+        order: { invoice_number: 'ZCK-DOKU-1' },
+        transaction: { status: 'SUCCESS', original_request_id: 'doku-req-777' },
+      };
+      const rawBody = Buffer.from(JSON.stringify(payload));
+      const requestId = 'req-notify-1';
+      const timestamp = '2026-11-21T03:00:00Z';
+      const target = '/api/payments/doku/notify';
+      const sig = buildDokuSignature({
+        clientId: 'BRN-TEST-001',
+        secretKey: 'SK-test-only-secret',
+        requestId,
+        timestamp,
+        requestTarget: target,
+        digest: buildDokuDigest(rawBody),
+      });
+
+      const makeReq = (overrideHeaders: Record<string, string> = {}) => {
+        const hdrs: Record<string, string> = {
+          'client-id': 'BRN-TEST-001',
+          'request-id': requestId,
+          'request-timestamp': timestamp,
+          signature: sig,
+          ...overrideHeaders,
+        };
+        return {
+          body: payload,
+          db,
+          rawBody,
+          originalUrl: target,
+          get(name: string) {
+            return hdrs[name.toLowerCase()];
+          },
+        } as unknown as Request;
+      };
+
+      // Bad signature or wrong Client-Id must fail with 401
+      const badSigRes = mockResponse();
+      await handleDokuNotification(makeReq({ signature: 'HMACSHA256=invalid' }), badSigRes.response);
+      assert.equal(badSigRes.result.statusCode, 401);
+
+      const wrongClientRes = mockResponse();
+      await handleDokuNotification(makeReq({ 'client-id': 'BRN-OTHER' }), wrongClientRes.response);
+      assert.equal(wrongClientRes.result.statusCode, 401);
+
+      // Valid notification marks payment & donation CONFIRMED and updates campaign total
+      const okRes = mockResponse();
+      await handleDokuNotification(makeReq(), okRes.response);
+      assert.equal(okRes.result.statusCode, 200);
+      assert.deepEqual(okRes.result.body, { status: 'EVENT_PROCESSED' });
+      assert.equal((await db.get("SELECT status FROM payments WHERE payment_session_id = 'ZCK-DOKU-1'")).status, 'CONFIRMED');
+      assert.equal((await db.get('SELECT status FROM donations WHERE id = 1')).status, 'CONFIRMED');
+      assert.equal((await db.get('SELECT current_amount FROM campaigns WHERE id = 1')).current_amount, 100000);
+
+      // Duplicate DOKU notification is idempotent
+      const dupRes = mockResponse();
+      await handleDokuNotification(makeReq(), dupRes.response);
+      assert.equal(dupRes.result.statusCode, 200);
+      assert.deepEqual(dupRes.result.body, { status: 'ALREADY_PROCESSED' });
+      assert.equal((await db.get('SELECT current_amount FROM campaigns WHERE id = 1')).current_amount, 100000);
+    } finally {
+      await db.close();
+    }
+  } finally {
+    if (prevClientId === undefined) delete process.env.DOKU_CLIENT_ID;
+    else process.env.DOKU_CLIENT_ID = prevClientId;
+    if (prevSecret === undefined) delete process.env.DOKU_SECRET_KEY;
+    else process.env.DOKU_SECRET_KEY = prevSecret;
+  }
 });

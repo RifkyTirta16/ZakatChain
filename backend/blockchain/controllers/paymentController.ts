@@ -3,6 +3,13 @@ import crypto from 'node:crypto';
 import os from 'node:os';
 import { PaymentIntentSchema, formatIssues } from '../utils/validation.js';
 import { runInTransaction } from '../models/db.js';
+import {
+  createDokuQrisCheckout,
+  fetchDokuOrderStatus,
+  getDokuConfig,
+  isDokuConfigured,
+  verifyDokuNotificationSignature,
+} from '../utils/doku.js';
 import type { AuthRequest } from '../middleware/auth.js';
 
 // Sandbox payment provider. No real QRIS/acquirer call is made.
@@ -73,21 +80,31 @@ const buildSessionPayload = (input: {
   amount: number;
   expiresAt: string;
   frontendOrigin: string;
+  dokuCheckoutUrl?: string | undefined;
 }) => {
   const isProd = process.env.NODE_ENV === 'production';
   const token = signSandboxSessionToken(input.sessionId);
-  const qrisPayload = isProd
-    ? `https://qris.sandbox.id/pay/${input.sessionId}`
-    : `${input.frontendOrigin}/sandbox/pay/${input.sessionId}?t=${token}`;
+  const localSandboxUrl = `${input.frontendOrigin}/sandbox/pay/${input.sessionId}?t=${token}`;
+  const qrisPayload = input.dokuCheckoutUrl
+    ? input.dokuCheckoutUrl
+    : isProd
+      ? `https://qris.sandbox.id/pay/${input.sessionId}`
+      : localSandboxUrl;
+
   let lanQrisUrl: string | undefined;
-  if (!isProd && process.env.NODE_ENV !== 'test' && /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(input.frontendOrigin)) {
-    const lanIp = getFirstLanIpv4();
-    if (lanIp) {
-      const portMatch = input.frontendOrigin.match(/:(\d+)$/);
-      const portSuffix = portMatch ? `:${portMatch[1]}` : ':5173';
-      lanQrisUrl = `http://${lanIp}${portSuffix}/sandbox/pay/${input.sessionId}?t=${token}`;
+  if (!isProd && process.env.NODE_ENV !== 'test') {
+    if (/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(input.frontendOrigin)) {
+      const lanIp = getFirstLanIpv4();
+      if (lanIp) {
+        const portMatch = input.frontendOrigin.match(/:(\d+)$/);
+        const portSuffix = portMatch ? `:${portMatch[1]}` : ':5173';
+        lanQrisUrl = `http://${lanIp}${portSuffix}/sandbox/pay/${input.sessionId}?t=${token}`;
+      }
+    } else if (input.dokuCheckoutUrl) {
+      lanQrisUrl = localSandboxUrl;
     }
   }
+
   return {
     session_id: input.sessionId,
     paymentId: input.sessionId,
@@ -96,11 +113,12 @@ const buildSessionPayload = (input: {
     qris_url: qrisPayload,
     qrCodeUrl: qrisPayload,
     qris_payload: qrisPayload,
+    ...(input.dokuCheckoutUrl ? { doku_checkout_url: input.dokuCheckoutUrl } : {}),
     ...(lanQrisUrl ? { lan_qris_url: lanQrisUrl } : {}),
     amount: input.amount,
     expires_at: input.expiresAt,
     expiry: `${QRIS_SANDBOX_CONFIG.sessionTtlMinutes}m`,
-    provider: QRIS_SANDBOX_CONFIG.provider,
+    provider: input.dokuCheckoutUrl ? 'DOKU-Checkout-Sandbox' : QRIS_SANDBOX_CONFIG.provider,
   };
 };
 
@@ -159,11 +177,37 @@ export const createPaymentSession = async (req: Request, res: Response) => {
       return { paymentId: inserted.lastID as number, donationId };
     });
 
+    const frontendOrigin = resolveFrontendOrigin(req);
+    let dokuCheckoutUrl: string | undefined;
+    if (isDokuConfigured() && process.env.NODE_ENV !== 'test') {
+      try {
+        const dokuRes = await createDokuQrisCheckout({
+          invoiceNumber: sessionId,
+          amount,
+          callbackUrl: `${frontendOrigin}/donate`,
+          customerName: donor_name ?? undefined,
+          dueMinutes: QRIS_SANDBOX_CONFIG.sessionTtlMinutes,
+        });
+        dokuCheckoutUrl = dokuRes.checkoutUrl;
+        await (db as any).run(
+          'UPDATE payments SET provider_tx_id = ?, updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ?',
+          [`DOKU-SESSION:${dokuRes.tokenId}`, sessionId]
+        );
+        await (db as any).run(
+          'INSERT INTO payment_events (donation_id, event_type, payload) VALUES (?, ?, ?)',
+          [result.donationId, 'DOKU_CHECKOUT_CREATED', JSON.stringify({ sessionId, tokenId: dokuRes.tokenId })]
+        );
+      } catch (dokuErr: any) {
+        console.warn('[DOKU CHECKOUT FALLBACK]', dokuErr?.message || 'DOKU sandbox unreachable');
+      }
+    }
+
     const sessionPayload = buildSessionPayload({
       sessionId,
       amount,
       expiresAt,
-      frontendOrigin: resolveFrontendOrigin(req),
+      frontendOrigin,
+      dokuCheckoutUrl,
     });
 
     res.status(201).json({
@@ -180,7 +224,8 @@ export const createPaymentSession = async (req: Request, res: Response) => {
 
 /**
  * Reads a payment session. Backs GET /api/payments/status/:sessionId and
- * GET /api/payments/verify/:paymentId.
+ * GET /api/payments/verify/:paymentId. When backed by DOKU Checkout, polls DOKU
+ * Order Status so localhost demos without a public webhook URL still settle automatically.
  */
 export const getPaymentStatus = async (req: Request, res: Response) => {
   const { db } = req;
@@ -192,7 +237,7 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
 
   try {
     const payment = await (db as any).get(
-      'SELECT payment_session_id, donor_name, amount, program_id, status, expires_at FROM payments WHERE payment_session_id = ?',
+      'SELECT payment_session_id, donor_name, amount, program_id, status, provider_tx_id, expires_at FROM payments WHERE payment_session_id = ?',
       [sessionId]
     );
     if (!payment) {
@@ -207,6 +252,41 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
         [sessionId]
       );
       status = 'EXPIRED';
+    } else if (
+      status === 'PENDING' &&
+      isDokuConfigured() &&
+      process.env.NODE_ENV !== 'test' &&
+      typeof payment.provider_tx_id === 'string' &&
+      payment.provider_tx_id.startsWith('DOKU-SESSION:')
+    ) {
+      try {
+        const dokuStatus = await fetchDokuOrderStatus(sessionId);
+        if (dokuStatus.status === 'PAID') {
+          const settled = await applyProviderSettlement(db, {
+            sessionId,
+            status: 'SUCCESS',
+            providerTxId: `DOKU-${dokuStatus.originalRequestId || sessionId}`,
+            eventType: 'DOKU_STATUS_PAID',
+          });
+          if (settled.code === 200) status = 'CONFIRMED';
+        } else if (dokuStatus.status === 'FAILED') {
+          const settled = await applyProviderSettlement(db, {
+            sessionId,
+            status: 'FAILED',
+            providerTxId: `DOKU-FAIL-${dokuStatus.originalRequestId || sessionId}`,
+            eventType: 'DOKU_STATUS_FAILED',
+          });
+          if (settled.code === 200) status = 'FAILED';
+        } else if (dokuStatus.status === 'EXPIRED') {
+          await (db as any).run(
+            "UPDATE payments SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ? AND status = 'PENDING'",
+            [sessionId]
+          );
+          status = 'EXPIRED';
+        }
+      } catch (syncErr: any) {
+        console.warn('[DOKU STATUS SYNC]', syncErr?.message || 'Status lookup skipped');
+      }
     }
 
     res.json({
@@ -223,6 +303,94 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch payment status' });
   }
 };
+
+interface ProviderSettlementInput {
+  donationId?: number | null;
+  sessionId?: string | null;
+  status: 'SUCCESS' | 'FAILED';
+  providerTxId: string;
+  eventType?: string;
+}
+
+const applyProviderSettlement = async (db: any, opts: ProviderSettlementInput) =>
+  runInTransaction(db, async () => {
+    const existingEvent = await db.get(
+      'SELECT id FROM payment_events WHERE provider_tx_id = ?',
+      [opts.providerTxId]
+    );
+    if (existingEvent) return { code: 200, body: { status: 'ALREADY_PROCESSED' } };
+
+    let donation: any = null;
+    if (opts.donationId !== undefined && opts.donationId !== null) {
+      donation = await db.get(
+        'SELECT id, campaign_id, amount, status FROM donations WHERE id = ?',
+        [opts.donationId]
+      );
+      if (!donation) return { code: 404, body: { error: 'Donation not found' } };
+      if (donation.status !== 'PENDING') {
+        return { code: 409, body: { error: 'Donation has already reached a terminal status' } };
+      }
+    } else if (opts.sessionId) {
+      donation = await db.get(
+        'SELECT id, campaign_id, amount, status FROM donations WHERE payment_reference = ?',
+        [opts.sessionId]
+      );
+      if (donation && donation.status !== 'PENDING') {
+        return { code: 409, body: { error: 'Donation has already reached a terminal status' } };
+      }
+    }
+
+    let payment: any = null;
+    if (opts.sessionId) {
+      payment = await db.get(
+        'SELECT payment_session_id, status, expires_at FROM payments WHERE payment_session_id = ?',
+        [opts.sessionId]
+      );
+      if (!payment) return { code: 404, body: { error: 'Payment session not found' } };
+      // A late webhook must not resurrect an expired session.
+      if (payment.status !== 'PENDING') {
+        return { code: 409, body: { error: 'Payment session has already reached a terminal status' } };
+      }
+      if (payment.expires_at && Date.parse(payment.expires_at) < Date.now()) {
+        await db.run(
+          "UPDATE payments SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ?",
+          [opts.sessionId]
+        );
+        return { code: 409, body: { error: 'Payment session has expired' } };
+      }
+    }
+
+    await db.run(
+      'INSERT INTO payment_events (donation_id, provider_tx_id, event_type, payload) VALUES (?, ?, ?, ?)',
+      [
+        donation?.id ?? null,
+        opts.providerTxId,
+        opts.eventType ?? opts.status,
+        JSON.stringify({ session_id: opts.sessionId ?? null, status: opts.status }),
+      ]
+    );
+
+    const nextDonationStatus = opts.status === 'SUCCESS' ? 'CONFIRMED' : 'FAILED';
+    if (donation) {
+      await db.run('UPDATE donations SET status = ? WHERE id = ?', [nextDonationStatus, donation.id]);
+      if (nextDonationStatus === 'CONFIRMED' && donation.campaign_id) {
+        await db.run(
+          'UPDATE campaigns SET current_amount = COALESCE(current_amount, 0) + ? WHERE id = ?',
+          [Number(donation.amount) || 0, donation.campaign_id]
+        );
+      }
+    }
+
+    const nextPaymentStatus = opts.status === 'SUCCESS' ? 'CONFIRMED' : 'FAILED';
+    if (payment && opts.sessionId) {
+      await db.run(
+        `UPDATE payments SET status = ?, provider_tx_id = ?, updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ?`,
+        [nextPaymentStatus, opts.providerTxId, opts.sessionId]
+      );
+    }
+
+    return { code: 200, body: { status: 'EVENT_PROCESSED' } };
+  });
 
 /**
  * Provider webhook.
@@ -263,84 +431,81 @@ export const handlePaymentWebhook = async (req: Request, res: Response) => {
   }
 
   try {
-    const outcome = await runInTransaction(db as any, async () => {
-      const existingEvent = await (db as any).get(
-        'SELECT id FROM payment_events WHERE provider_tx_id = ?',
-        [providerTxId]
-      );
-      if (existingEvent) return { code: 200, body: { status: 'ALREADY_PROCESSED' } };
-
-      let donation: any = null;
-      if (donationId !== null) {
-        donation = await (db as any).get(
-          'SELECT id, campaign_id, amount, status FROM donations WHERE id = ?',
-          [donationId]
-        );
-        if (!donation) return { code: 404, body: { error: 'Donation not found' } };
-        if (donation.status !== 'PENDING') {
-          return { code: 409, body: { error: 'Donation has already reached a terminal status' } };
-        }
-      } else if (sessionId) {
-        donation = await (db as any).get(
-          'SELECT id, campaign_id, amount, status FROM donations WHERE payment_reference = ?',
-          [sessionId]
-        );
-        if (donation && donation.status !== 'PENDING') {
-          return { code: 409, body: { error: 'Donation has already reached a terminal status' } };
-        }
-      }
-
-      let payment: any = null;
-      if (sessionId) {
-        payment = await (db as any).get(
-          'SELECT payment_session_id, status, expires_at FROM payments WHERE payment_session_id = ?',
-          [sessionId]
-        );
-        if (!payment) return { code: 404, body: { error: 'Payment session not found' } };
-        // A late webhook must not resurrect an expired session.
-        if (payment.status !== 'PENDING') {
-          return { code: 409, body: { error: 'Payment session has already reached a terminal status' } };
-        }
-        if (payment.expires_at && Date.parse(payment.expires_at) < Date.now()) {
-          await (db as any).run(
-            "UPDATE payments SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ?",
-            [sessionId]
-          );
-          return { code: 409, body: { error: 'Payment session has expired' } };
-        }
-      }
-
-      await (db as any).run(
-        'INSERT INTO payment_events (donation_id, provider_tx_id, event_type, payload) VALUES (?, ?, ?, ?)',
-        [donation?.id ?? null, providerTxId, status, JSON.stringify({ session_id: sessionId, status })]
-      );
-
-      const nextDonationStatus = status === 'SUCCESS' ? 'CONFIRMED' : 'FAILED';
-      if (donation) {
-        await (db as any).run('UPDATE donations SET status = ? WHERE id = ?', [nextDonationStatus, donation.id]);
-        if (nextDonationStatus === 'CONFIRMED' && donation.campaign_id) {
-          await (db as any).run(
-            'UPDATE campaigns SET current_amount = COALESCE(current_amount, 0) + ? WHERE id = ?',
-            [Number(donation.amount) || 0, donation.campaign_id]
-          );
-        }
-      }
-
-      const nextPaymentStatus = status === 'SUCCESS' ? 'CONFIRMED' : 'FAILED';
-      if (payment) {
-        await (db as any).run(
-          `UPDATE payments SET status = ?, provider_tx_id = ?, updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ?`,
-          [nextPaymentStatus, providerTxId, sessionId]
-        );
-      }
-
-      return { code: 200, body: { status: 'EVENT_PROCESSED' } };
+    const outcome = await applyProviderSettlement(db, {
+      donationId,
+      sessionId,
+      status,
+      providerTxId,
     });
-
     res.status(outcome.code).json(outcome.body);
   } catch (error: any) {
     console.error('[PAYMENT WEBHOOK ERROR]', error?.message);
     res.status(500).json({ error: 'Webhook processing failed' });
+  }
+};
+
+/**
+ * DOKU HTTP Notification handler (POST /api/payments/doku/notify).
+ * Verifies DOKU HMACSHA256 signature over raw request body and components.
+ */
+export const handleDokuNotification = async (req: Request, res: Response) => {
+  const { db } = req;
+  const cfg = getDokuConfig();
+  if (!cfg.secretKey) {
+    return res.status(503).json({ error: 'DOKU webhook is not configured' });
+  }
+
+  const rawBody = (req as any).rawBody as Buffer | undefined;
+  const requestTarget = (req.originalUrl || '/api/payments/doku/notify').split('?')[0] ?? '/api/payments/doku/notify';
+  const validSig =
+    rawBody &&
+    verifyDokuNotificationSignature({
+      clientIdHeader: req.get('client-id') || '',
+      requestIdHeader: req.get('request-id') || '',
+      timestampHeader: req.get('request-timestamp') || '',
+      signatureHeader: req.get('signature') || '',
+      requestTarget,
+      rawBody,
+      secretKey: cfg.secretKey,
+      expectedClientId: cfg.clientId || undefined,
+    });
+
+  if (!validSig) {
+    return res.status(401).json({ error: 'Invalid DOKU signature' });
+  }
+
+  const body = req.body ?? {};
+  const invoiceNumber = typeof body?.order?.invoice_number === 'string' ? body.order.invoice_number.trim() : '';
+  const txStatus = String(body?.transaction?.status || '').toUpperCase();
+  const providerTxId =
+    typeof body?.transaction?.original_request_id === 'string' && body.transaction.original_request_id.trim()
+      ? `DOKU-${body.transaction.original_request_id.trim()}`
+      : invoiceNumber
+        ? `DOKU-NOTIFY-${invoiceNumber}-${txStatus}`
+        : '';
+
+  if (!invoiceNumber || !providerTxId) {
+    return res.status(400).json({ error: 'Invalid DOKU notification payload' });
+  }
+  if (txStatus === 'PENDING') {
+    return res.status(200).json({ status: 'IGNORED_PENDING' });
+  }
+  if (!['SUCCESS', 'PAID', 'FAILED', 'EXPIRED'].includes(txStatus)) {
+    return res.status(400).json({ error: 'Unsupported DOKU transaction status' });
+  }
+
+  try {
+    const mappedStatus: 'SUCCESS' | 'FAILED' = txStatus === 'SUCCESS' || txStatus === 'PAID' ? 'SUCCESS' : 'FAILED';
+    const outcome = await applyProviderSettlement(db, {
+      sessionId: invoiceNumber,
+      status: mappedStatus,
+      providerTxId,
+      eventType: `DOKU_NOTIFY_${txStatus}`,
+    });
+    res.status(outcome.code).json(outcome.body);
+  } catch (error: any) {
+    console.error('[DOKU WEBHOOK ERROR]', error?.message);
+    res.status(500).json({ error: 'DOKU webhook processing failed' });
   }
 };
 
