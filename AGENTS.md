@@ -44,7 +44,7 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/middleware/       auth.ts (authenticate, authorize, authorizeSelfOr),
                                        rateLimit.ts, upload.ts (multer)
 - backend/blockchain/models/db.ts      init SQLite + migrasi aditif (FK on, WAL on)
-- backend/blockchain/utils/            crypto.ts, validation.ts (Zod), web3.ts, auditLogger.ts
+- backend/blockchain/utils/            crypto.ts, validation.ts (Zod), web3.ts, auditLogger.ts, doku.ts
 - backend/blockchain/tests/*.test.ts   tes (node:test)
 - backend/blockchain/seed.ts           seed 5 transaksi, TIDAK membuat user
 - backend/blockchain/seed_test_users.ts seed 4 akun uji per role (dev/test saja)
@@ -76,7 +76,7 @@ sebelum ada keputusan konsolidasi eksplisit.
 ## 4. Hak akses (diturunkan dari routes, verifikasi ulang bila route berubah)
 Role: USER, ADMIN, AMIL, AUDITOR. Login memakai USERNAME. Register selalu membuat USER.
 - Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*,
-          GET /public/transparency (agregat + non-PII), POST /payments/webhook,
+          GET /public/transparency (agregat + non-PII), POST /payments/webhook, POST /payments/doku/notify (HMACSHA256),
           GET /payments/sandbox/session/:sessionId & POST /payments/sandbox/scan-confirm/:sessionId (non-production, token HMAC)
 - Login saja: dashboard/stats, mapping (stats, recommendations, region/:r),
   payments (generate/session/create/status/verify), POST /payments/sandbox/confirm/:sessionId (non-production)
