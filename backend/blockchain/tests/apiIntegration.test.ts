@@ -631,3 +631,68 @@ test('integration: mustahik CRUD, multi-region distribution trace, QRIS scan-con
     await server.close();
   }
 });
+
+test('integration: mapping stats calibrate CRITICAL/WARNING/STABLE and aggregate multi-region allocations excluding revoked/rejected', async () => {
+  const server = await startServer();
+  try {
+    await loginAs(server.base, 'amil_map', 'supersecret1');
+    const { initDb } = await import('../models/db.js');
+    const db = await initDb(process.env.DATABASE_PATH as string);
+    await db.run("UPDATE users SET role = 'AMIL' WHERE username = 'amil_map'");
+    const loginRes = await request(server.base, 'POST', '/api/auth/login', {
+      json: { username: 'amil_map', password: 'supersecret1' },
+    });
+    const amilJwt = loginRes.body.token;
+
+    // Import 3 contrasting provinces in raw BPS nested JSON array format
+    const importRes = await request(server.base, 'POST', '/api/mapping/import', {
+      token: amilJwt,
+      json: [
+        {
+          region_code: '95',
+          region_name: 'Papua Pegunungan',
+          poverty_rate: 30.03,
+          poverty: { poor_population_thousand: 337.32, poverty_depth_index_p1: 5.624, poverty_line_rp_per_capita_month: 1132178 },
+        },
+        {
+          region_code: '32',
+          region_name: 'Jawa Barat',
+          poverty_rate: 7.02,
+          poverty: { poor_population_thousand: 3654.74, poverty_depth_index_p1: 1.168, poverty_line_rp_per_capita_month: 547752 },
+        },
+        {
+          region_code: '51',
+          region_name: 'Bali',
+          poverty_rate: 3.72,
+          poverty: { poor_population_thousand: 173.24, poverty_depth_index_p1: 0.56, poverty_line_rp_per_capita_month: 607847 },
+        },
+      ],
+    });
+    assert.equal(importRes.status, 200, importRes.text);
+
+    // Insert 1 multi-region approved transaction + 1 revoked + 1 rejected transaction
+    const tx1 = await db.run(
+      "INSERT INTO transactions (recipient_name, amount, category, region, audit_hash, proof_status, blockchain_status) VALUES ('Split Uji', 1000000, 'Konsumsi', 'Jawa Barat, Bandung', '0x111', 'APPROVED', 'CONFIRMED')"
+    );
+    await db.run("INSERT INTO transaction_allocations (transaction_id, region, amount) VALUES (?, 'Jawa Barat, Bandung', 700000)", [tx1.lastID]);
+    await db.run("INSERT INTO transaction_allocations (transaction_id, region, amount) VALUES (?, 'Bali, Denpasar', 300000)", [tx1.lastID]);
+    await db.run(
+      "INSERT INTO transactions (recipient_name, amount, category, region, audit_hash, proof_status, blockchain_status) VALUES ('Revoked Uji', 5000000, 'Pendidikan', 'Bali, Klungkung', '0x222', 'APPROVED', 'REVOKED')"
+    );
+    await db.run(
+      "INSERT INTO transactions (recipient_name, amount, category, region, audit_hash, proof_status, blockchain_status) VALUES ('Rejected Uji', 4000000, 'Kesehatan', 'Jawa Barat, Bogor', '0x333', 'REJECTED', 'PENDING_BLOCKCHAIN')"
+    );
+    await db.close();
+
+    const statsRes = await request(server.base, 'GET', '/api/mapping/stats', { token: amilJwt });
+    assert.equal(statsRes.status, 200);
+    const byCode = Object.fromEntries(statsRes.body.map((r: any) => [r.region_code, r]));
+    assert.equal(byCode['95'].status, 'CRITICAL');
+    assert.equal(byCode['32'].status, 'WARNING');
+    assert.equal(byCode['51'].status, 'STABLE');
+    assert.equal(byCode['32'].total_distributed, 700000);
+    assert.equal(byCode['51'].total_distributed, 300000);
+  } finally {
+    await server.close();
+  }
+});

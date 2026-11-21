@@ -2,10 +2,10 @@ import { Request, Response } from 'express';
 import { PovertyImportSchema, formatIssues, type NormalizedPovertyRow } from '../utils/validation.js';
 import { runInTransaction, type Database } from '../models/db.js';
 
-interface DistributionRow {
+interface EffectiveDistributionRow {
+  tx_id: number;
   region: string | null;
-  total_reports: number;
-  total_distributed: number;
+  amount: number;
 }
 
 interface PovertyRow {
@@ -56,7 +56,7 @@ const normalizeRegionName = (value: string | null | undefined): string => {
 };
 
 const aggregateRegionDistribution = (
-  rows: DistributionRow[],
+  rows: EffectiveDistributionRow[],
   regionName: string,
   provinceName: string,
   regionCode: string
@@ -65,16 +65,30 @@ const aggregateRegionDistribution = (
     [normalizeRegionName(regionName), normalizeRegionName(provinceName), regionCode.trim().toLowerCase()].filter(Boolean)
   );
   let total_distributed = 0;
-  let total_reports = 0;
+  const matchedTxIds = new Set<number>();
   for (const row of rows) {
     const raw = (row.region ?? '').trim().toLowerCase();
     const norm = normalizeRegionName(row.region);
     if (targets.has(raw) || targets.has(norm)) {
-      total_distributed += Number(row.total_distributed) || 0;
-      total_reports += Number(row.total_reports) || 0;
+      total_distributed += Number(row.amount) || 0;
+      matchedTxIds.add(row.tx_id);
     }
   }
-  return { total_distributed, total_reports };
+  return { total_distributed, total_reports: matchedTxIds.size };
+};
+
+const fetchEffectiveDistributions = async (db: Database): Promise<EffectiveDistributionRow[]> => {
+  // Attribute multi-region allocations to their target regions and ignore rejected/revoked records.
+  return (await (db as any).all(`
+    SELECT
+      t.id AS tx_id,
+      COALESCE(ta.region, t.region) AS region,
+      COALESCE(ta.amount, t.amount) AS amount
+    FROM transactions t
+    LEFT JOIN transaction_allocations ta ON ta.transaction_id = t.id
+    WHERE COALESCE(t.proof_status, 'PENDING') != 'REJECTED'
+      AND COALESCE(t.blockchain_status, '') != 'REVOKED'
+  `)) as EffectiveDistributionRow[];
 };
 
 const parseIndicators = (raw: string | null | undefined): Record<string, unknown> | null => {
@@ -84,6 +98,44 @@ const parseIndicators = (raw: string | null | undefined): Record<string, unknown
   } catch {
     return null;
   }
+};
+
+const computeRegionMetrics = (p: PovertyRow, distributionRows: EffectiveDistributionRow[]) => {
+  const dist = aggregateRegionDistribution(distributionRows, p.region_name, p.province_name, p.region_code);
+  const indicators = parseIndicators(p.indicators_json);
+  const rawP1 = indicators?.poverty_depth_index_p1;
+  const p1 = typeof rawP1 === 'number' && Number.isFinite(rawP1) ? rawP1 : null;
+
+  const targetAmount = (p.poor_population || 100000) * 50000;
+  const actualDist = dist.total_distributed || 0;
+  const reachFraction = targetAmount > 0 ? Math.min(actualDist / targetAmount, 1) : 0;
+
+  const normPoverty = Math.min(p.poverty_rate / 30, 1);
+  const normDepth = Math.min((p1 ?? p.poverty_rate * 0.16) / 6, 1);
+  const unreached = 1 - reachFraction;
+  const priorityScore = (normPoverty * 0.55 + normDepth * 0.2 + unreached * 0.25) * 100;
+  const status: 'CRITICAL' | 'WARNING' | 'STABLE' =
+    priorityScore >= 55 ? 'CRITICAL' : priorityScore >= 40 ? 'WARNING' : 'STABLE';
+
+  return {
+    region: p.region_name,
+    province: p.province_name,
+    region_code: p.region_code,
+    level: p.level ?? 'Provinsi',
+    poverty_rate: p.poverty_rate,
+    poor_population: p.poor_population,
+    poverty_line: p.poverty_line ?? null,
+    indicators,
+    total_distributed: actualDist,
+    total_reports: dist.total_reports,
+    target_amount: targetAmount,
+    gap: Math.max(targetAmount - actualDist, 0),
+    reach_percentage: (targetAmount > 0 ? actualDist / targetAmount : 0) * 100,
+    priority_score: priorityScore.toFixed(2),
+    status,
+    _p1: p1,
+    _scoreNum: priorityScore,
+  };
 };
 
 const FALLBACK_POVERTY_STATS: PovertyRow[] = [
@@ -100,44 +152,13 @@ const FALLBACK_POVERTY_STATS: PovertyRow[] = [
 export const getRegionStats = async (req: Request, res: Response) => {
   const { db } = req;
   try {
-    const distributionStats = (await (db as any).all(`
-      SELECT
-        region,
-        COUNT(id) as total_reports,
-        SUM(amount) as total_distributed
-      FROM transactions
-      GROUP BY region
-    `)) as DistributionRow[];
-
+    const distributionStats = await fetchEffectiveDistributions(db);
     const povertyStats = (await (db as any).all('SELECT * FROM poverty_stats ORDER BY region_code ASC')) as PovertyRow[];
     const dataToProcess = povertyStats.length === 0 ? FALLBACK_POVERTY_STATS : povertyStats;
 
     const finalStats = dataToProcess.map((p) => {
-      const dist = aggregateRegionDistribution(distributionStats, p.region_name, p.province_name, p.region_code);
-
-      const targetAmount = (p.poor_population || 100000) * 50000;
-      const actualDist = dist.total_distributed || 0;
-
-      const reachPercent = targetAmount > 0 ? actualDist / targetAmount : 0;
-      const priorityScore = p.poverty_rate * 0.6 + (1 - Math.min(reachPercent, 1)) * 100 * 0.4;
-
-      return {
-        region: p.region_name,
-        province: p.province_name,
-        region_code: p.region_code,
-        level: p.level ?? 'Provinsi',
-        poverty_rate: p.poverty_rate,
-        poor_population: p.poor_population,
-        poverty_line: p.poverty_line ?? null,
-        indicators: parseIndicators(p.indicators_json),
-        total_distributed: actualDist,
-        total_reports: dist.total_reports,
-        target_amount: targetAmount,
-        gap: Math.max(targetAmount - actualDist, 0),
-        reach_percentage: reachPercent * 100,
-        priority_score: priorityScore.toFixed(2),
-        status: priorityScore > 12 ? 'CRITICAL' : priorityScore > 6 ? 'WARNING' : 'STABLE',
-      };
+      const { _p1: _, _scoreNum: __, ...publicFields } = computeRegionMetrics(p, distributionStats);
+      return publicFields;
     });
 
     res.json(finalStats);
@@ -220,28 +241,25 @@ export const getRecommendations = async (req: Request, res: Response) => {
   const { db } = req;
   try {
     const povertyStats = (await (db as any).all('SELECT * FROM poverty_stats ORDER BY region_code ASC')) as PovertyRow[];
-    const distributionStats = (await (db as any).all(`
-      SELECT region, COUNT(id) as total_reports, SUM(amount) as total_distributed
-      FROM transactions GROUP BY region
-    `)) as DistributionRow[];
+    const distributionStats = await fetchEffectiveDistributions(db);
 
     const recommendations = povertyStats
       .map((p) => {
-        const dist = aggregateRegionDistribution(distributionStats, p.region_name, p.province_name, p.region_code);
-
-        const normPoverty = Math.min(p.poverty_rate / 30, 1);
-        const target = (p.poor_population || 100000) * 50000;
-        const reach = target > 0 ? dist.total_distributed / target : 0;
-        const normReach = 1 - Math.min(reach, 1);
-
-        const score = normPoverty * 0.7 + normReach * 0.3;
+        const metrics = computeRegionMetrics(p, distributionStats);
+        const reason =
+          p.poverty_rate >= 15
+            ? 'Tingkat Kemiskinan Kritis (>15%)'
+            : (metrics._p1 ?? 0) >= 2.5
+              ? 'Kedalaman Kemiskinan Tinggi (P1)'
+              : 'Cakupan Distribusi Rendah';
 
         return {
-          region_code: p.region_code,
-          region_name: p.region_name,
-          score: (score * 100).toFixed(2),
-          reason: normPoverty > 0.6 ? 'High Poverty Rate' : 'Low Distribution Reach',
-          suggested_allocation: Math.max(target - dist.total_distributed, 0),
+          region_code: metrics.region_code,
+          region_name: metrics.region,
+          score: metrics.priority_score,
+          status: metrics.status,
+          reason,
+          suggested_allocation: metrics.gap,
         };
       })
       .sort((a, b) => parseFloat(b.score) - parseFloat(a.score));

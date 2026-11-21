@@ -1,4 +1,5 @@
-import { Map as MapIcon, X } from 'lucide-react';
+import { ArrowUpRight, Map as MapIcon, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Badge, Card } from '../ui';
 import { formatIDR, formatNumber, formatPercent } from '../../utils/format';
 
@@ -42,7 +43,7 @@ export interface RegionStatDetail {
   region_code: string;
   level?: string;
   poverty_rate: number;
-  poor_population: number;
+  poor_population: number | null;
   poverty_line?: number | null;
   indicators?: PovertyIndicators | null;
   total_distributed: number;
@@ -57,22 +58,30 @@ export interface RegionStatDetail {
 const fmtOptPercent = (v: number | null | undefined): string =>
   v === null || v === undefined ? 'N/A' : formatPercent(v, 2);
 
+const MiniTile = ({ label, value }: { label: string; value: string }) => (
+  <div className="p-2 rounded-lg bg-white border border-slate-200/70">
+    <span className="text-[10px] text-slate-500 block truncate">{label}</span>
+    <span className="font-bold text-forest-dark tabular-nums text-xs">{value}</span>
+  </div>
+);
+
 interface ProvinceDetailCardProps {
   region: RegionStatDetail;
+  canDistribute?: boolean;
   onClose: () => void;
 }
 
-export const ProvinceDetailCard = ({ region, onClose }: ProvinceDetailCardProps) => {
+export const ProvinceDetailCard = ({ region, canDistribute = false, onClose }: ProvinceDetailCardProps) => {
   const ind = region.indicators;
   return (
-    <Card className="rounded-3xl p-6 bg-white border border-primary/30 shadow-card space-y-4">
+    <Card className="rounded-3xl p-5 sm:p-6 bg-white border border-primary/30 shadow-card space-y-4">
       <div className="flex justify-between items-start gap-2 pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-mint flex items-center justify-center text-primary shrink-0">
             <MapIcon size={16} />
           </div>
-          <div>
-            <h2 className="text-lg font-extrabold text-forest-dark leading-tight">{region.region}</h2>
+          <div className="min-w-0">
+            <h2 className="text-lg font-extrabold text-forest-dark leading-tight truncate">{region.region}</h2>
             <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-0.5">
               {region.level || 'Provinsi'} · Kode BPS {region.region_code}
             </p>
@@ -82,37 +91,40 @@ export const ProvinceDetailCard = ({ region, onClose }: ProvinceDetailCardProps)
           type="button"
           onClick={onClose}
           aria-label="Tutup detail"
-          className="p-1 rounded-lg text-slate-500 hover:text-forest-dark hover:bg-mint/60"
+          className="p-1.5 rounded-lg text-slate-500 hover:text-forest-dark hover:bg-mint/60 shrink-0"
         >
           <X size={16} />
         </button>
       </div>
 
       {/* Angka Kunci */}
-      <div className="grid grid-cols-2 gap-3 text-xs">
+      <div className="grid grid-cols-2 gap-2.5 text-xs">
         <div className="p-3 bg-mint/60 rounded-xl border border-primary/15">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block mb-0.5">
             Tingkat Kemiskinan
           </span>
-          <span className="text-base font-extrabold text-forest-dark tabular-nums">
+          <span className="text-lg font-extrabold text-forest-dark tabular-nums">
             {formatPercent(region.poverty_rate, 2)}
           </span>
         </div>
         <div className="p-3 bg-cream rounded-xl border border-slate-200/70">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block mb-0.5">
-            Jangkauan Zakat
+            Skor Prioritas
           </span>
-          <span className="text-base font-extrabold text-forest-dark tabular-nums">
-            {formatPercent(region.reach_percentage, 1)}
-          </span>
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-lg font-extrabold text-forest-dark tabular-nums">{region.priority_score}</span>
+            <Badge tone={region.status === 'CRITICAL' ? 'coral' : region.status === 'WARNING' ? 'gold' : 'success'}>
+              {region.status}
+            </Badge>
+          </div>
         </div>
       </div>
 
       {/* Progress Celah Pendanaan */}
       <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/70 space-y-1.5 text-xs">
         <div className="flex justify-between text-[11px] font-semibold text-forest-dark">
-          <span>Celah Pendanaan:</span>
-          <span className="font-extrabold">{formatIDR(region.gap)}</span>
+          <span>Jangkauan ({formatPercent(region.reach_percentage, 2)})</span>
+          <span className="font-extrabold tabular-nums">Celah {formatIDR(region.gap)}</span>
         </div>
         <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
           <div
@@ -123,7 +135,7 @@ export const ProvinceDetailCard = ({ region, onClose }: ProvinceDetailCardProps)
       </div>
 
       {/* Detail Angka Dasar */}
-      <div className="space-y-1.5 text-xs divide-y divide-slate-100">
+      <div className="space-y-1 text-xs divide-y divide-slate-100">
         <div className="flex justify-between py-1.5">
           <span className="text-slate-500">Populasi Miskin</span>
           <span className="font-extrabold text-forest-dark tabular-nums">
@@ -139,94 +151,92 @@ export const ProvinceDetailCard = ({ region, onClose }: ProvinceDetailCardProps)
           </div>
         )}
         <div className="flex justify-between py-1.5">
-          <span className="text-slate-500">Tersalurkan Tercatat</span>
+          <span className="text-slate-500">Penyaluran Tercatat ({region.total_reports} laporan)</span>
           <span className="font-extrabold text-forest-dark tabular-nums">
             {formatIDR(region.total_distributed)}
           </span>
-        </div>
-        <div className="flex justify-between py-1.5 items-center">
-          <span className="text-slate-500">Status Prioritas</span>
-          <Badge
-            tone={region.status === 'CRITICAL' ? 'coral' : region.status === 'WARNING' ? 'gold' : 'success'}
-          >
-            {region.status}
-          </Badge>
         </div>
       </div>
 
       {/* Indikator Sosial Ekonomi Lanjutan (P1/P2, Pendidikan, Pekerjaan, Sanitasi) */}
       {ind && (
-        <div className="pt-2 border-t border-slate-200/80 space-y-3 text-[11px]">
+        <div className="pt-2.5 border-t border-slate-200/80 space-y-3 text-[11px]">
           <p className="font-bold uppercase tracking-wider text-slate-500">Indikator Sosial Ekonomi</p>
 
           {(ind.poverty_depth_index_p1 != null || ind.poverty_severity_index_p2 != null) && (
             <div className="grid grid-cols-2 gap-2">
-              <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 block">Indeks Kedalaman (P1)</span>
-                <span className="font-mono font-bold text-forest-dark">{ind.poverty_depth_index_p1 ?? 'N/A'}</span>
-              </div>
-              <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 block">Indeks Keparahan (P2)</span>
-                <span className="font-mono font-bold text-forest-dark">{ind.poverty_severity_index_p2 ?? 'N/A'}</span>
-              </div>
+              <MiniTile label="Kedalaman (P1)" value={String(ind.poverty_depth_index_p1 ?? 'N/A')} />
+              <MiniTile label="Keparahan (P2)" value={String(ind.poverty_severity_index_p2 ?? 'N/A')} />
             </div>
           )}
 
           {ind.education_poor_age15plus_percent && (
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-              <span className="font-semibold text-forest-dark block">Pendidikan Penduduk Miskin (15+)</span>
-              <div className="flex justify-between text-slate-600">
-                <span>&lt; SD: <strong>{fmtOptPercent(ind.education_poor_age15plus_percent.below_sd)}</strong></span>
-                <span>SD–SMP: <strong>{fmtOptPercent(ind.education_poor_age15plus_percent.sd_smp_graduate)}</strong></span>
-                <span>SMA+: <strong>{fmtOptPercent(ind.education_poor_age15plus_percent.sma_or_higher)}</strong></span>
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+              <span className="font-semibold text-forest-dark block">Pendidikan Penduduk Miskin (15+ thn)</span>
+              <div className="grid grid-cols-3 gap-2">
+                <MiniTile label="< SD" value={fmtOptPercent(ind.education_poor_age15plus_percent.below_sd)} />
+                <MiniTile label="SD–SMP" value={fmtOptPercent(ind.education_poor_age15plus_percent.sd_smp_graduate)} />
+                <MiniTile label="SMA+" value={fmtOptPercent(ind.education_poor_age15plus_percent.sma_or_higher)} />
               </div>
             </div>
           )}
 
           {ind.school_participation_poor_percent && (
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
               <span className="font-semibold text-forest-dark block">Partisipasi Sekolah Miskin</span>
-              <div className="flex justify-between text-slate-600">
-                <span>Usia 7–12 thn: <strong>{fmtOptPercent(ind.school_participation_poor_percent.age_7_12)}</strong></span>
-                <span>Usia 13–15 thn: <strong>{fmtOptPercent(ind.school_participation_poor_percent.age_13_15)}</strong></span>
+              <div className="grid grid-cols-2 gap-2">
+                <MiniTile label="Usia 7–12 thn" value={fmtOptPercent(ind.school_participation_poor_percent.age_7_12)} />
+                <MiniTile label="Usia 13–15 thn" value={fmtOptPercent(ind.school_participation_poor_percent.age_13_15)} />
               </div>
             </div>
           )}
 
           {ind.employment_status_poor_age15plus_percent && (
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-              <span className="font-semibold text-forest-dark block">Ketenagakerjaan &amp; Sektor Miskin (15+)</span>
-              <div className="grid grid-cols-3 gap-1 text-slate-600">
-                <span>Tdk Kerja: <strong>{fmtOptPercent(ind.employment_status_poor_age15plus_percent.not_working)}</strong></span>
-                <span>Informal: <strong>{fmtOptPercent(ind.employment_status_poor_age15plus_percent.informal_sector)}</strong></span>
-                <span>Formal: <strong>{fmtOptPercent(ind.employment_status_poor_age15plus_percent.formal_sector)}</strong></span>
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+              <span className="font-semibold text-forest-dark block">Ketenagakerjaan &amp; Sektor (15+ thn)</span>
+              <div className="grid grid-cols-3 gap-2">
+                <MiniTile label="Tdk Kerja" value={fmtOptPercent(ind.employment_status_poor_age15plus_percent.not_working)} />
+                <MiniTile label="Informal" value={fmtOptPercent(ind.employment_status_poor_age15plus_percent.informal_sector)} />
+                <MiniTile label="Formal" value={fmtOptPercent(ind.employment_status_poor_age15plus_percent.formal_sector)} />
               </div>
               {ind.employment_sector_poor_age15plus_percent && (
-                <div className="flex justify-between text-slate-500 pt-0.5">
-                  <span>Pertanian: <strong>{fmtOptPercent(ind.employment_sector_poor_age15plus_percent.agriculture)}</strong></span>
-                  <span>Non-Pertanian: <strong>{fmtOptPercent(ind.employment_sector_poor_age15plus_percent.non_agriculture)}</strong></span>
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  <MiniTile label="Sektor Pertanian" value={fmtOptPercent(ind.employment_sector_poor_age15plus_percent.agriculture)} />
+                  <MiniTile label="Non-Pertanian" value={fmtOptPercent(ind.employment_sector_poor_age15plus_percent.non_agriculture)} />
                 </div>
               )}
             </div>
           )}
 
           {(ind.food_expenditure_share_percent || ind.housing_poor_households_percent) && (
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
               <span className="font-semibold text-forest-dark block">Pangan, Air Layak &amp; Sanitasi</span>
-              <div className="flex flex-wrap justify-between gap-2 text-slate-600">
-                {ind.food_expenditure_share_percent && (
-                  <span>Porsi Pangan Miskin: <strong>{fmtOptPercent(ind.food_expenditure_share_percent.poor)}</strong></span>
-                )}
-                {ind.housing_poor_households_percent && (
-                  <>
-                    <span>Air Layak: <strong>{fmtOptPercent(ind.housing_poor_households_percent.proper_water)}</strong></span>
-                    <span>Sanitasi: <strong>{fmtOptPercent(ind.housing_poor_households_percent.own_or_shared_toilet)}</strong></span>
-                  </>
-                )}
-              </div>
+              {ind.food_expenditure_share_percent && (
+                <div className="grid grid-cols-3 gap-2">
+                  <MiniTile label="Pangan Miskin" value={fmtOptPercent(ind.food_expenditure_share_percent.poor)} />
+                  <MiniTile label="Non-Miskin" value={fmtOptPercent(ind.food_expenditure_share_percent.non_poor)} />
+                  <MiniTile label="Gabungan" value={fmtOptPercent(ind.food_expenditure_share_percent.poor_and_non_poor)} />
+                </div>
+              )}
+              {ind.housing_poor_households_percent && (
+                <div className="grid grid-cols-2 gap-2">
+                  <MiniTile label="Air Minum Layak" value={fmtOptPercent(ind.housing_poor_households_percent.proper_water)} />
+                  <MiniTile label="Sanitasi Layak" value={fmtOptPercent(ind.housing_poor_households_percent.own_or_shared_toilet)} />
+                </div>
+              )}
             </div>
           )}
         </div>
+      )}
+
+      {canDistribute && (
+        <Link
+          to="/new-record"
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-[10px] bg-gradient-to-b from-primary-light to-primary px-3.5 py-2 text-xs font-semibold text-white hover:to-forest shadow-teal-glow transition-all"
+        >
+          <span>Catat Penyaluran ke Wilayah Ini</span>
+          <ArrowUpRight size={14} />
+        </Link>
       )}
     </Card>
   );
