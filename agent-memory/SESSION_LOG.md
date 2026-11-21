@@ -2,7 +2,7 @@
 
 ## 2026-11-21 - Integrasi DOKU Sandbox Checkout QRIS Resmi (`feat/doku-qris-sandbox`)
 - Backend DOKU Client & Webhook (`utils/doku.ts`, `paymentController.ts`, `paymentRoutes.ts`, `.env.example`, `paymentWebhook.test.ts`): menyimpan kredensial sandbox di `backend/.env` saja, memanggil `POST /checkout/v1/payment` (`payment_method_types: ['QRIS']`, IPv4 `family: 4`), melakukan sinkronisasi otomatis lewat `GET /orders/v1/status/:invoiceNumber` saat polling `GET /api/payments/status/:sessionId`, dan menambah webhook resmi `POST /api/payments/doku/notify` dengan verifikasi HMAC-SHA256 (`applyProviderSettlement` idempoten) serta fallback simulator lokal.
-- Frontend (`QrCodeBox.tsx`): mendeteksi URL DOKU Sandbox (`DOKU SANDBOX QRIS READY`, link langsung `Buka Halaman QRIS DOKU Sandbox`, & toggle fallback simulator LAN).
+- Frontend (`QrCodeBox.tsx`): mendeteksi URL DOKU Sandbox (`DOKU SANDBOX · BUKAN UANG ASLI`, link `1. Buka Halaman QRIS DOKU` + `2. Upload QR ke Simulator DOKU` (`https://sandbox.doku.com/qris-simulator/`), panduan *Download QR -> UPLOAD QR*, & toggle fallback simulator LAN).
 - Verifikasi: backend `tsc` & **77/77 pass**, frontend `tsc -b` + `oxlint` (`0/0`, 84 file) + `vite build` (`1.56s`), serta uji live `/api/payments/session` + Chromium `/donate` (`DOKU-Checkout-Sandbox`, QRCodeSVG link `staging.doku.com`, `0` error).
 
 ## 2026-11-21 - Integrasi & Perbaikan Menyeluruh Pemetaan Kemiskinan 38 Provinsi (`feat/poverty-38-provinces`)

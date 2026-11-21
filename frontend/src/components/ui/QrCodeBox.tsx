@@ -34,20 +34,38 @@ export const QrCodeBox = ({ value, lanValue, size = 184 }: QrCodeBoxProps) => {
 
       {isDokuCheckout && !useLan && (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-mint border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-forest-dark">
-          DOKU Sandbox QRIS Ready
+          DOKU Sandbox · Bukan Uang Asli
         </span>
       )}
 
       {(import.meta.env.DEV || isDokuCheckout) && isHttp && (
-        <a
-          href={activeUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-        >
-          {isDokuCheckout && !useLan ? 'Buka Halaman QRIS DOKU Sandbox' : 'Buka Simulator Bayar QRIS'}{' '}
-          <ExternalLink size={12} />
-        </a>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <a
+            href={activeUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+          >
+            {isDokuCheckout && !useLan ? '1. Buka Halaman QRIS DOKU' : 'Buka Simulator Bayar QRIS'}{' '}
+            <ExternalLink size={12} />
+          </a>
+          {isDokuCheckout && !useLan && (
+            <a
+              href="https://sandbox.doku.com/qris-simulator/"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-gold-dark hover:underline"
+            >
+              2. Upload QR ke Simulator DOKU <ExternalLink size={12} />
+            </a>
+          )}
+        </div>
+      )}
+
+      {isDokuCheckout && !useLan && (
+        <p className="max-w-xs text-[11px] leading-relaxed text-slate-500">
+          Cara bayar sandbox tanpa saldo asli: klik <strong>Download QR Code</strong> di halaman DOKU, lalu unggah di tab <strong>UPLOAD QR</strong> Simulator DOKU.
+        </p>
       )}
 
       {import.meta.env.DEV && lanValue && (
