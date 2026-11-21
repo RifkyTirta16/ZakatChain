@@ -1,6 +1,6 @@
 # Project State
 
-**As of:** 2026-11-21 · **Branch:** `feat/elegant-web3-ui-and-role-sync` · **Phase:** Feature-complete Web2+Web3 institutional build with local Hardhat persistence, strict RBAC/security hardening, and upgraded Web3 UI.
+**As of:** 2026-11-21 · **Branch:** `feat/poverty-38-provinces` (dari `feat/elegant-web3-ui-and-role-sync`) · **Phase:** Feature-complete Web2+Web3 institutional build with local Hardhat persistence, strict RBAC, 38-province poverty spatial mapping, and upgraded Web3 UI + ETH logo.
 
 - Git repository initialized; canonical development branches track changes cleanly (`main` + feature branches).
 - Backend (`backend/`): Express 5 + TypeScript + SQLite + ethers; `npx tsc --noEmit -p .` clean; `npm test` **75/75 pass**. Protected routes enforce `authenticate` + `authorize`, CORS allowlist, security headers, Zod validation, `trust proxy`, per-limiter rate limiting, webhook HMAC verification, and `audit_logs`.

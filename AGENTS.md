@@ -49,6 +49,8 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/seed.ts           seed 5 transaksi, TIDAK membuat user
 - backend/blockchain/seed_test_users.ts seed 4 akun uji per role (dev/test saja)
 - backend/blockchain/seed_admin.ts     CLI provisioning akun ADMIN awal (aman untuk produksi)
+- backend/blockchain/seed_poverty.ts   impor data kemiskinan 38 provinsi ke SQLite (dari data/poverty_provinces_38.json)
+- backend/blockchain/data/             dataset referensi statis (poverty_provinces_38.json)
 - backend/database.sqlite              DB aktif (+ -shm/-wal: jangan dihapus manual)
 - backend/uploads/                     file bukti (terproteksi AMIL/AUDITOR/ADMIN via /uploads)
 - backend/.env                         RAHASIA. Dilarang dibaca/dicetak nilainya.
@@ -62,7 +64,7 @@ Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + wag
                              shared/ (ProfilePage), Dashboard, Campaigns, CampaignDetail, DonationPayment,
                              NewDistributionRecord, OnChainExplorer, EvidenceGraph, PovertyMapping,
                              PublicVerify, anomalies/, audit/, export/, proofs/, reconciliation/
-- frontend/src/components/   Analytics, PaymentModal, auth/, dashboard/, ethereum/, layout/, ui/
+- frontend/src/components/   Analytics, PaymentModal, auth/, dashboard/, ethereum/, layout/, mapping/, ui/
 - frontend/src/utils/        api.ts (axios), format.ts, regions.ts, status.ts
 - frontend/src/assets/       zakatchain-logo.png (mark logo geometris ETH)
 - frontend/tailwind.config.js  token desain (lihat docs/design/DESIGN_SYSTEM.md & DESIGN.md)
