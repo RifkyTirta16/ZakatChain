@@ -77,7 +77,7 @@ const Campaigns = () => {
         title: form.title.trim(),
         description: form.description.trim(),
         target_amount: Number(form.target_amount),
-        deadline: form.deadline || null,
+        deadline: form.deadline || undefined,
       });
     },
     onSuccess: () => {

@@ -70,7 +70,10 @@ const AmilHome = () => {
 
   const open = transactions.filter(isOpen);
   const rejected = transactions.filter(isRejected);
-  const totalDistributed = transactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const validDistributions = transactions.filter(
+    (t) => t.proof_status !== 'REJECTED' && t.blockchain_status !== 'REVOKED',
+  );
+  const totalDistributed = validDistributions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   const confirmedDonations = donations.filter((d) => d.status === 'CONFIRMED');
   const confirmedIncomingTotal = confirmedDonations.reduce((sum, d) => sum + Number(d.amount || 0), 0);
   const verifiedMustahikCount = mustahik.filter((m) => m.verification_status === 'VERIFIED').length;
@@ -111,16 +114,16 @@ const AmilHome = () => {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Donasi Masuk Terkonfirmasi"
+              label="Total Dana Masuk"
               value={formatIDR(confirmedIncomingTotal)}
-              sublabel={`${confirmedDonations.length} setoran muzakki`}
+              sublabel={`${confirmedDonations.length} setoran terkonfirmasi`}
               icon={<HeartHandshake size={18} />}
               tone="emerald"
             />
             <StatCard
-              label="Total Tersalurkan (Tercatat)"
+              label="Total Tersalurkan"
               value={formatIDR(totalDistributed)}
-              sublabel={`${transactions.length} laporan distribusi`}
+              sublabel={`${validDistributions.length} laporan valid`}
               icon={<ClipboardList size={18} />}
               tone="forest"
             />
@@ -132,9 +135,9 @@ const AmilHome = () => {
               tone="gold"
             />
             <StatCard
-              label="Antrean / Perlu Perbaikan"
+              label="Antrean / Ditolak"
               value={`${open.length} / ${rejected.length}`}
-              sublabel="Menunggu review vs ditolak"
+              sublabel="Menunggu tinjauan vs ditolak"
               icon={<AlertTriangle size={18} />}
               tone={rejected.length > 0 ? 'danger' : 'neutral'}
             />

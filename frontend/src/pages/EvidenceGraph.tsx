@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Share2, ShieldCheck, X, Info } from 'lucide-react';
 import apiClient from '../utils/api';
 import { Badge, Card, EmptyState, Skeleton } from '../components/ui';
@@ -32,117 +33,107 @@ const NODE_TYPE_LABELS: Record<GraphNode['type'], string> = {
   blockchain: 'Bukti Hash On-Chain',
 };
 
-const EvidenceGraph = () => {
-  const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({
-    nodes: [],
-    links: [],
+const asList = (result: PromiseSettledResult<{ data: unknown }>) => {
+  if (result.status !== 'fulfilled') return [];
+  const data = result.value.data as Record<string, unknown>;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.transactions)) return data.transactions;
+  if (Array.isArray(data?.donations)) return data.donations;
+  return [];
+};
+
+const fetchGraphData = async (): Promise<{ nodes: GraphNode[]; links: GraphLink[] }> => {
+  const [campRes, donRes, txRes] = await Promise.allSettled([
+    apiClient.get('/campaigns'),
+    apiClient.get('/donations'),
+    apiClient.get('/transactions'),
+  ]);
+
+  const campaigns = asList(campRes);
+  const donations = asList(donRes);
+  const transactions = asList(txRes);
+
+  const nodes: GraphNode[] = [];
+  const links: GraphLink[] = [];
+
+  campaigns.forEach((c: any) => {
+    nodes.push({
+      id: `camp_${c.id}`,
+      label: c.title,
+      type: 'campaign',
+      color: NODE_COLORS.campaign,
+    });
   });
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchGraphData = async () => {
-      try {
-        const [campRes, donRes, txRes] = await Promise.allSettled([
-          apiClient.get('/campaigns'),
-          apiClient.get('/donations'),
-          apiClient.get('/transactions'),
-        ]);
+  donations.forEach((d: any) => {
+    nodes.push({
+      id: `don_${d.id}`,
+      label: `Donasi Rp ${Number(d.amount).toLocaleString('id-ID')}`,
+      type: 'donation',
+      amount: Number(d.amount),
+      color: NODE_COLORS.donation,
+    });
+    if (d.campaign_id) {
+      links.push({ source: `don_${d.id}`, target: `camp_${d.campaign_id}`, type: 'allocated_to' });
+    }
+  });
 
-        const asList = (result: PromiseSettledResult<{ data: unknown }>) => {
-          if (result.status !== 'fulfilled') return [];
-          const data = result.value.data as Record<string, unknown>;
-          if (Array.isArray(data)) return data;
-          if (Array.isArray(data?.data)) return data.data;
-          if (Array.isArray(data?.transactions)) return data.transactions;
-          if (Array.isArray(data?.donations)) return data.donations;
-          return [];
-        };
+  transactions.forEach((t: any) => {
+    nodes.push({
+      id: `tx_${t.id}`,
+      label: `Distribusi Rp ${Number(t.amount).toLocaleString('id-ID')}`,
+      type: 'distribution',
+      amount: Number(t.amount),
+      color: NODE_COLORS.distribution,
+    });
 
-        const campaigns = asList(campRes);
-        const donations = asList(donRes);
-        const transactions = asList(txRes);
-
-        const nodes: GraphNode[] = [];
-        const links: GraphLink[] = [];
-
-        campaigns.forEach((c: any) => {
-          nodes.push({
-            id: `camp_${c.id}`,
-            label: c.title,
-            type: 'campaign',
-            color: NODE_COLORS.campaign,
-          });
-        });
-
-        donations.forEach((d: any) => {
-          nodes.push({
-            id: `don_${d.id}`,
-            label: `Donasi Rp ${Number(d.amount).toLocaleString('id-ID')}`,
-            type: 'donation',
-            amount: Number(d.amount),
-            color: NODE_COLORS.donation,
-          });
-          if (d.campaign_id) {
-            links.push({ source: `don_${d.id}`, target: `camp_${d.campaign_id}`, type: 'allocated_to' });
-          }
-        });
-
-        transactions.forEach((t: any) => {
-          nodes.push({
-            id: `tx_${t.id}`,
-            label: `Distribusi Rp ${Number(t.amount).toLocaleString('id-ID')}`,
-            type: 'distribution',
-            amount: Number(t.amount),
-            color: NODE_COLORS.distribution,
-          });
-
-          if (t.category) {
-            const matchingCamp = campaigns.find((c: any) =>
-              String(c.title || '').toLowerCase().includes(String(t.category).toLowerCase())
-            );
-            if (matchingCamp) {
-              links.push({ source: `tx_${t.id}`, target: `camp_${(matchingCamp as any).id}`, type: 'funded_by' });
-            }
-          }
-
-          if (t.tx_hash) {
-            nodes.push({
-              id: `block_${t.tx_hash}`,
-              label: `On-Chain: ${shortHash(t.tx_hash, 6, 4)}`,
-              type: 'blockchain',
-              color: NODE_COLORS.blockchain,
-              txHash: t.tx_hash,
-            });
-            links.push({ source: `tx_${t.id}`, target: `block_${t.tx_hash}`, type: 'proven_by' });
-          }
-        });
-
-        const nodeIds = new Set(nodes.map((node) => node.id));
-        const visibleNodes = nodes.map((node, index) => {
-          const angle = (2 * Math.PI * index) / Math.max(nodes.length, 1) - Math.PI / 2;
-          const radius = nodes.length <= 1 ? 0 : Math.min(240, 90 + nodes.length * 11);
-          return {
-            ...node,
-            x: 500 + Math.cos(angle) * radius,
-            y: 350 + Math.sin(angle) * radius,
-          };
-        });
-
-        setGraphData({
-          nodes: visibleNodes,
-          links: links.filter((link) => nodeIds.has(link.source) && nodeIds.has(link.target)),
-        });
-      } catch (err) {
-        console.error('Error building evidence graph:', err);
-        setGraphData({ nodes: [], links: [] });
-      } finally {
-        setLoading(false);
+    if (t.campaign_id) {
+      links.push({ source: `tx_${t.id}`, target: `camp_${t.campaign_id}`, type: 'funded_by' });
+    } else if (t.category) {
+      const matchingCamp = campaigns.find((c: any) =>
+        String(c.title || '').toLowerCase().includes(String(t.category).toLowerCase())
+      );
+      if (matchingCamp) {
+        links.push({ source: `tx_${t.id}`, target: `camp_${(matchingCamp as any).id}`, type: 'funded_by' });
       }
-    };
+    }
 
-    void fetchGraphData();
-  }, []);
+    if (t.tx_hash) {
+      nodes.push({
+        id: `block_${t.tx_hash}`,
+        label: `On-Chain: ${shortHash(t.tx_hash, 6, 4)}`,
+        type: 'blockchain',
+        color: NODE_COLORS.blockchain,
+        txHash: t.tx_hash,
+      });
+      links.push({ source: `tx_${t.id}`, target: `block_${t.tx_hash}`, type: 'proven_by' });
+    }
+  });
+
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const visibleNodes = nodes.map((node, index) => {
+    const angle = (2 * Math.PI * index) / Math.max(nodes.length, 1) - Math.PI / 2;
+    const radius = nodes.length <= 1 ? 0 : Math.min(240, 90 + nodes.length * 11);
+    return {
+      ...node,
+      x: 500 + Math.cos(angle) * radius,
+      y: 350 + Math.sin(angle) * radius,
+    };
+  });
+
+  return {
+    nodes: visibleNodes,
+    links: links.filter((link) => nodeIds.has(link.source) && nodeIds.has(link.target)),
+  };
+};
+
+const EvidenceGraph = () => {
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const { data: graphData = { nodes: [], links: [] }, isPending: loading } = useQuery({
+    queryKey: ['evidence-graph'],
+    queryFn: fetchGraphData,
+  });
 
   return (
     <div className="space-y-6">

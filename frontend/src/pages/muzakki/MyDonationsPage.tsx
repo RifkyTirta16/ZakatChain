@@ -396,21 +396,27 @@ const MyDonationsPage = ({ user }: { user: SessionUser | null }) => {
                         <Badge tone={st.tone}>{st.label}</Badge>
                       </td>
                       <td className="px-3.5 py-3 text-right whitespace-nowrap space-x-1.5">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => setActivePanel({ donationId: d.id, mode: 'trace' })}
-                        >
-                          <MapPin size={12} /> Jejak Wilayah
-                        </Button>
-                        {d.status === 'CONFIRMED' && (
-                          <Button
-                            size="sm"
-                            variant="gold"
-                            onClick={() => setActivePanel({ donationId: d.id, mode: 'bsz' })}
-                          >
-                            <Receipt size={12} /> BSZ
-                          </Button>
+                        {d.status === 'CONFIRMED' ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setActivePanel({ donationId: d.id, mode: 'trace' })}
+                            >
+                              <MapPin size={12} /> Jejak Wilayah
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="gold"
+                              onClick={() => setActivePanel({ donationId: d.id, mode: 'bsz' })}
+                            >
+                              <Receipt size={12} /> BSZ
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400">
+                            {d.status === 'PENDING' ? 'Menunggu bayar' : 'Tidak tersedia'}
+                          </span>
                         )}
                       </td>
                     </tr>

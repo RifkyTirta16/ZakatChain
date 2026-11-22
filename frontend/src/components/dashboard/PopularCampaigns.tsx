@@ -94,8 +94,8 @@ export const PopularCampaigns = ({
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {visible.slice(0, 4).map((campaign) => {
+      <div className="grid gap-4 sm:grid-cols-3">
+        {visible.slice(0, 3).map((campaign) => {
           const remaining = daysLeft(campaign.deadline);
           const progress = progressPercent(campaign);
           return (
@@ -119,11 +119,13 @@ export const PopularCampaigns = ({
                 <div className="h-2 rounded-full bg-slate-200/70 overflow-hidden">
                   <div className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} />
                 </div>
-                <div className="flex justify-between text-xs text-slate-600 tabular-nums">
+                <div className="flex flex-col gap-0.5 text-xs text-slate-600 tabular-nums">
                   <span className="font-semibold text-forest-dark">
                     {formatIDR(Number(campaign.current_amount || 0))}
                   </span>
-                  <span>Target {formatIDR(Number(campaign.target_amount))}</span>
+                  <span className="text-[11px] text-slate-500">
+                    Target {formatIDR(Number(campaign.target_amount))}
+                  </span>
                 </div>
               </div>
 

@@ -60,12 +60,23 @@ export const usePublicTransparency = () =>
       const { data } = await apiClient.get<PublicTransparencyPayload>('/public/transparency');
       return data;
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+export const usePublicNetworkStatus = () =>
+  useQuery<{ networkStatus: BackendNetworkStatus }>({
+    queryKey: ['public-network-status'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ networkStatus: BackendNetworkStatus }>('/public/network');
+      return data;
+    },
+    staleTime: 60_000,
     retry: 1,
   });
 
 export const useNetworkInfo = () => {
-  const query = usePublicTransparency();
+  const query = usePublicNetworkStatus();
   const configuredChainId = enabledChainIds[0] ?? 31337;
   const backendNet = query.data?.networkStatus;
 

@@ -124,7 +124,7 @@ const AuditorHome = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <SectionHeader
           title="Workspace Audit Independen"
-          subtitle="Pemeriksaan berkas bukti (/uploads terproteksi), pemindaian anomali, jejak audit aktivitas, dan ekspor kepatuhan."
+          subtitle="Pemeriksaan berkas bukti terunggah, pemindaian anomali, jejak audit aktivitas, dan ekspor kepatuhan."
         />
         <div className="flex flex-wrap gap-2">
           <Link
@@ -155,14 +155,14 @@ const AuditorHome = () => {
               tone={openAnomalies.length > 0 ? 'danger' : 'emerald'}
             />
             <StatCard
-              label="Bukti Menunggu Review"
+              label="Bukti Menunggu Tinjauan"
               value={`${pendingReview.length} laporan`}
               sublabel="Perlu persetujuan auditor"
               icon={<FileSearch size={18} />}
               tone="gold"
             />
             <StatCard
-              label="Hash Tercatat On-Chain"
+              label="Laporan On-Chain"
               value={`${onChain.length} laporan`}
               sublabel={`Dari ${transactions.length} distribusi`}
               icon={<ShieldCheck size={18} />}
@@ -171,7 +171,11 @@ const AuditorHome = () => {
             <StatCard
               label="Entri Log Audit"
               value={`${auditLogs.length} catatan`}
-              sublabel={lastRecon ? `Rekonsiliasi: ${lastRecon.status}` : 'Belum ada rekonsiliasi'}
+              sublabel={
+                lastRecon
+                  ? `Rekonsiliasi: ${lastRecon.status === 'BALANCED' ? 'Seimbang' : lastRecon.status === 'DEFICIT' ? 'Defisit' : lastRecon.status}`
+                  : 'Belum ada rekonsiliasi'
+              }
               icon={<ScrollText size={18} />}
               tone="neutral"
             />

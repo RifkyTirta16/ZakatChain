@@ -113,13 +113,10 @@ payments, payment_events, anomalies, audit_logs, reconciliation_logs, poverty_st
 - Sebelum menambah dependency: sebut alasan, cek ukuran dan maintainer, minta persetujuan.
 
 ## 7. Masalah yang sudah diketahui (jangan diperbaiki diam-diam, laporkan dulu)
-- Frontend hard-coded API base; wagmi mengarah Mainnet/Sepolia, backend default RPC lokal.
-  Belum ada konfigurasi chain end-to-end yang terverifikasi.
-- Uploads disajikan publik di /uploads; kebijakan privasi belum diputuskan.
 - Tiga workspace Hardhat (blockchain/, contracts/, backend/contracts/); hanya blockchain/ kanonik.
-- Tes TypeScript Hardhat di blockchain/ belum terdeteksi (0 tes).
-- Frontend belum punya suite tes. Ada file bernama aneh: frontend/src/App.tsx` (backtick).
-- paymentRoutes punya 3 alias endpoint pembuat sesi (generate/session/create).
+- Frontend belum punya suite tes otomatis.
+- paymentRoutes masih menjaga alias endpoint pembuat sesi (`generate`/`session`/`create`) dan legacy `/api/payment/generate` untuk kompatibilitas.
+- Data kemiskinan `poverty_stats` di database baru berlevel 38 Provinsi; rincian Kota/Kabupaten masih daftar referensi statis di `frontend/src/utils/regions.ts` (Paket 4 opsional).
 Sumber lengkap: agent-memory/KNOWN_ISSUES.md. Temuan baru dicatat di sana.
 
 ## 8. Protokol memori (di akhir setiap tugas)

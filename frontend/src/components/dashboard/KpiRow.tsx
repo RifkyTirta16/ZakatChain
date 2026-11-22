@@ -17,30 +17,30 @@ export const KpiRow = ({ myConfirmed, platformTotal, platformDistributed }: KpiR
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
-        label="Kontribusi Saya"
+        label="Zakat Saya"
         value={formatIDR(myConfirmed)}
         sublabel="Total donasi terkonfirmasi"
         icon={<HeartHandshake size={18} />}
         tone="emerald"
       />
       <StatCard
-        label="Total Dana Platform"
+        label="Terkumpul Platform"
         value={platformTotal === null ? '-' : formatIDR(platformTotal)}
-        sublabel={platformTotal !== null ? 'Terkonfirmasi sistem' : 'Belum tersedia'}
+        sublabel={platformTotal !== null ? 'Total donasi terkonfirmasi' : 'Belum tersedia'}
         icon={<Wallet size={18} />}
         tone="forest"
       />
       <StatCard
-        label="Tersalurkan Terverifikasi"
+        label="Dana Tersalurkan"
         value={platformDistributed === null ? '-' : formatIDR(platformDistributed)}
-        sublabel={platformDistributed !== null ? 'Disetujui & tercatat on-chain' : 'Belum tersedia'}
+        sublabel={platformDistributed !== null ? 'Terverifikasi & tercatat' : 'Belum tersedia'}
         icon={<CheckCircle2 size={18} />}
         tone="gold"
       />
       <StatCard
-        label="Saldo Siap Salur"
+        label="Saldo Amanah"
         value={balance === null ? '-' : formatIDR(balance)}
-        sublabel={balance !== null ? 'Selisih dana masuk & salur' : 'Belum tersedia'}
+        sublabel={balance !== null ? 'Sisa dana siap salur' : 'Belum tersedia'}
         icon={<Scale size={18} />}
         tone="neutral"
       />

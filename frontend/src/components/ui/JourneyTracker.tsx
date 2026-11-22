@@ -55,7 +55,7 @@ export const JourneyTracker = ({
           );
 
           return (
-            <li key={label} className="flex items-center gap-2 flex-1 min-w-[110px]">
+            <li key={label} className="flex items-center gap-1.5 flex-1 min-w-0">
               <div
                 className={`w-7 h-7 rounded-full border flex items-center justify-center shrink-0 transition-colors ${circleClasses}`}
               >

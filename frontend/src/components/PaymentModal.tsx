@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, QrCode, RefreshCw, X } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatIDR } from '../utils/format';
@@ -23,10 +24,55 @@ interface PaymentSession {
 type ModalStatus = 'IDLE' | 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
 
 const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps) => {
+  const queryClient = useQueryClient();
   const [paymentData, setPaymentData] = useState<PaymentSession | null>(null);
   const [status, setStatus] = useState<ModalStatus>('IDLE');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const sessionId = paymentData?.paymentData.session_id ?? '';
+
+  const statusQuery = useQuery<{ status: ModalStatus }>({
+    queryKey: ['payment-modal-status', sessionId],
+    enabled: Boolean(sessionId) && status === 'PENDING' && isOpen,
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ status: ModalStatus }>(
+        `/payments/status/${sessionId}`,
+      );
+      return data;
+    },
+    refetchInterval: (q) => {
+      const s = q.state.data?.status;
+      return s === 'PAID' || s === 'FAILED' || s === 'EXPIRED' ? false : 4000;
+    },
+  });
+
+  const liveStatus: ModalStatus =
+    status === 'PENDING' && statusQuery.data?.status ? statusQuery.data.status : status;
+
+  useEffect(() => {
+    if (liveStatus === 'PAID') {
+      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    }
+  }, [liveStatus, queryClient]);
+
+  const sandboxConfirm = useMutation({
+    mutationFn: async (sid: string) => {
+      await apiClient.post(`/payments/sandbox/confirm/${sid}`, {});
+    },
+    onSuccess: () => {
+      setStatus('PAID');
+      void statusQuery.refetch();
+      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    },
+    onError: () => {
+      setError('Konfirmasi sandbox gagal. Silakan periksa sesi pembayaran.');
+    },
+  });
 
   const handleClose = () => {
     setPaymentData(null);
@@ -60,7 +106,7 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
         program_id: campaignId ? String(campaignId) : 'Zakat-General',
       };
       if (campaignId) payload.campaign_id = campaignId;
-      const { data } = await apiClient.post<PaymentSession>('/payments/create', payload);
+      const { data } = await apiClient.post<PaymentSession>('/payments/session', payload);
       setPaymentData(data);
       setStatus('PENDING');
     } catch {
@@ -73,24 +119,11 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
 
   const checkStatus = async () => {
     if (!paymentData) return;
-    setBusy(true);
     setError('');
-    try {
-      const { data } = await apiClient.get<{ status: string }>(
-        `/payments/verify/${paymentData.paymentData.session_id}`,
-      );
-      if (data.status === 'PAID') setStatus('PAID');
-      else if (data.status === 'EXPIRED') setStatus('EXPIRED');
-      else if (data.status === 'FAILED') setStatus('FAILED');
-      else setStatus('PENDING');
-    } catch {
-      setError('Gagal memeriksa status pembayaran. Coba lagi.');
-    } finally {
-      setBusy(false);
-    }
+    await statusQuery.refetch();
   };
 
-  const currentStep = status === 'IDLE' ? 1 : status === 'PENDING' ? 2 : 3;
+  const currentStep = liveStatus === 'IDLE' ? 1 : liveStatus === 'PENDING' ? 2 : 3;
 
   return (
     <div
@@ -117,8 +150,8 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
         <JourneyTracker
           size="sm"
           currentStep={currentStep}
-          rejected={status === 'FAILED' || status === 'EXPIRED'}
-          steps={['Nominal', 'Buat Sesi', 'Bayar QRIS', 'Selesai']}
+          rejected={liveStatus === 'FAILED' || liveStatus === 'EXPIRED'}
+          steps={['Nominal', 'Sesi', 'QRIS', 'Selesai']}
         />
 
         {error && (
@@ -127,7 +160,7 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
           </p>
         )}
 
-        {status === 'IDLE' && (
+        {liveStatus === 'IDLE' && (
           <div className="space-y-5">
             <div className="p-4 rounded-xl bg-cream border border-slate-200 text-center">
               <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Nominal Zakat</p>
@@ -139,7 +172,7 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
           </div>
         )}
 
-        {status === 'PENDING' && paymentData && (
+        {liveStatus === 'PENDING' && paymentData && (
           <div className="space-y-4 text-center">
             <Badge tone="warning">Menunggu Pembayaran</Badge>
             <QrCodeBox
@@ -154,15 +187,25 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
               </span>
             </div>
             <div className="flex flex-col gap-2">
-              <Button variant="primary" loading={busy} onClick={() => void checkStatus()} className="w-full">
+              <Button variant="secondary" loading={statusQuery.isFetching} onClick={() => void checkStatus()} className="w-full">
                 <RefreshCw size={15} /> Cek Status Pembayaran
               </Button>
+              {import.meta.env.DEV && (
+                <Button
+                  variant="gold"
+                  loading={sandboxConfirm.isPending}
+                  onClick={() => sandboxConfirm.mutate(paymentData.paymentData.session_id)}
+                  className="w-full"
+                >
+                  <CheckCircle2 size={15} /> Simulasikan Bayar (Sandbox)
+                </Button>
+              )}
               <p className="text-[11px] text-slate-500">{ON_CHAIN_NOTE}</p>
             </div>
           </div>
         )}
 
-        {status === 'PAID' && (
+        {liveStatus === 'PAID' && (
           <div className="text-center space-y-4 py-2">
             <div className="w-14 h-14 bg-mint text-primary rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 size={32} />
@@ -177,14 +220,14 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
           </div>
         )}
 
-        {(status === 'FAILED' || status === 'EXPIRED') && (
+        {(liveStatus === 'FAILED' || liveStatus === 'EXPIRED') && (
           <div className="text-center space-y-4 py-2">
             <div className="w-14 h-14 bg-red-50 text-danger rounded-full flex items-center justify-center mx-auto">
               <AlertTriangle size={30} />
             </div>
-            <Badge tone="danger">{status === 'EXPIRED' ? 'Sesi Kedaluwarsa' : 'Pembayaran Gagal'}</Badge>
+            <Badge tone="danger">{liveStatus === 'EXPIRED' ? 'Sesi Kedaluwarsa' : 'Pembayaran Gagal'}</Badge>
             <p className="text-sm text-slate-600">
-              {status === 'EXPIRED'
+              {liveStatus === 'EXPIRED'
                 ? 'Batas waktu sesi QRIS telah berakhir. Silakan buat sesi baru.'
                 : 'Pembayaran belum dapat diproses. Silakan coba kembali.'}
             </p>

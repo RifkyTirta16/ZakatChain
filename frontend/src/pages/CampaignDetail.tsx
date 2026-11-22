@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Check, Clock, Copy, Heart, Info, LogIn, QrCode } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Check, CheckCircle2, Clock, Copy, Heart, Info, LogIn, QrCode, RefreshCw } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatDateTime, formatIDR } from '../utils/format';
 import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, QrCodeBox, Skeleton } from '../components/ui';
@@ -41,8 +41,9 @@ const fetchCampaignDetail = async (id: string): Promise<CampaignDetailData> => {
 };
 
 const generatePayment = async (id: string, amount: string): Promise<PaymentSession> => {
-  const { data } = await apiClient.post('/payment/generate', {
-    campaign_id: id,
+  const { data } = await apiClient.post('/payments/session', {
+    campaign_id: Number(id),
+    program_id: id,
     amount: parseFloat(amount),
   });
   return data;
@@ -66,6 +67,7 @@ const CampaignDetail = () => {
   const [paymentError, setPaymentError] = useState('');
   const [copiedSession, setCopiedSession] = useState(false);
 
+  const queryClient = useQueryClient();
   const isAuthenticated = Boolean(localStorage.getItem('zakat_token') && localStorage.getItem('zakat_user'));
 
   const query = useQuery({
@@ -87,6 +89,34 @@ const CampaignDetail = () => {
           ? 'Silakan masuk terlebih dahulu untuk menunaikan zakat.'
           : 'Gagal membuat sesi pembayaran. Periksa koneksi dan coba lagi.',
       );
+    },
+  });
+
+  const sessionId = paymentResult?.paymentData.session_id ?? '';
+  const statusQuery = useQuery<{ status: 'PAID' | 'PENDING' | 'FAILED' | 'EXPIRED' }>({
+    queryKey: ['campaign-payment-status', sessionId],
+    enabled: Boolean(sessionId),
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ status: 'PAID' | 'PENDING' | 'FAILED' | 'EXPIRED' }>(
+        `/payments/status/${sessionId}`,
+      );
+      return data;
+    },
+    refetchInterval: (q) => {
+      const s = q.state.data?.status;
+      return s === 'PAID' || s === 'FAILED' || s === 'EXPIRED' ? false : 4000;
+    },
+  });
+
+  const sandboxConfirmMutation = useMutation({
+    mutationFn: async (sid: string) => {
+      await apiClient.post(`/payments/sandbox/confirm/${sid}`, {});
+    },
+    onSuccess: () => {
+      void statusQuery.refetch();
+      void query.refetch();
+      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
     },
   });
 
@@ -350,9 +380,34 @@ const CampaignDetail = () => {
                 <div className="p-3.5 bg-mint rounded-xl flex items-start gap-2.5 text-left text-xs text-forest border border-primary/20">
                   <Info size={16} className="text-primary shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    Pindai kode pembayaran QRIS Sandbox dengan aplikasi e-wallet/m-banking. Status donasi berubah setelah konfirmasi sistem pembayaran.
+                    {statusQuery.data?.status === 'PAID'
+                      ? 'Pembayaran telah terkonfirmasi dan masuk ke riwayat donasi Anda.'
+                      : 'Pindai kode QRIS di atas. Status donasi diperbarui otomatis setelah konfirmasi sistem.'}
                   </p>
                 </div>
+
+                {statusQuery.data?.status !== 'PAID' && (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="secondary"
+                      loading={statusQuery.isFetching}
+                      onClick={() => void statusQuery.refetch()}
+                      className="w-full"
+                    >
+                      <RefreshCw size={15} /> Cek Status Pembayaran
+                    </Button>
+                    {import.meta.env.DEV && (
+                      <Button
+                        variant="gold"
+                        loading={sandboxConfirmMutation.isPending}
+                        onClick={() => sandboxConfirmMutation.mutate(paymentResult.paymentData.session_id)}
+                        className="w-full"
+                      >
+                        <CheckCircle2 size={15} /> Simulasikan Bayar (Sandbox)
+                      </Button>
+                    )}
+                  </div>
+                )}
 
                 <Button
                   variant="ghost"

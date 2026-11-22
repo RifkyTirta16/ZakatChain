@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import zakatChainLogo from '../../../assets/zakatchain-logo.png';
 import { Badge } from '../../ui';
-import { NetworkBadge, PoweredByEthereum } from '../../ethereum';
+import { PoweredByEthereum } from '../../ethereum';
 import { toRole, type SessionUser } from '../navConfig';
 
 interface PublicShellProps {
@@ -133,10 +133,6 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
         {/* Mobile / Tablet Drawer */}
         {mobileOpen && (
           <div className="lg:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-3">
-            <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
-              <PoweredByEthereum />
-              <NetworkBadge compact />
-            </div>
             <nav className="grid gap-1">
               {PUBLIC_NAV.map((item) => (
                 <NavLink
@@ -222,12 +218,11 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
                 خُذْ مِنْ أَمْوَالِهِمْ صَدَقَةً تُطَهِّرُهُمْ وَتُزَكِّيهِم بِهَا
               </p>
               <p className="text-sm text-white/75 leading-relaxed max-w-md">
-                Trust in Giving. Transparency in Every Transaction. Platform pengelolaan zakat
-                berbasis Rupiah (IDR) dengan lapisan audit kriptografi pada ekosistem Ethereum.
+                Amanah dalam penghimpunan, transparan dalam setiap penyaluran. Platform zakat berbasis
+                Rupiah (IDR) dengan pencatatan audit terbuka.
               </p>
               <div className="flex flex-wrap items-center gap-2.5 pt-1">
                 <PoweredByEthereum variant="dark" />
-                <NetworkBadge variant="dark" />
               </div>
             </div>
 
@@ -241,10 +236,10 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
             </div>
 
             <div className="md:col-span-3 space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gold">Transparansi Web3</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gold">Transparansi</h3>
               <ul className="space-y-2 text-sm text-white/75">
-                <li><Link to="/transparency" className="hover:text-white">Dasbor Transparansi Publik</Link></li>
-                <li><Link to="/verify" className="hover:text-white">Verifikasi Hash Laporan</Link></li>
+                <li><Link to="/transparency" className="hover:text-white">Portal Transparansi Publik</Link></li>
+                <li><Link to="/verify" className="hover:text-white">Verifikasi Laporan</Link></li>
               </ul>
             </div>
 

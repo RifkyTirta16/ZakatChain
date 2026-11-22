@@ -24,7 +24,7 @@ interface ShellFrameProps {
 }
 
 const ROLE_SUBTITLE: Record<Exclude<ShellTheme, 'public'>, string> = {
-  muzakki: 'Workspace Muzakki',
+  muzakki: 'Portal Muzakki',
   amil: 'Operasional Amil Zakat',
   auditor: 'Audit & Pengawasan Independen',
   admin: 'Konsol Administrator Sistem',
@@ -129,7 +129,9 @@ const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
 
       {/* Sidebar Footer */}
       <div className="p-4 border-t border-white/10 space-y-3 bg-black/15">
-        <PoweredByEthereum variant="dark" className="w-full justify-center" />
+        {theme !== 'muzakki' && (
+          <PoweredByEthereum variant="dark" className="w-full justify-center" />
+        )}
         <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
           <div className="min-w-0">
             <p className="text-xs font-bold text-white truncate">{user.username}</p>
@@ -206,13 +208,15 @@ const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <NetworkBadge compact />
+            {theme !== 'muzakki' && <NetworkBadge compact />}
             <Link
               to="/profile"
               className="hidden sm:inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-cream px-3 py-1.5 text-xs font-semibold text-forest-dark hover:bg-mint transition-colors"
             >
               <span>{user.username}</span>
-              <Badge tone={role ? ROLE_BADGE_TONE[role] : 'neutral'}>{user.role}</Badge>
+              <Badge tone={role ? ROLE_BADGE_TONE[role] : 'neutral'}>
+                {role ? ROLE_LABELS[role] : user.role}
+              </Badge>
             </Link>
           </div>
         </header>

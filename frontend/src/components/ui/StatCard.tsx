@@ -36,8 +36,8 @@ export const StatCard = ({
   <div
     className={`hairline-elevated rounded-2xl bg-white p-5 transition-colors duration-200 hover:border-slate-300/90 ${TOP_BAR[tone]} ${className}`}
   >
-    <div className="flex items-center justify-between gap-2.5">
-      <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-slate-500 truncate">{label}</p>
+    <div className="flex items-start justify-between gap-2.5">
+      <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-slate-500 leading-snug">{label}</p>
       {icon && (
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${ICON_BG[tone]}`}>
           {icon}

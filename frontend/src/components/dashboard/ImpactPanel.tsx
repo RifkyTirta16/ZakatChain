@@ -25,7 +25,10 @@ export const ImpactPanel = () => {
   const verifiedReports = kpis?.verifiedReports ?? 0;
 
   const regionCount = useMemo(() => {
-    if (regions.data && regions.data.length > 0) return regions.data.length;
+    if (regions.data && regions.data.length > 0) {
+      const active = regions.data.filter((r) => Number(r.total_distributed || 0) > 0).length;
+      if (active > 0) return active;
+    }
     const distinct = new Set(
       (transparency.data?.recentTransactions ?? []).map((t) => t.region).filter(Boolean),
     );

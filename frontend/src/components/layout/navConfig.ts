@@ -53,15 +53,15 @@ export const NAV_ITEMS: NavItem[] = [
   // Shared Dashboard Entry
   { label: 'Ringkasan', path: '/dashboard', icon: LayoutDashboard, group: 'Utama', roles: ['USER', 'AMIL', 'AUDITOR', 'ADMIN'] },
 
-  // Muzakki (USER only — keeps roles distinctly separated)
+  // Muzakki (USER only — keeps roles distinctly separated and low-clutter)
   { label: 'Kalkulator Zakat', path: '/calculator', icon: Calculator, group: 'Layanan Zakat', roles: ['USER'] },
   { label: 'Tunaikan Zakat', path: '/donate', icon: Heart, group: 'Layanan Zakat', roles: ['USER'] },
   { label: 'Riwayat & Bukti BSZ', path: '/my-donations', icon: Receipt, group: 'Layanan Zakat', roles: ['USER'] },
-  { label: 'Portal Transparansi', path: '/transparency', icon: Globe, group: 'Layanan Zakat', roles: ['USER'] },
+  { label: 'Portal Transparansi', path: '/transparency', icon: Globe, group: 'Transparansi', roles: ['USER'] },
 
   // Shared Operational / Public-Aligned
   { label: 'Program Zakat', path: '/campaigns', icon: Megaphone, group: 'Program & Penyaluran', roles: [] },
-  { label: 'Verifikasi On-Chain', path: '/verify', icon: ShieldCheck, group: 'Program & Penyaluran', roles: [] },
+  { label: 'Verifikasi Laporan', path: '/verify', icon: ShieldCheck, group: 'Program & Penyaluran', roles: [] },
 
   // Amil (AMIL + ADMIN)
   { label: 'Catat Distribusi', path: '/new-record', icon: FilePlus, group: 'Operasional Amil', roles: ['AMIL', 'ADMIN'] },
@@ -84,9 +84,9 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Jaringan & Kontrak', path: '/network', icon: Cpu, group: 'Sistem & Tata Kelola', roles: ['ADMIN'] },
   { label: 'Peran & Hak Akses', path: '/roles', icon: UserCheck, group: 'Sistem & Tata Kelola', roles: ['ADMIN'] },
 
-  // Shared Account & Public Portal Jump
+  // Shared Account
   { label: 'Profil & Akun', path: '/profile', icon: UserCog, group: 'Akun', roles: ['USER', 'AMIL', 'AUDITOR', 'ADMIN'] },
-  { label: 'Portal Publik', path: '/', icon: Globe, group: 'Akun', roles: ['USER', 'AMIL', 'AUDITOR', 'ADMIN'] },
+  { label: 'Portal Publik', path: '/', icon: Globe, group: 'Akun', roles: ['AMIL', 'AUDITOR', 'ADMIN'] },
 ];
 
 export const PAGE_TITLES: Record<string, string> = {
