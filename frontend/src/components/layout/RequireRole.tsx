@@ -15,7 +15,11 @@ const RequireRole = ({ user, roles, children }: RequireRoleProps) => {
   const location = useLocation();
 
   if (!user) {
-    sessionStorage.setItem('zakat_redirect', `${location.pathname}${location.search}`);
+    if (sessionStorage.getItem('zakat_manual_logout') === '1') {
+      sessionStorage.removeItem('zakat_manual_logout');
+    } else {
+      sessionStorage.setItem('zakat_redirect', `${location.pathname}${location.search}`);
+    }
     return <Navigate to="/login" replace />;
   }
 

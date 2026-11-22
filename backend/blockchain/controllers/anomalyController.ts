@@ -30,9 +30,10 @@ export const scanForAnomalies = async (req: Request, res: Response) => {
 
     for (const tx of transactions) {
       const issues: Omit<DetectedIssue, 'transactionId'>[] = [];
+      const isClosedOut = tx.proof_status === 'REJECTED' || tx.blockchain_status === 'REVOKED';
 
-      // Rule 1: Missing Proof of Distribution
-      if (!tx.proof_url) {
+      // Rule 1: Missing Proof of Distribution (ignore already-rejected/revoked records)
+      if (!isClosedOut && !tx.proof_url) {
         issues.push({ type: 'MISSING_PROOF', reason: 'No proof of delivery file uploaded', priority: 'HIGH' });
       }
 
@@ -54,7 +55,7 @@ export const scanForAnomalies = async (req: Request, res: Response) => {
 
           if (!reportInfo[0]) {
             issues.push({ type: 'ON_CHAIN_MISSING', reason: 'Record exists in DB but not found on blockchain', priority: 'HIGH' });
-          } else if (reportInfo[2]) {
+          } else if (reportInfo[2] && tx.blockchain_status !== 'REVOKED') {
             issues.push({ type: 'ON_CHAIN_REVOKED', reason: 'Blockchain record has been revoked', priority: 'MEDIUM' });
           }
         } catch {
@@ -62,21 +63,24 @@ export const scanForAnomalies = async (req: Request, res: Response) => {
         }
       }
 
-      // Rule 5: Transaction Duplication (same amount, recipient, and category
-      // on the same day). Date-scoped so recurring monthly aid is not flagged.
-      const duplicates = await (db as any).all(
-        `SELECT id FROM transactions
-         WHERE amount = ? AND recipient_name = ? AND category = ?
-           AND id != ? AND date(timestamp) = date(?)
-         LIMIT 1`,
-        [tx.amount, tx.recipient_name, tx.category, tx.id, tx.timestamp]
-      );
-      if (duplicates.length > 0) {
-        issues.push({
-          type: 'POTENTIAL_DUPLICATE',
-          reason: `Possible duplicate of transaction ID: ${duplicates[0].id} on the same day`,
-          priority: 'MEDIUM',
-        });
+      // Rule 5: Transaction Duplication among active records on the same day.
+      if (!isClosedOut) {
+        const duplicates = await (db as any).all(
+          `SELECT id FROM transactions
+           WHERE amount = ? AND recipient_name = ? AND category = ?
+             AND id != ? AND date(timestamp) = date(?)
+             AND COALESCE(proof_status, 'PENDING') != 'REJECTED'
+             AND COALESCE(blockchain_status, '') != 'REVOKED'
+           LIMIT 1`,
+          [tx.amount, tx.recipient_name, tx.category, tx.id, tx.timestamp]
+        );
+        if (duplicates.length > 0) {
+          issues.push({
+            type: 'POTENTIAL_DUPLICATE',
+            reason: `Possible duplicate of transaction ID: ${duplicates[0].id} on the same day`,
+            priority: 'MEDIUM',
+          });
+        }
       }
 
       // Persist idempotently: skip issues already recorded as OPEN.

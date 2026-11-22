@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALL_ROLES, itemsForRole, rolesForPath, toRole } from '../src/components/layout/navConfig';
+import { ALL_ROLES, canAccessPath, itemsForRole, rolesForPath, toRole } from '../src/components/layout/navConfig';
 import { ON_CHAIN_NOTE, proofBadge } from '../src/components/ui/badgeStatus';
 import { blockchainTone, proofTone } from '../src/utils/status';
 
@@ -36,6 +36,13 @@ test('itemsForRole enforces strict boundary between Muzakki (USER) and Staff/Aud
   assert.deepEqual(rolesForPath('/new-record'), ['AMIL', 'ADMIN']);
   assert.deepEqual(rolesForPath('/reconciliation'), ['AUDITOR', 'ADMIN']);
   assert.deepEqual(rolesForPath('/roles'), ['ADMIN']);
+
+  assert.equal(canAccessPath('USER', '/donate?amount=50000'), true);
+  assert.equal(canAccessPath('USER', '/roles'), false);
+  assert.equal(canAccessPath('USER', '/mapping'), false);
+  assert.equal(canAccessPath('ADMIN', '/roles'), true);
+  assert.equal(canAccessPath('USER', 'https://evil.example'), false);
+  assert.equal(canAccessPath('USER', '//evil.example'), false);
 });
 
 test('status badges map documented lifecycle states and uphold blockchain truth invariant', () => {

@@ -8,7 +8,8 @@ import {
 } from 'react-router-dom';
 import RoleLayout from './components/layout/RoleLayout';
 import RequireRole from './components/layout/RequireRole';
-import { rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
+import { canAccessPath, rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
+import { queryClient } from './wagmiConfig';
 import { Button, Card, Skeleton } from './components/ui';
 
 // Eager Auth & Landing
@@ -105,16 +106,20 @@ const MainApp = () => {
   });
 
   const handleLoginSuccess = (userData: unknown, authToken: string) => {
+    queryClient.clear();
+    sessionStorage.removeItem('zakat_manual_logout');
     setUser(userData as SessionUser);
     localStorage.setItem('zakat_user', JSON.stringify(userData));
     localStorage.setItem('zakat_token', authToken);
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem('zakat_redirect');
+    sessionStorage.setItem('zakat_manual_logout', '1');
     setUser(null);
     localStorage.removeItem('zakat_user');
     localStorage.removeItem('zakat_token');
-    sessionStorage.removeItem('zakat_redirect');
+    queryClient.clear();
   };
 
   const withSuspense = (element: ReactNode) => (
@@ -145,7 +150,9 @@ const MainApp = () => {
     const saved = sessionStorage.getItem('zakat_redirect');
     if (saved) {
       sessionStorage.removeItem('zakat_redirect');
-      return saved;
+      if (canAccessPath(toRole(user?.role), saved)) {
+        return saved;
+      }
     }
     return '/dashboard';
   };

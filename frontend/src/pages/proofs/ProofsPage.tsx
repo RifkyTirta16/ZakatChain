@@ -109,8 +109,9 @@ export const ProofsPage = () => {
       setVerifyId(null);
       setRejectReason('');
       void refetch();
-    } catch {
-      setActionError('Gagal memperbarui status bukti penyaluran.');
+    } catch (err: unknown) {
+      const apiErr = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setActionError(apiErr || 'Gagal memperbarui status bukti penyaluran.');
     }
   };
 
@@ -136,7 +137,7 @@ export const ProofsPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <SectionHeader
           title="Verifikasi Bukti Penyaluran"
-          subtitle="Periksa berkas bukti terunggah (/uploads terproteksi) lalu setujui atau tolak laporan penyaluran."
+          subtitle="Periksa berkas bukti penyaluran yang diunggah amil lalu setujui atau tolak laporan."
         />
         <Button variant="secondary" size="sm" onClick={() => void refetch()}>
           <RefreshCw size={14} /> Segarkan

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ReconciliationSchema, formatIssues } from '../utils/validation.js';
 import { runInTransaction } from '../models/db.js';
+import { logActivity } from '../utils/auditLogger.js';
 
 export const performReconciliation = async (req: Request, res: Response) => {
   const { db } = req;
@@ -30,18 +31,34 @@ export const performReconciliation = async (req: Request, res: Response) => {
 
       // Snapshot is written in the same transaction as the aggregation so the
       // stored figures cannot describe a different state than the one returned.
-      await (db as any).run(
+      const insertResult = await (db as any).run(
         `INSERT INTO reconciliation_logs (total_donations, total_distributions, balance, status, notes)
          VALUES (?, ?, ?, ?, ?)`,
         [totalDonations, totalDistributions, balance, status, `Reconciliation for period: ${period || 'General'}`]
       );
 
-      return { totalDonations, totalDistributions, balance, status };
+      return {
+        reconId: insertResult?.lastID ? Number(insertResult.lastID) : null,
+        totalDonations,
+        totalDistributions,
+        balance,
+        status,
+      };
     });
 
+    await logActivity(
+      req,
+      'RUN_RECONCILIATION',
+      'RECONCILIATION',
+      summary.reconId,
+      null,
+      `${summary.status} (balance: ${summary.balance})`,
+    );
+
+    const { reconId: _reconId, ...publicSummary } = summary;
     res.json({
       summary: {
-        ...summary,
+        ...publicSummary,
         timestamp: new Date().toISOString(),
       },
       message: 'Reconciliation completed successfully',

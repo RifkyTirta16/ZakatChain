@@ -25,18 +25,33 @@ export const getPublicTransparency = async (req: Request, res: Response) => {
         `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions
          WHERE blockchain_status = 'CONFIRMED' AND proof_status = 'APPROVED'`
       ),
-      (db as any).get(`SELECT COUNT(*) AS count FROM transactions`),
-      (db as any).get(`SELECT COUNT(*) AS count FROM transactions WHERE blockchain_status = 'CONFIRMED'`),
       (db as any).get(
-        `SELECT COUNT(*) AS count FROM transactions WHERE blockchain_status IS NULL OR blockchain_status != 'CONFIRMED'`
+        `SELECT COUNT(*) AS count FROM transactions
+         WHERE COALESCE(proof_status, 'PENDING') != 'REJECTED'
+           AND COALESCE(blockchain_status, '') != 'REVOKED'`
+      ),
+      (db as any).get(
+        `SELECT COUNT(*) AS count FROM transactions
+         WHERE blockchain_status = 'CONFIRMED'
+           AND COALESCE(proof_status, 'PENDING') != 'REJECTED'`
+      ),
+      (db as any).get(
+        `SELECT COUNT(*) AS count FROM transactions
+         WHERE COALESCE(proof_status, 'PENDING') != 'REJECTED'
+           AND COALESCE(blockchain_status, '') != 'REVOKED'
+           AND (blockchain_status IS NULL OR blockchain_status != 'CONFIRMED')`
       ),
       (db as any).get(`SELECT COUNT(*) AS count FROM campaigns WHERE status = 'ACTIVE'`),
       (db as any).all(
-        `SELECT category, SUM(amount) AS total, COUNT(*) AS count FROM transactions GROUP BY category ORDER BY total DESC`
+        `SELECT category, SUM(amount) AS total, COUNT(*) AS count FROM transactions
+         WHERE COALESCE(proof_status, 'PENDING') != 'REJECTED'
+           AND COALESCE(blockchain_status, '') != 'REVOKED'
+         GROUP BY category ORDER BY total DESC`
       ),
       (db as any).all(
         `SELECT id, amount, category, region, timestamp, audit_hash, tx_hash, blockchain_status, block_number, proof_status
          FROM transactions
+         WHERE COALESCE(proof_status, 'PENDING') != 'REJECTED'
          ORDER BY timestamp DESC, id DESC
          LIMIT 10`
       ),

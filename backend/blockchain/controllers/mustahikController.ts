@@ -33,7 +33,10 @@ export const listMustahik = async (req: Request, res: Response) => {
               COUNT(t.id) AS distribution_count,
               COALESCE(SUM(t.amount), 0) AS total_received
        FROM mustahik m
-       LEFT JOIN transactions t ON t.mustahik_id = m.id
+       LEFT JOIN transactions t
+         ON t.mustahik_id = m.id
+        AND COALESCE(t.proof_status, 'PENDING') != 'REJECTED'
+        AND COALESCE(t.blockchain_status, '') != 'REVOKED'
        ${where}
        GROUP BY m.id
        ORDER BY m.created_at DESC, m.id DESC`,

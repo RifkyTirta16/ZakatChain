@@ -14,16 +14,26 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     );
     const totalDistributed = Number(distributionRes?.total ?? 0);
 
-    const reportCountRes = await (db as any).get('SELECT COUNT(*) as count FROM transactions');
+    // Exclude REJECTED/REVOKED reports from operational totals & pending queues so KPIs stay truthful.
+    const reportCountRes = await (db as any).get(
+      `SELECT COUNT(*) as count FROM transactions
+       WHERE COALESCE(proof_status, 'PENDING') != 'REJECTED'
+         AND COALESCE(blockchain_status, '') != 'REVOKED'`
+    );
     const totalReports = reportCountRes?.count || 0;
 
     const verifiedReportsRes = await (db as any).get(
-      `SELECT COUNT(*) as count FROM transactions WHERE blockchain_status = 'CONFIRMED'`
+      `SELECT COUNT(*) as count FROM transactions
+       WHERE blockchain_status = 'CONFIRMED'
+         AND COALESCE(proof_status, 'PENDING') != 'REJECTED'`
     );
     const verifiedReports = verifiedReportsRes?.count || 0;
 
     const pendingReportsRes = await (db as any).get(
-      `SELECT COUNT(*) as count FROM transactions WHERE blockchain_status IS NULL OR blockchain_status != 'CONFIRMED'`
+      `SELECT COUNT(*) as count FROM transactions
+       WHERE COALESCE(proof_status, 'PENDING') != 'REJECTED'
+         AND COALESCE(blockchain_status, '') != 'REVOKED'
+         AND (blockchain_status IS NULL OR blockchain_status != 'CONFIRMED')`
     );
     const pendingReports = pendingReportsRes?.count || 0;
 
@@ -38,7 +48,10 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     );
 
     const categoryRes = await (db as any).all(
-      `SELECT category, SUM(amount) as total FROM transactions GROUP BY category`
+      `SELECT category, SUM(amount) as total FROM transactions
+       WHERE COALESCE(proof_status, 'PENDING') != 'REJECTED'
+         AND COALESCE(blockchain_status, '') != 'REVOKED'
+       GROUP BY category`
     );
 
     // Network health is probed rather than hardcoded, so the dashboard does not

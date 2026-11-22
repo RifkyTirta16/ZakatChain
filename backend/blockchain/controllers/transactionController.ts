@@ -250,14 +250,20 @@ export const reconcileTransaction = async (req: Request, res: Response) => {
 
   try {
     const transaction = await (db as any).get(
-      'SELECT id, amount, donor_name, recipient_name, category, region, proof_url, file_hash, audit_hash, blockchain_status, tx_hash FROM transactions WHERE id = ?',
+      'SELECT id, amount, donor_name, recipient_name, category, region, proof_url, file_hash, audit_hash, proof_status, blockchain_status, tx_hash FROM transactions WHERE id = ?',
       [numericId]
     );
     if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+    if (transaction.proof_status === 'REJECTED' || transaction.blockchain_status === 'REVOKED') {
+      return res.status(409).json({
+        error: 'Transaksi berstatus ditolak atau dicabut tidak dapat dicatat ke blockchain',
+      });
+    }
     if (!transaction.audit_hash) return res.status(409).json({ error: 'Transaction has no audit hash' });
 
     if (transaction.blockchain_status === 'CONFIRMED' && transaction.tx_hash) {
       await (db as any).run('UPDATE transactions SET is_reconciled = 1 WHERE id = ?', [numericId]);
+      await logActivity(req, 'RECONCILE_TRANSACTION', 'TRANSACTION', numericId, transaction.blockchain_status, 'CONFIRMED');
       return res.json({
         message: 'Transaction is already reconciled',
         tx_hash: transaction.tx_hash,
@@ -316,6 +322,7 @@ export const reconcileTransaction = async (req: Request, res: Response) => {
         `UPDATE transactions SET blockchain_status = 'CONFIRMED', is_reconciled = 1, tx_hash = ?, block_number = COALESCE(?, block_number) WHERE id = ?`,
         [confirmedHash, blockNumber, numericId]
       );
+      await logActivity(req, 'RECONCILE_TRANSACTION', 'TRANSACTION', numericId, transaction.blockchain_status, 'CONFIRMED');
       return res.json({
         message: 'Transaction already verified on blockchain',
         tx_hash: confirmedHash,
@@ -347,6 +354,7 @@ export const reconcileTransaction = async (req: Request, res: Response) => {
       `UPDATE transactions SET tx_hash = ?, blockchain_status = 'CONFIRMED', block_number = ?, is_reconciled = 1 WHERE id = ?`,
       [tx.hash, receipt.blockNumber, numericId]
     );
+    await logActivity(req, 'RECONCILE_TRANSACTION', 'TRANSACTION', numericId, transaction.blockchain_status, 'CONFIRMED');
 
     res.json({
       message: 'Transaction reconciled successfully',

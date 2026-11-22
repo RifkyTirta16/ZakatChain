@@ -31,6 +31,22 @@ async function startPublicServer() {
       'APPROVED',
     ],
   );
+  // Seed a rejected report (no file) that must stay excluded from public totals, categories, pending count & recent list.
+  await db.run(
+    `INSERT INTO transactions (amount, donor_name, recipient_name, category, region, proof_url, audit_hash, blockchain_status, proof_status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      200000,
+      'Rahasia Muzakki 2',
+      'Rahasia Mustahik 2',
+      'Konsumsi',
+      'Jawa Barat, Bogor',
+      null,
+      'f'.repeat(64),
+      'PENDING_BLOCKCHAIN',
+      'REJECTED',
+    ],
+  );
   await db.close();
 
   const { app, resetDbForTests } = await import('../index.js');
@@ -59,6 +75,9 @@ test('GET /api/public/transparency returns aggregate KPIs without beneficiary/do
     assert.equal(body.kpis.totalDistributed, 750000);
     assert.equal(body.kpis.totalReports, 1);
     assert.equal(body.kpis.verifiedReports, 1);
+    assert.equal(body.kpis.pendingReports, 0);
+    assert.equal(body.categoryDistribution.length, 1);
+    assert.equal(body.categoryDistribution[0].total, 750000);
     assert.equal(body.networkStatus.rpc, 'Unreachable');
     assert.ok(typeof body.networkStatus.contractAddress === 'string');
 

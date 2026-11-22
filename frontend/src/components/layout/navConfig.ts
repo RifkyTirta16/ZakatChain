@@ -124,4 +124,23 @@ export const itemsForRole = (role: Role | null): NavItem[] => {
 export const rolesForPath = (path: string): Role[] =>
   NAV_ITEMS.find((item) => item.path === path)?.roles ?? [];
 
+export const canAccessPath = (role: Role | null, rawTarget: string | null | undefined): boolean => {
+  if (!rawTarget || !rawTarget.startsWith('/') || rawTarget.startsWith('//')) return false;
+  const pathname = (rawTarget.split(/[?#]/)[0] || '/').trim();
+  if (pathname === '/login' || pathname === '/register') return false;
+  const matched = NAV_ITEMS.find((item) => item.path === pathname);
+  if (matched) {
+    return matched.roles.length === 0 || (role !== null && matched.roles.includes(role));
+  }
+  return (
+    pathname === '/' ||
+    pathname === '/transparency' ||
+    pathname === '/programs' ||
+    pathname === '/campaigns' ||
+    pathname.startsWith('/campaigns/') ||
+    pathname === '/calculator' ||
+    pathname === '/verify'
+  );
+};
+
 export const UNUSED_ICON_REF = ClipboardList;

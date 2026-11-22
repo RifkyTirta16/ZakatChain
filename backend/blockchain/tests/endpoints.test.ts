@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Request, Response } from 'express';
 import { initDb } from '../models/db.js';
-import { getTransactions, createTransaction } from '../controllers/transactionController.js';
+import { getTransactions, createTransaction, reconcileTransaction } from '../controllers/transactionController.js';
 import { updateProofStatus } from '../controllers/proofController.js';
-import { resolveAnomaly, getAnomalies } from '../controllers/anomalyController.js';
+import { resolveAnomaly, getAnomalies, scanForAnomalies } from '../controllers/anomalyController.js';
+import { getDashboardStats } from '../controllers/dashboardController.js';
+import { listMustahik } from '../controllers/mustahikController.js';
+import { performReconciliation } from '../controllers/reconciliationController.js';
 import { getCampaignDetail, createCampaign } from '../controllers/campaignController.js';
 import { getDonationTrace } from '../controllers/donationController.js';
 import { getRegionalDistribution } from '../controllers/mappingController.js';
@@ -546,6 +549,96 @@ test('GET /api/mapping/region/:region normalizes province names and strips PII f
     );
     assert.equal((bogorRes.result.body as any[]).length, 0);
   } finally {
+    await db.close();
+  }
+});
+
+test('Paket 5: dashboard, mustahik, and anomaly scan exclude REJECTED/REVOKED reports; reconcile rejects REJECTED and logs audit', async () => {
+  const prevRpc = process.env.BLOCKCHAIN_RPC_URL;
+  process.env.BLOCKCHAIN_RPC_URL = 'http://127.0.0.1:1';
+  const db = await initDb(':memory:');
+  try {
+    await db.run("INSERT INTO users (username, password, role) VALUES ('auditor_p5', 'hash', 'AUDITOR')");
+    await db.run("INSERT INTO users (username, password, role) VALUES ('admin_p5', 'hash', 'ADMIN')");
+    await db.run(
+      "INSERT INTO mustahik (full_name, category_asnaf, region, verification_status) VALUES ('Siti Aminah', 'Fakir', 'Jawa Barat, Bandung', 'VERIFIED')"
+    );
+    await db.run(
+      "INSERT INTO donations (amount, payment_reference, status) VALUES (2000000, 'REF-P5', 'CONFIRMED')"
+    );
+
+    // 1 confirmed+approved tx (1.000.000), 1 rejected missing-proof tx (200.000), 1 revoked tx (500.000)
+    await db.run(
+      `INSERT INTO transactions (amount, donor_name, recipient_name, category, region, proof_url, audit_hash, proof_status, blockchain_status, tx_hash, mustahik_id)
+       VALUES (1000000, 'Donor', 'Siti Aminah', 'Pendidikan', 'Jawa Barat, Bandung', '/uploads/ok.png', '${'b'.repeat(63)}1', 'APPROVED', 'CONFIRMED', '0xtxok', 1)`
+    );
+    await db.run(
+      `INSERT INTO transactions (amount, donor_name, recipient_name, category, region, proof_url, audit_hash, proof_status, blockchain_status, mustahik_id)
+       VALUES (200000, 'Donor', 'Siti Aminah', 'Konsumsi', 'Jawa Barat, Bandung', NULL, '${'b'.repeat(63)}2', 'REJECTED', 'PENDING_BLOCKCHAIN', 1)`
+    );
+    await db.run(
+      `INSERT INTO transactions (amount, donor_name, recipient_name, category, region, proof_url, audit_hash, proof_status, blockchain_status, tx_hash, mustahik_id)
+       VALUES (500000, 'Donor', 'Siti Aminah', 'Konsumsi', 'Jawa Barat, Bandung', '/uploads/rev.png', '${'b'.repeat(63)}3', 'REJECTED', 'REVOKED', '0xtxrev', 1)`
+    );
+
+    // Dashboard KPIs & categoryDistribution must exclude REJECTED/REVOKED
+    const dashRes = mockResponse();
+    await getDashboardStats(req(db), dashRes.response);
+    assert.equal(dashRes.result.statusCode, 200);
+    const dash = dashRes.result.body as any;
+    assert.equal(dash.kpis.totalDistributed, 1000000);
+    assert.equal(dash.kpis.totalReports, 1);
+    assert.equal(dash.kpis.verifiedReports, 1);
+    assert.equal(dash.kpis.pendingReports, 0);
+    assert.equal(dash.categoryDistribution.length, 1);
+    assert.equal(dash.categoryDistribution[0].category, 'Pendidikan');
+    assert.equal(dash.categoryDistribution[0].total, 1000000);
+
+    // Mustahik summary must count only non-rejected, non-revoked distributions
+    const mustahikRes = mockResponse();
+    await listMustahik(req(db), mustahikRes.response);
+    const mRows = mustahikRes.result.body as any[];
+    assert.equal(mRows.length, 1);
+    assert.equal(mRows[0].distribution_count, 1);
+    assert.equal(mRows[0].total_received, 1000000);
+
+    // Anomaly scan must not raise MISSING_PROOF on already-REJECTED tx #2
+    const scanRes = mockResponse();
+    await scanForAnomalies(req(db), scanRes.response);
+    assert.equal(scanRes.result.statusCode, 200);
+    assert.equal((scanRes.result.body as any).anomaliesFound, 0);
+
+    // Reconcile must reject REJECTED tx #2 (409) and log audit on confirmed tx #1
+    const rejReconcileRes = mockResponse();
+    await reconcileTransaction(
+      req(db, { params: { id: '2' } as any, user: { id: 2, username: 'admin_p5', role: 'ADMIN' } } as any),
+      rejReconcileRes.response
+    );
+    assert.equal(rejReconcileRes.result.statusCode, 409);
+
+    const okReconcileRes = mockResponse();
+    await reconcileTransaction(
+      req(db, { params: { id: '1' } as any, user: { id: 2, username: 'admin_p5', role: 'ADMIN' } } as any),
+      okReconcileRes.response
+    );
+    assert.equal(okReconcileRes.result.statusCode, 200);
+
+    // Run global reconciliation and verify audit_logs captured both actions
+    const runReconRes = mockResponse();
+    await performReconciliation(
+      req(db, { body: { period: 'Nov 2026' }, user: { id: 2, username: 'admin_p5', role: 'ADMIN' } } as any),
+      runReconRes.response
+    );
+    assert.equal(runReconRes.result.statusCode, 200);
+
+    const logs = await db.all('SELECT action, entity_type FROM audit_logs ORDER BY id ASC');
+    assert.deepEqual(
+      logs.map((l: any) => l.action),
+      ['RECONCILE_TRANSACTION', 'RUN_RECONCILIATION']
+    );
+  } finally {
+    if (prevRpc === undefined) delete process.env.BLOCKCHAIN_RPC_URL;
+    else process.env.BLOCKCHAIN_RPC_URL = prevRpc;
     await db.close();
   }
 });

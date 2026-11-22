@@ -20,6 +20,7 @@ interface Transaction {
   timestamp: string;
   tx_hash: string | null;
   audit_hash: string | null;
+  proof_status?: string | null;
   blockchain_status: string | null;
   block_number: number | null;
   revoke_tx_hash?: string | null;
@@ -416,8 +417,9 @@ const OnChainExplorer = () => {
                   const isCopiedTx = copiedHash === t.tx_hash;
                   const isCopiedAudit = copiedHash === t.audit_hash;
                   const isRevoked = t.blockchain_status === 'REVOKED';
+                  const isRejected = t.proof_status === 'REJECTED';
                   const isConfirmed = t.blockchain_status === 'CONFIRMED';
-                  const isPendingChain = !isRevoked && (!t.tx_hash || !isConfirmed);
+                  const isPendingChain = !isRevoked && !isRejected && (!t.tx_hash || !isConfirmed);
                   return (
                     <tr key={t.id} className="hover:bg-cream/60">
                       <td className="py-3.5 px-4 font-mono font-bold text-forest-dark">#{t.id}</td>
@@ -462,9 +464,14 @@ const OnChainExplorer = () => {
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        <Badge tone={proofBadge(t.blockchain_status ?? '').tone}>
-                          {proofBadge(t.blockchain_status ?? '').label}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge tone={proofBadge(t.blockchain_status ?? '').tone}>
+                            {proofBadge(t.blockchain_status ?? '').label}
+                          </Badge>
+                          {isRejected && !isRevoked && (
+                            <Badge tone="danger">Ditolak</Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 font-mono text-xs text-slate-600">
                         {t.block_number ? `#${t.block_number}` : '-'}
