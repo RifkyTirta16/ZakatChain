@@ -1,0 +1,2168 @@
+[
+  {
+    "region_code": "1171",
+    "region_name": "Banda Aceh",
+    "province_code": "11",
+    "province_name": "Aceh",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.64,
+    "poor_population": 98657,
+    "poverty_line": 757397,
+    "poverty": {
+      "poor_population_thousand": 98.66,
+      "poverty_rate_percent": 7.64,
+      "poverty_depth_index_p1": 1.193,
+      "poverty_severity_index_p2": 0.273,
+      "poverty_line_rp_per_capita_month": 757397
+    }
+  },
+  {
+    "region_code": "1173",
+    "region_name": "Lhokseumawe",
+    "province_code": "11",
+    "province_name": "Aceh",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 10.85,
+    "poor_population": 84563,
+    "poverty_line": 703297,
+    "poverty": {
+      "poor_population_thousand": 84.56,
+      "poverty_rate_percent": 10.85,
+      "poverty_depth_index_p1": 1.561,
+      "poverty_severity_index_p2": 0.357,
+      "poverty_line_rp_per_capita_month": 703297
+    }
+  },
+  {
+    "region_code": "1174",
+    "region_name": "Langsa",
+    "province_code": "11",
+    "province_name": "Aceh",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 10.36,
+    "poor_population": 70469,
+    "poverty_line": 683009,
+    "poverty": {
+      "poor_population_thousand": 70.47,
+      "poverty_rate_percent": 10.36,
+      "poverty_depth_index_p1": 1.506,
+      "poverty_severity_index_p2": 0.344,
+      "poverty_line_rp_per_capita_month": 683009
+    }
+  },
+  {
+    "region_code": "1105",
+    "region_name": "Meulaboh",
+    "province_code": "11",
+    "province_name": "Aceh",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 14.55,
+    "poor_population": 112750,
+    "poverty_line": 649197,
+    "poverty": {
+      "poor_population_thousand": 112.75,
+      "poverty_rate_percent": 14.55,
+      "poverty_depth_index_p1": 2.13,
+      "poverty_severity_index_p2": 0.487,
+      "poverty_line_rp_per_capita_month": 649197
+    }
+  },
+  {
+    "region_code": "1271",
+    "region_name": "Medan",
+    "province_code": "12",
+    "province_name": "Sumatera Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.04,
+    "poor_population": 250855,
+    "poverty_line": 739866,
+    "poverty": {
+      "poor_population_thousand": 250.85,
+      "poverty_rate_percent": 6.04,
+      "poverty_depth_index_p1": 0.946,
+      "poverty_severity_index_p2": 0.221,
+      "poverty_line_rp_per_capita_month": 739866
+    }
+  },
+  {
+    "region_code": "1275",
+    "region_name": "Binjai",
+    "province_code": "12",
+    "province_name": "Sumatera Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.3,
+    "poor_population": 91220,
+    "poverty_line": 679877,
+    "poverty": {
+      "poor_population_thousand": 91.22,
+      "poverty_rate_percent": 5.3,
+      "poverty_depth_index_p1": 0.844,
+      "poverty_severity_index_p2": 0.197,
+      "poverty_line_rp_per_capita_month": 679877
+    }
+  },
+  {
+    "region_code": "1272",
+    "region_name": "Pematangsiantar",
+    "province_code": "12",
+    "province_name": "Sumatera Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.33,
+    "poor_population": 102623,
+    "poverty_line": 686542,
+    "poverty": {
+      "poor_population_thousand": 102.62,
+      "poverty_rate_percent": 6.33,
+      "poverty_depth_index_p1": 0.991,
+      "poverty_severity_index_p2": 0.231,
+      "poverty_line_rp_per_capita_month": 686542
+    }
+  },
+  {
+    "region_code": "1207",
+    "region_name": "Deli Serdang",
+    "province_code": "12",
+    "province_name": "Sumatera Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.59,
+    "poor_population": 205245,
+    "poverty_line": 659881,
+    "poverty": {
+      "poor_population_thousand": 205.25,
+      "poverty_rate_percent": 5.59,
+      "poverty_depth_index_p1": 0.878,
+      "poverty_severity_index_p2": 0.205,
+      "poverty_line_rp_per_capita_month": 659881
+    }
+  },
+  {
+    "region_code": "1371",
+    "region_name": "Padang",
+    "province_code": "13",
+    "province_name": "Sumatera Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.17,
+    "poor_population": 87458,
+    "poverty_line": 795489,
+    "poverty": {
+      "poor_population_thousand": 87.46,
+      "poverty_rate_percent": 4.17,
+      "poverty_depth_index_p1": 0.589,
+      "poverty_severity_index_p2": 0.131,
+      "poverty_line_rp_per_capita_month": 795489
+    }
+  },
+  {
+    "region_code": "1375",
+    "region_name": "Bukittinggi",
+    "province_code": "13",
+    "province_name": "Sumatera Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.07,
+    "poor_population": 31235,
+    "poverty_line": 766296,
+    "poverty": {
+      "poor_population_thousand": 31.23,
+      "poverty_rate_percent": 4.07,
+      "poverty_depth_index_p1": 0.552,
+      "poverty_severity_index_p2": 0.123,
+      "poverty_line_rp_per_capita_month": 766296
+    }
+  },
+  {
+    "region_code": "1376",
+    "region_name": "Payakumbuh",
+    "province_code": "13",
+    "province_name": "Sumatera Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.92,
+    "poor_population": 37482,
+    "poverty_line": 715210,
+    "poverty": {
+      "poor_population_thousand": 37.48,
+      "poverty_rate_percent": 4.92,
+      "poverty_depth_index_p1": 0.662,
+      "poverty_severity_index_p2": 0.148,
+      "poverty_line_rp_per_capita_month": 715210
+    }
+  },
+  {
+    "region_code": "1471",
+    "region_name": "Pekanbaru",
+    "province_code": "14",
+    "province_name": "Riau",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 3.57,
+    "poor_population": 82973,
+    "poverty_line": 812953,
+    "poverty": {
+      "poor_population_thousand": 82.97,
+      "poverty_rate_percent": 3.57,
+      "poverty_depth_index_p1": 0.541,
+      "poverty_severity_index_p2": 0.122,
+      "poverty_line_rp_per_capita_month": 812953
+    }
+  },
+  {
+    "region_code": "1472",
+    "region_name": "Dumai",
+    "province_code": "14",
+    "province_name": "Riau",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.19,
+    "poor_population": 46096,
+    "poverty_line": 755904,
+    "poverty": {
+      "poor_population_thousand": 46.1,
+      "poverty_rate_percent": 4.19,
+      "poverty_depth_index_p1": 0.611,
+      "poverty_severity_index_p2": 0.137,
+      "poverty_line_rp_per_capita_month": 755904
+    }
+  },
+  {
+    "region_code": "1401",
+    "region_name": "Kampar",
+    "province_code": "14",
+    "province_name": "Riau",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.65,
+    "poor_population": 101411,
+    "poverty_line": 684592,
+    "poverty": {
+      "poor_population_thousand": 101.41,
+      "poverty_rate_percent": 6.65,
+      "poverty_depth_index_p1": 0.925,
+      "poverty_severity_index_p2": 0.208,
+      "poverty_line_rp_per_capita_month": 684592
+    }
+  },
+  {
+    "region_code": "1571",
+    "region_name": "Jambi",
+    "province_code": "15",
+    "province_name": "Jambi",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.9,
+    "poor_population": 65026,
+    "poverty_line": 717257,
+    "poverty": {
+      "poor_population_thousand": 65.03,
+      "poverty_rate_percent": 6.9,
+      "poverty_depth_index_p1": 0.927,
+      "poverty_severity_index_p2": 0.189,
+      "poverty_line_rp_per_capita_month": 717257
+    }
+  },
+  {
+    "region_code": "1572",
+    "region_name": "Sungai Penuh",
+    "province_code": "15",
+    "province_name": "Jambi",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.03,
+    "poor_population": 21675,
+    "poverty_line": 657486,
+    "poverty": {
+      "poor_population_thousand": 21.68,
+      "poverty_rate_percent": 4.03,
+      "poverty_depth_index_p1": 0.586,
+      "poverty_severity_index_p2": 0.119,
+      "poverty_line_rp_per_capita_month": 657486
+    }
+  },
+  {
+    "region_code": "1505",
+    "region_name": "Muaro Jambi",
+    "province_code": "15",
+    "province_name": "Jambi",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.61,
+    "poor_population": 48769,
+    "poverty_line": 644203,
+    "poverty": {
+      "poor_population_thousand": 48.77,
+      "poverty_rate_percent": 5.61,
+      "poverty_depth_index_p1": 0.781,
+      "poverty_severity_index_p2": 0.159,
+      "poverty_line_rp_per_capita_month": 644203
+    }
+  },
+  {
+    "region_code": "1671",
+    "region_name": "Palembang",
+    "province_code": "16",
+    "province_name": "Sumatera Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 8.93,
+    "poor_population": 229900,
+    "poverty_line": 651506,
+    "poverty": {
+      "poor_population_thousand": 229.9,
+      "poverty_rate_percent": 8.93,
+      "poverty_depth_index_p1": 1.412,
+      "poverty_severity_index_p2": 0.319,
+      "poverty_line_rp_per_capita_month": 651506
+    }
+  },
+  {
+    "region_code": "1673",
+    "region_name": "Lubuklinggau",
+    "province_code": "16",
+    "province_name": "Sumatera Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 10.76,
+    "poor_population": 91960,
+    "poverty_line": 587519,
+    "poverty": {
+      "poor_population_thousand": 91.96,
+      "poverty_rate_percent": 10.76,
+      "poverty_depth_index_p1": 1.708,
+      "poverty_severity_index_p2": 0.386,
+      "poverty_line_rp_per_capita_month": 587519
+    }
+  },
+  {
+    "region_code": "1674",
+    "region_name": "Prabumulih",
+    "province_code": "16",
+    "province_name": "Sumatera Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 9.54,
+    "poor_population": 82764,
+    "poverty_line": 599153,
+    "poverty": {
+      "poor_population_thousand": 82.76,
+      "poverty_rate_percent": 9.54,
+      "poverty_depth_index_p1": 1.511,
+      "poverty_severity_index_p2": 0.341,
+      "poverty_line_rp_per_capita_month": 599153
+    }
+  },
+  {
+    "region_code": "1771",
+    "region_name": "Bengkulu",
+    "province_code": "17",
+    "province_name": "Bengkulu",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 12.56,
+    "poor_population": 70832,
+    "poverty_line": 724849,
+    "poverty": {
+      "poor_population_thousand": 70.83,
+      "poverty_rate_percent": 12.56,
+      "poverty_depth_index_p1": 1.867,
+      "poverty_severity_index_p2": 0.383,
+      "poverty_line_rp_per_capita_month": 724849
+    }
+  },
+  {
+    "region_code": "1702",
+    "region_name": "Rejang Lebong",
+    "province_code": "17",
+    "province_name": "Bengkulu",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 14.01,
+    "poor_population": 55653,
+    "poverty_line": 649629,
+    "poverty": {
+      "poor_population_thousand": 55.65,
+      "poverty_rate_percent": 14.01,
+      "poverty_depth_index_p1": 2.104,
+      "poverty_severity_index_p2": 0.431,
+      "poverty_line_rp_per_capita_month": 649629
+    }
+  },
+  {
+    "region_code": "1871",
+    "region_name": "Bandar Lampung",
+    "province_code": "18",
+    "province_name": "Lampung",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.6,
+    "poor_population": 141923,
+    "poverty_line": 698194,
+    "poverty": {
+      "poor_population_thousand": 141.92,
+      "poverty_rate_percent": 7.6,
+      "poverty_depth_index_p1": 1.2,
+      "poverty_severity_index_p2": 0.268,
+      "poverty_line_rp_per_capita_month": 698194
+    }
+  },
+  {
+    "region_code": "1872",
+    "region_name": "Metro",
+    "province_code": "18",
+    "province_name": "Lampung",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.2,
+    "poor_population": 70962,
+    "poverty_line": 643074,
+    "poverty": {
+      "poor_population_thousand": 70.96,
+      "poverty_rate_percent": 7.2,
+      "poverty_depth_index_p1": 1.139,
+      "poverty_severity_index_p2": 0.255,
+      "poverty_line_rp_per_capita_month": 643074
+    }
+  },
+  {
+    "region_code": "1802",
+    "region_name": "Lampung Tengah",
+    "province_code": "18",
+    "province_name": "Lampung",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 10.6,
+    "poor_population": 212885,
+    "poverty_line": 587953,
+    "poverty": {
+      "poor_population_thousand": 212.88,
+      "poverty_rate_percent": 10.6,
+      "poverty_depth_index_p1": 1.662,
+      "poverty_severity_index_p2": 0.372,
+      "poverty_line_rp_per_capita_month": 587953
+    }
+  },
+  {
+    "region_code": "1971",
+    "region_name": "Pangkalpinang",
+    "province_code": "19",
+    "province_name": "Bangka Belitung",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.1,
+    "poor_population": 17096,
+    "poverty_line": 1023811,
+    "poverty": {
+      "poor_population_thousand": 17.1,
+      "poverty_rate_percent": 4.1,
+      "poverty_depth_index_p1": 0.519,
+      "poverty_severity_index_p2": 0.109,
+      "poverty_line_rp_per_capita_month": 1023811
+    }
+  },
+  {
+    "region_code": "1901",
+    "region_name": "Bangka",
+    "province_code": "19",
+    "province_name": "Bangka Belitung",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.7,
+    "poor_population": 19428,
+    "poverty_line": 947265,
+    "poverty": {
+      "poor_population_thousand": 19.43,
+      "poverty_rate_percent": 4.7,
+      "poverty_depth_index_p1": 0.597,
+      "poverty_severity_index_p2": 0.125,
+      "poverty_line_rp_per_capita_month": 947265
+    }
+  },
+  {
+    "region_code": "1902",
+    "region_name": "Belitung",
+    "province_code": "19",
+    "province_name": "Bangka Belitung",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.7,
+    "poor_population": 15542,
+    "poverty_line": 918560,
+    "poverty": {
+      "poor_population_thousand": 15.54,
+      "poverty_rate_percent": 5.7,
+      "poverty_depth_index_p1": 0.727,
+      "poverty_severity_index_p2": 0.152,
+      "poverty_line_rp_per_capita_month": 918560
+    }
+  },
+  {
+    "region_code": "2172",
+    "region_name": "Tanjungpinang",
+    "province_code": "21",
+    "province_name": "Kepulauan Riau",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.66,
+    "poor_population": 21110,
+    "poverty_line": 857382,
+    "poverty": {
+      "poor_population_thousand": 21.11,
+      "poverty_rate_percent": 4.66,
+      "poverty_depth_index_p1": 0.702,
+      "poverty_severity_index_p2": 0.183,
+      "poverty_line_rp_per_capita_month": 857382
+    }
+  },
+  {
+    "region_code": "2171",
+    "region_name": "Batam",
+    "province_code": "21",
+    "province_name": "Kepulauan Riau",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 3.82,
+    "poor_population": 65677,
+    "poverty_line": 932299,
+    "poverty": {
+      "poor_population_thousand": 65.68,
+      "poverty_rate_percent": 3.82,
+      "poverty_depth_index_p1": 0.605,
+      "poverty_severity_index_p2": 0.158,
+      "poverty_line_rp_per_capita_month": 932299
+    }
+  },
+  {
+    "region_code": "2101",
+    "region_name": "Bintan",
+    "province_code": "21",
+    "province_name": "Kepulauan Riau",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.15,
+    "poor_population": 16419,
+    "poverty_line": 790790,
+    "poverty": {
+      "poor_population_thousand": 16.42,
+      "poverty_rate_percent": 5.15,
+      "poverty_depth_index_p1": 0.791,
+      "poverty_severity_index_p2": 0.206,
+      "poverty_line_rp_per_capita_month": 790790
+    }
+  },
+  {
+    "region_code": "3173",
+    "region_name": "Jakarta Pusat",
+    "province_code": "31",
+    "province_name": "DKI Jakarta",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.54,
+    "poor_population": 65082,
+    "poverty_line": 869823,
+    "poverty": {
+      "poor_population_thousand": 65.08,
+      "poverty_rate_percent": 4.54,
+      "poverty_depth_index_p1": 0.597,
+      "poverty_severity_index_p2": 0.115,
+      "poverty_line_rp_per_capita_month": 869823
+    }
+  },
+  {
+    "region_code": "3175",
+    "region_name": "Jakarta Utara",
+    "province_code": "31",
+    "province_name": "DKI Jakarta",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.33,
+    "poor_population": 130164,
+    "poverty_line": 844240,
+    "poverty": {
+      "poor_population_thousand": 130.16,
+      "poverty_rate_percent": 6.33,
+      "poverty_depth_index_p1": 0.815,
+      "poverty_severity_index_p2": 0.158,
+      "poverty_line_rp_per_capita_month": 844240
+    }
+  },
+  {
+    "region_code": "3172",
+    "region_name": "Jakarta Timur",
+    "province_code": "31",
+    "province_name": "DKI Jakarta",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.02,
+    "poor_population": 111569,
+    "poverty_line": 852768,
+    "poverty": {
+      "poor_population_thousand": 111.57,
+      "poverty_rate_percent": 4.02,
+      "poverty_depth_index_p1": 0.545,
+      "poverty_severity_index_p2": 0.105,
+      "poverty_line_rp_per_capita_month": 852768
+    }
+  },
+  {
+    "region_code": "3171",
+    "region_name": "Jakarta Selatan",
+    "province_code": "31",
+    "province_name": "DKI Jakarta",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 3.08,
+    "poor_population": 74379,
+    "poverty_line": 920989,
+    "poverty": {
+      "poor_population_thousand": 74.38,
+      "poverty_rate_percent": 3.08,
+      "poverty_depth_index_p1": 0.425,
+      "poverty_severity_index_p2": 0.082,
+      "poverty_line_rp_per_capita_month": 920989
+    }
+  },
+  {
+    "region_code": "3174",
+    "region_name": "Jakarta Barat",
+    "province_code": "31",
+    "province_name": "DKI Jakarta",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 3.94,
+    "poor_population": 83677,
+    "poverty_line": 861296,
+    "poverty": {
+      "poor_population_thousand": 83.68,
+      "poverty_rate_percent": 3.94,
+      "poverty_depth_index_p1": 0.528,
+      "poverty_severity_index_p2": 0.102,
+      "poverty_line_rp_per_capita_month": 861296
+    }
+  },
+  {
+    "region_code": "3273",
+    "region_name": "Bandung",
+    "province_code": "32",
+    "province_name": "Jawa Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.07,
+    "poor_population": 219284,
+    "poverty_line": 629915,
+    "poverty": {
+      "poor_population_thousand": 219.28,
+      "poverty_rate_percent": 4.07,
+      "poverty_depth_index_p1": 0.724,
+      "poverty_severity_index_p2": 0.177,
+      "poverty_line_rp_per_capita_month": 629915
+    }
+  },
+  {
+    "region_code": "3275",
+    "region_name": "Bekasi",
+    "province_code": "32",
+    "province_name": "Jawa Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.35,
+    "poor_population": 292379,
+    "poverty_line": 646347,
+    "poverty": {
+      "poor_population_thousand": 292.38,
+      "poverty_rate_percent": 4.35,
+      "poverty_depth_index_p1": 0.771,
+      "poverty_severity_index_p2": 0.189,
+      "poverty_line_rp_per_capita_month": 646347
+    }
+  },
+  {
+    "region_code": "3276",
+    "region_name": "Depok",
+    "province_code": "32",
+    "province_name": "Jawa Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 2.95,
+    "poor_population": 146190,
+    "poverty_line": 679212,
+    "poverty": {
+      "poor_population_thousand": 146.19,
+      "poverty_rate_percent": 2.95,
+      "poverty_depth_index_p1": 0.561,
+      "poverty_severity_index_p2": 0.137,
+      "poverty_line_rp_per_capita_month": 679212
+    }
+  },
+  {
+    "region_code": "3271",
+    "region_name": "Bogor",
+    "province_code": "32",
+    "province_name": "Jawa Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.46,
+    "poor_population": 219284,
+    "poverty_line": 613482,
+    "poverty": {
+      "poor_population_thousand": 219.28,
+      "poverty_rate_percent": 6.46,
+      "poverty_depth_index_p1": 1.051,
+      "poverty_severity_index_p2": 0.257,
+      "poverty_line_rp_per_capita_month": 613482
+    }
+  },
+  {
+    "region_code": "3274",
+    "region_name": "Cirebon",
+    "province_code": "32",
+    "province_name": "Jawa Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 8.56,
+    "poor_population": 182737,
+    "poverty_line": 536797,
+    "poverty": {
+      "poor_population_thousand": 182.74,
+      "poverty_rate_percent": 8.56,
+      "poverty_depth_index_p1": 1.402,
+      "poverty_severity_index_p2": 0.343,
+      "poverty_line_rp_per_capita_month": 536797
+    }
+  },
+  {
+    "region_code": "3374",
+    "region_name": "Semarang",
+    "province_code": "33",
+    "province_name": "Jawa Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.27,
+    "poor_population": 202001,
+    "poverty_line": 645374,
+    "poverty": {
+      "poor_population_thousand": 202,
+      "poverty_rate_percent": 4.27,
+      "poverty_depth_index_p1": 0.778,
+      "poverty_severity_index_p2": 0.177,
+      "poverty_line_rp_per_capita_month": 645374
+    }
+  },
+  {
+    "region_code": "3372",
+    "region_name": "Solo",
+    "province_code": "33",
+    "province_name": "Jawa Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.96,
+    "poor_population": 134668,
+    "poverty_line": 591593,
+    "poverty": {
+      "poor_population_thousand": 134.67,
+      "poverty_rate_percent": 7.96,
+      "poverty_depth_index_p1": 1.277,
+      "poverty_severity_index_p2": 0.29,
+      "poverty_line_rp_per_capita_month": 591593
+    }
+  },
+  {
+    "region_code": "3371",
+    "region_name": "Magelang",
+    "province_code": "33",
+    "province_name": "Jawa Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.45,
+    "poor_population": 67334,
+    "poverty_line": 564703,
+    "poverty": {
+      "poor_population_thousand": 67.33,
+      "poverty_rate_percent": 6.45,
+      "poverty_depth_index_p1": 1.09,
+      "poverty_severity_index_p2": 0.248,
+      "poverty_line_rp_per_capita_month": 564703
+    }
+  },
+  {
+    "region_code": "3302",
+    "region_name": "Purwokerto",
+    "province_code": "33",
+    "province_name": "Jawa Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 11.76,
+    "poor_population": 336669,
+    "poverty_line": 510921,
+    "poverty": {
+      "poor_population_thousand": 336.67,
+      "poverty_rate_percent": 11.76,
+      "poverty_depth_index_p1": 1.9,
+      "poverty_severity_index_p2": 0.432,
+      "poverty_line_rp_per_capita_month": 510921
+    }
+  },
+  {
+    "region_code": "3471",
+    "region_name": "Yogyakarta",
+    "province_code": "34",
+    "province_name": "DI Yogyakarta",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.55,
+    "poor_population": 51098,
+    "poverty_line": 726581,
+    "poverty": {
+      "poor_population_thousand": 51.1,
+      "poverty_rate_percent": 6.55,
+      "poverty_depth_index_p1": 1.051,
+      "poverty_severity_index_p2": 0.228,
+      "poverty_line_rp_per_capita_month": 726581
+    }
+  },
+  {
+    "region_code": "3404",
+    "region_name": "Sleman",
+    "province_code": "34",
+    "province_name": "DI Yogyakarta",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.57,
+    "poor_population": 119230,
+    "poverty_line": 651418,
+    "poverty": {
+      "poor_population_thousand": 119.23,
+      "poverty_rate_percent": 7.57,
+      "poverty_depth_index_p1": 1.21,
+      "poverty_severity_index_p2": 0.262,
+      "poverty_line_rp_per_capita_month": 651418
+    }
+  },
+  {
+    "region_code": "3402",
+    "region_name": "Bantul",
+    "province_code": "34",
+    "province_name": "DI Yogyakarta",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 11.25,
+    "poor_population": 127746,
+    "poverty_line": 613836,
+    "poverty": {
+      "poor_population_thousand": 127.75,
+      "poverty_rate_percent": 11.25,
+      "poverty_depth_index_p1": 1.719,
+      "poverty_severity_index_p2": 0.373,
+      "poverty_line_rp_per_capita_month": 613836
+    }
+  },
+  {
+    "region_code": "3578",
+    "region_name": "Surabaya",
+    "province_code": "35",
+    "province_name": "Jawa Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.18,
+    "poor_population": 232553,
+    "poverty_line": 703117,
+    "poverty": {
+      "poor_population_thousand": 232.55,
+      "poverty_rate_percent": 4.18,
+      "poverty_depth_index_p1": 0.679,
+      "poverty_severity_index_p2": 0.141,
+      "poverty_line_rp_per_capita_month": 703117
+    }
+  },
+  {
+    "region_code": "3573",
+    "region_name": "Malang",
+    "province_code": "35",
+    "province_name": "Jawa Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.37,
+    "poor_population": 155035,
+    "poverty_line": 647314,
+    "poverty": {
+      "poor_population_thousand": 155.03,
+      "poverty_rate_percent": 4.37,
+      "poverty_depth_index_p1": 0.707,
+      "poverty_severity_index_p2": 0.147,
+      "poverty_line_rp_per_capita_month": 647314
+    }
+  },
+  {
+    "region_code": "3571",
+    "region_name": "Kediri",
+    "province_code": "35",
+    "province_name": "Jawa Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.84,
+    "poor_population": 116276,
+    "poverty_line": 585930,
+    "poverty": {
+      "poor_population_thousand": 116.28,
+      "poverty_rate_percent": 6.84,
+      "poverty_depth_index_p1": 1.046,
+      "poverty_severity_index_p2": 0.218,
+      "poverty_line_rp_per_capita_month": 585930
+    }
+  },
+  {
+    "region_code": "3577",
+    "region_name": "Madiun",
+    "province_code": "35",
+    "province_name": "Jawa Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.56,
+    "poor_population": 77518,
+    "poverty_line": 580350,
+    "poverty": {
+      "poor_population_thousand": 77.52,
+      "poverty_rate_percent": 4.56,
+      "poverty_depth_index_p1": 0.735,
+      "poverty_severity_index_p2": 0.153,
+      "poverty_line_rp_per_capita_month": 580350
+    }
+  },
+  {
+    "region_code": "3673",
+    "region_name": "Serang",
+    "province_code": "36",
+    "province_name": "Banten",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.86,
+    "poor_population": 92734,
+    "poverty_line": 677390,
+    "poverty": {
+      "poor_population_thousand": 92.73,
+      "poverty_rate_percent": 5.86,
+      "poverty_depth_index_p1": 0.864,
+      "poverty_severity_index_p2": 0.214,
+      "poverty_line_rp_per_capita_month": 677390
+    }
+  },
+  {
+    "region_code": "3671",
+    "region_name": "Tangerang",
+    "province_code": "36",
+    "province_name": "Banten",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.4,
+    "poor_population": 154556,
+    "poverty_line": 780024,
+    "poverty": {
+      "poor_population_thousand": 154.56,
+      "poverty_rate_percent": 5.4,
+      "poverty_depth_index_p1": 0.796,
+      "poverty_severity_index_p2": 0.197,
+      "poverty_line_rp_per_capita_month": 780024
+    }
+  },
+  {
+    "region_code": "3674",
+    "region_name": "Tangerang Selatan",
+    "province_code": "36",
+    "province_name": "Banten",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 2.59,
+    "poor_population": 61822,
+    "poverty_line": 834763,
+    "poverty": {
+      "poor_population_thousand": 61.82,
+      "poverty_rate_percent": 2.59,
+      "poverty_depth_index_p1": 0.423,
+      "poverty_severity_index_p2": 0.105,
+      "poverty_line_rp_per_capita_month": 834763
+    }
+  },
+  {
+    "region_code": "3672",
+    "region_name": "Cilegon",
+    "province_code": "36",
+    "province_name": "Banten",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 3.6,
+    "poor_population": 54095,
+    "poverty_line": 738971,
+    "poverty": {
+      "poor_population_thousand": 54.09,
+      "poverty_rate_percent": 3.6,
+      "poverty_depth_index_p1": 0.559,
+      "poverty_severity_index_p2": 0.139,
+      "poverty_line_rp_per_capita_month": 738971
+    }
+  },
+  {
+    "region_code": "5171",
+    "region_name": "Denpasar",
+    "province_code": "51",
+    "province_name": "Bali",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 2.68,
+    "poor_population": 31183,
+    "poverty_line": 717259,
+    "poverty": {
+      "poor_population_thousand": 31.18,
+      "poverty_rate_percent": 2.68,
+      "poverty_depth_index_p1": 0.414,
+      "poverty_severity_index_p2": 0.087,
+      "poverty_line_rp_per_capita_month": 717259
+    }
+  },
+  {
+    "region_code": "5108",
+    "region_name": "Singaraja",
+    "province_code": "51",
+    "province_name": "Bali",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.13,
+    "poor_population": 45042,
+    "poverty_line": 571376,
+    "poverty": {
+      "poor_population_thousand": 45.04,
+      "poverty_rate_percent": 5.13,
+      "poverty_depth_index_p1": 0.756,
+      "poverty_severity_index_p2": 0.158,
+      "poverty_line_rp_per_capita_month": 571376
+    }
+  },
+  {
+    "region_code": "5105",
+    "region_name": "Klungkung",
+    "province_code": "51",
+    "province_name": "Bali",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.91,
+    "poor_population": 24254,
+    "poverty_line": 577455,
+    "poverty": {
+      "poor_population_thousand": 24.25,
+      "poverty_rate_percent": 4.91,
+      "poverty_depth_index_p1": 0.717,
+      "poverty_severity_index_p2": 0.15,
+      "poverty_line_rp_per_capita_month": 577455
+    }
+  },
+  {
+    "region_code": "5271",
+    "region_name": "Mataram",
+    "province_code": "52",
+    "province_name": "Nusa Tenggara Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 8.95,
+    "poor_population": 91640,
+    "poverty_line": 623668,
+    "poverty": {
+      "poor_population_thousand": 91.64,
+      "poverty_rate_percent": 8.95,
+      "poverty_depth_index_p1": 1.37,
+      "poverty_severity_index_p2": 0.281,
+      "poverty_line_rp_per_capita_month": 623668
+    }
+  },
+  {
+    "region_code": "5202",
+    "region_name": "Praya",
+    "province_code": "52",
+    "province_name": "Nusa Tenggara Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 12.49,
+    "poor_population": 157097,
+    "poverty_line": 540141,
+    "poverty": {
+      "poor_population_thousand": 157.1,
+      "poverty_rate_percent": 12.49,
+      "poverty_depth_index_p1": 1.844,
+      "poverty_severity_index_p2": 0.378,
+      "poverty_line_rp_per_capita_month": 540141
+    }
+  },
+  {
+    "region_code": "5272",
+    "region_name": "Bima",
+    "province_code": "52",
+    "province_name": "Nusa Tenggara Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 9.19,
+    "poor_population": 58911,
+    "poverty_line": 567983,
+    "poverty": {
+      "poor_population_thousand": 58.91,
+      "poverty_rate_percent": 9.19,
+      "poverty_depth_index_p1": 1.405,
+      "poverty_severity_index_p2": 0.288,
+      "poverty_line_rp_per_capita_month": 567983
+    }
+  },
+  {
+    "region_code": "5371",
+    "region_name": "Kupang",
+    "province_code": "53",
+    "province_name": "Nusa Tenggara Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 8.93,
+    "poor_population": 87102,
+    "poverty_line": 670521,
+    "poverty": {
+      "poor_population_thousand": 87.1,
+      "poverty_rate_percent": 8.93,
+      "poverty_depth_index_p1": 1.743,
+      "poverty_severity_index_p2": 0.438,
+      "poverty_line_rp_per_capita_month": 670521
+    }
+  },
+  {
+    "region_code": "5308",
+    "region_name": "Ende",
+    "province_code": "53",
+    "province_name": "Nusa Tenggara Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 21.95,
+    "poor_population": 152429,
+    "poverty_line": 516631,
+    "poverty": {
+      "poor_population_thousand": 152.43,
+      "poverty_rate_percent": 21.95,
+      "poverty_depth_index_p1": 3.888,
+      "poverty_severity_index_p2": 0.978,
+      "poverty_line_rp_per_capita_month": 516631
+    }
+  },
+  {
+    "region_code": "5307",
+    "region_name": "Maumere",
+    "province_code": "53",
+    "province_name": "Nusa Tenggara Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 13.76,
+    "poor_population": 108878,
+    "poverty_line": 538615,
+    "poverty": {
+      "poor_population_thousand": 108.88,
+      "poverty_rate_percent": 13.76,
+      "poverty_depth_index_p1": 2.548,
+      "poverty_severity_index_p2": 0.641,
+      "poverty_line_rp_per_capita_month": 538615
+    }
+  },
+  {
+    "region_code": "6171",
+    "region_name": "Pontianak",
+    "province_code": "61",
+    "province_name": "Kalimantan Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.56,
+    "poor_population": 46333,
+    "poverty_line": 697628,
+    "poverty": {
+      "poor_population_thousand": 46.33,
+      "poverty_rate_percent": 4.56,
+      "poverty_depth_index_p1": 0.657,
+      "poverty_severity_index_p2": 0.135,
+      "poverty_line_rp_per_capita_month": 697628
+    }
+  },
+  {
+    "region_code": "6172",
+    "region_name": "Singkawang",
+    "province_code": "61",
+    "province_name": "Kalimantan Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.68,
+    "poor_population": 26476,
+    "poverty_line": 647797,
+    "poverty": {
+      "poor_population_thousand": 26.48,
+      "poverty_rate_percent": 4.68,
+      "poverty_depth_index_p1": 0.674,
+      "poverty_severity_index_p2": 0.138,
+      "poverty_line_rp_per_capita_month": 647797
+    }
+  },
+  {
+    "region_code": "6104",
+    "region_name": "Ketapang",
+    "province_code": "61",
+    "province_name": "Kalimantan Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 8.99,
+    "poor_population": 72809,
+    "poverty_line": 585509,
+    "poverty": {
+      "poor_population_thousand": 72.81,
+      "poverty_rate_percent": 8.99,
+      "poverty_depth_index_p1": 1.227,
+      "poverty_severity_index_p2": 0.251,
+      "poverty_line_rp_per_capita_month": 585509
+    }
+  },
+  {
+    "region_code": "6271",
+    "region_name": "Palangka Raya",
+    "province_code": "62",
+    "province_name": "Kalimantan Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 3.53,
+    "poor_population": 17736,
+    "poverty_line": 719473,
+    "poverty": {
+      "poor_population_thousand": 17.74,
+      "poverty_rate_percent": 3.53,
+      "poverty_depth_index_p1": 0.58,
+      "poverty_severity_index_p2": 0.132,
+      "poverty_line_rp_per_capita_month": 719473
+    }
+  },
+  {
+    "region_code": "6202",
+    "region_name": "Sampit",
+    "province_code": "62",
+    "province_name": "Kalimantan Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.5,
+    "poor_population": 32516,
+    "poverty_line": 640985,
+    "poverty": {
+      "poor_population_thousand": 32.52,
+      "poverty_rate_percent": 5.5,
+      "poverty_depth_index_p1": 0.87,
+      "poverty_severity_index_p2": 0.198,
+      "poverty_line_rp_per_capita_month": 640985
+    }
+  },
+  {
+    "region_code": "6201",
+    "region_name": "Pangkalan Bun",
+    "province_code": "62",
+    "province_name": "Kalimantan Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.05,
+    "poor_population": 20692,
+    "poverty_line": 660607,
+    "poverty": {
+      "poor_population_thousand": 20.69,
+      "poverty_rate_percent": 4.05,
+      "poverty_depth_index_p1": 0.663,
+      "poverty_severity_index_p2": 0.151,
+      "poverty_line_rp_per_capita_month": 660607
+    }
+  },
+  {
+    "region_code": "6371",
+    "region_name": "Banjarmasin",
+    "province_code": "63",
+    "province_name": "Kalimantan Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.15,
+    "poor_population": 41453,
+    "poverty_line": 689716,
+    "poverty": {
+      "poor_population_thousand": 41.45,
+      "poverty_rate_percent": 4.15,
+      "poverty_depth_index_p1": 0.5,
+      "poverty_severity_index_p2": 0.101,
+      "poverty_line_rp_per_capita_month": 689716
+    }
+  },
+  {
+    "region_code": "6372",
+    "region_name": "Banjarbaru",
+    "province_code": "63",
+    "province_name": "Kalimantan Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 3.61,
+    "poor_population": 20726,
+    "poverty_line": 702729,
+    "poverty": {
+      "poor_population_thousand": 20.73,
+      "poverty_rate_percent": 3.61,
+      "poverty_depth_index_p1": 0.434,
+      "poverty_severity_index_p2": 0.087,
+      "poverty_line_rp_per_capita_month": 702729
+    }
+  },
+  {
+    "region_code": "6303",
+    "region_name": "Martapura",
+    "province_code": "63",
+    "province_name": "Kalimantan Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 2.53,
+    "poor_population": 24181,
+    "poverty_line": 624648,
+    "poverty": {
+      "poor_population_thousand": 24.18,
+      "poverty_rate_percent": 2.53,
+      "poverty_depth_index_p1": 0.321,
+      "poverty_severity_index_p2": 0.065,
+      "poverty_line_rp_per_capita_month": 624648
+    }
+  },
+  {
+    "region_code": "6472",
+    "region_name": "Samarinda",
+    "province_code": "64",
+    "province_name": "Kalimantan Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.34,
+    "poor_population": 51925,
+    "poverty_line": 900841,
+    "poverty": {
+      "poor_population_thousand": 51.92,
+      "poverty_rate_percent": 4.34,
+      "poverty_depth_index_p1": 0.746,
+      "poverty_severity_index_p2": 0.189,
+      "poverty_line_rp_per_capita_month": 900841
+    }
+  },
+  {
+    "region_code": "6471",
+    "region_name": "Balikpapan",
+    "province_code": "64",
+    "province_name": "Kalimantan Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 2.38,
+    "poor_population": 27959,
+    "poverty_line": 952812,
+    "poverty": {
+      "poor_population_thousand": 27.96,
+      "poverty_rate_percent": 2.38,
+      "poverty_depth_index_p1": 0.439,
+      "poverty_severity_index_p2": 0.111,
+      "poverty_line_rp_per_capita_month": 952812
+    }
+  },
+  {
+    "region_code": "6474",
+    "region_name": "Bontang",
+    "province_code": "64",
+    "province_name": "Kalimantan Timur",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 3.72,
+    "poor_population": 15977,
+    "poverty_line": 918165,
+    "poverty": {
+      "poor_population_thousand": 15.98,
+      "poverty_rate_percent": 3.72,
+      "poverty_depth_index_p1": 0.65,
+      "poverty_severity_index_p2": 0.164,
+      "poverty_line_rp_per_capita_month": 918165
+    }
+  },
+  {
+    "region_code": "6501",
+    "region_name": "Tanjung Selor",
+    "province_code": "65",
+    "province_name": "Kalimantan Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.65,
+    "poor_population": 15325,
+    "poverty_line": 849571,
+    "poverty": {
+      "poor_population_thousand": 15.32,
+      "poverty_rate_percent": 7.65,
+      "poverty_depth_index_p1": 1.002,
+      "poverty_severity_index_p2": 0.387,
+      "poverty_line_rp_per_capita_month": 849571
+    }
+  },
+  {
+    "region_code": "6571",
+    "region_name": "Tarakan",
+    "province_code": "65",
+    "province_name": "Kalimantan Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.1,
+    "poor_population": 14474,
+    "poverty_line": 929219,
+    "poverty": {
+      "poor_population_thousand": 14.47,
+      "poverty_rate_percent": 5.1,
+      "poverty_depth_index_p1": 0.673,
+      "poverty_severity_index_p2": 0.26,
+      "poverty_line_rp_per_capita_month": 929219
+    }
+  },
+  {
+    "region_code": "7171",
+    "region_name": "Manado",
+    "province_code": "71",
+    "province_name": "Sulawesi Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.23,
+    "poor_population": 38245,
+    "poverty_line": 593940,
+    "poverty": {
+      "poor_population_thousand": 38.24,
+      "poverty_rate_percent": 5.23,
+      "poverty_depth_index_p1": 0.891,
+      "poverty_severity_index_p2": 0.206,
+      "poverty_line_rp_per_capita_month": 593940
+    }
+  },
+  {
+    "region_code": "7172",
+    "region_name": "Bitung",
+    "province_code": "71",
+    "province_name": "Sulawesi Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.17,
+    "poor_population": 24338,
+    "poverty_line": 540910,
+    "poverty": {
+      "poor_population_thousand": 24.34,
+      "poverty_rate_percent": 6.17,
+      "poverty_depth_index_p1": 1.003,
+      "poverty_severity_index_p2": 0.231,
+      "poverty_line_rp_per_capita_month": 540910
+    }
+  },
+  {
+    "region_code": "7173",
+    "region_name": "Tomohon",
+    "province_code": "71",
+    "province_name": "Sulawesi Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.64,
+    "poor_population": 13907,
+    "poverty_line": 530304,
+    "poverty": {
+      "poor_population_thousand": 13.91,
+      "poverty_rate_percent": 5.64,
+      "poverty_depth_index_p1": 0.947,
+      "poverty_severity_index_p2": 0.218,
+      "poverty_line_rp_per_capita_month": 530304
+    }
+  },
+  {
+    "region_code": "7271",
+    "region_name": "Palu",
+    "province_code": "72",
+    "province_name": "Sulawesi Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 6.33,
+    "poor_population": 42743,
+    "poverty_line": 724831,
+    "poverty": {
+      "poor_population_thousand": 42.74,
+      "poverty_rate_percent": 6.33,
+      "poverty_depth_index_p1": 1.371,
+      "poverty_severity_index_p2": 0.378,
+      "poverty_line_rp_per_capita_month": 724831
+    }
+  },
+  {
+    "region_code": "7201",
+    "region_name": "Luwuk",
+    "province_code": "72",
+    "province_name": "Sulawesi Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.86,
+    "poor_population": 49867,
+    "poverty_line": 612357,
+    "poverty": {
+      "poor_population_thousand": 49.87,
+      "poverty_rate_percent": 7.86,
+      "poverty_depth_index_p1": 1.636,
+      "poverty_severity_index_p2": 0.451,
+      "poverty_line_rp_per_capita_month": 612357
+    }
+  },
+  {
+    "region_code": "7202",
+    "region_name": "Poso",
+    "province_code": "72",
+    "province_name": "Sulawesi Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 14.63,
+    "poor_population": 64114,
+    "poverty_line": 593611,
+    "poverty": {
+      "poor_population_thousand": 64.11,
+      "poverty_rate_percent": 14.63,
+      "poverty_depth_index_p1": 2.874,
+      "poverty_severity_index_p2": 0.793,
+      "poverty_line_rp_per_capita_month": 593611
+    }
+  },
+  {
+    "region_code": "7371",
+    "region_name": "Makassar",
+    "province_code": "73",
+    "province_name": "Sulawesi Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.71,
+    "poor_population": 111701,
+    "poverty_line": 583119,
+    "poverty": {
+      "poor_population_thousand": 111.7,
+      "poverty_rate_percent": 4.71,
+      "poverty_depth_index_p1": 0.907,
+      "poverty_severity_index_p2": 0.226,
+      "poverty_line_rp_per_capita_month": 583119
+    }
+  },
+  {
+    "region_code": "7372",
+    "region_name": "Parepare",
+    "province_code": "73",
+    "province_name": "Sulawesi Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.47,
+    "poor_population": 41888,
+    "poverty_line": 497085,
+    "poverty": {
+      "poor_population_thousand": 41.89,
+      "poverty_rate_percent": 5.47,
+      "poverty_depth_index_p1": 1.032,
+      "poverty_severity_index_p2": 0.257,
+      "poverty_line_rp_per_capita_month": 497085
+    }
+  },
+  {
+    "region_code": "7373",
+    "region_name": "Palopo",
+    "province_code": "73",
+    "province_name": "Sulawesi Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.3,
+    "poor_population": 55850,
+    "poverty_line": 482746,
+    "poverty": {
+      "poor_population_thousand": 55.85,
+      "poverty_rate_percent": 7.3,
+      "poverty_depth_index_p1": 1.311,
+      "poverty_severity_index_p2": 0.326,
+      "poverty_line_rp_per_capita_month": 482746
+    }
+  },
+  {
+    "region_code": "7471",
+    "region_name": "Kendari",
+    "province_code": "74",
+    "province_name": "Sulawesi Tenggara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 4.85,
+    "poor_population": 36532,
+    "poverty_line": 566278,
+    "poverty": {
+      "poor_population_thousand": 36.53,
+      "poverty_rate_percent": 4.85,
+      "poverty_depth_index_p1": 0.945,
+      "poverty_severity_index_p2": 0.227,
+      "poverty_line_rp_per_capita_month": 566278
+    }
+  },
+  {
+    "region_code": "7472",
+    "region_name": "Baubau",
+    "province_code": "74",
+    "province_name": "Sulawesi Tenggara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.17,
+    "poor_population": 30443,
+    "poverty_line": 497934,
+    "poverty": {
+      "poor_population_thousand": 30.44,
+      "poverty_rate_percent": 7.17,
+      "poverty_depth_index_p1": 1.323,
+      "poverty_severity_index_p2": 0.317,
+      "poverty_line_rp_per_capita_month": 497934
+    }
+  },
+  {
+    "region_code": "7401",
+    "region_name": "Kolaka",
+    "province_code": "74",
+    "province_name": "Sulawesi Tenggara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 10.96,
+    "poor_population": 48709,
+    "poverty_line": 478408,
+    "poverty": {
+      "poor_population_thousand": 48.71,
+      "poverty_rate_percent": 10.96,
+      "poverty_depth_index_p1": 1.928,
+      "poverty_severity_index_p2": 0.462,
+      "poverty_line_rp_per_capita_month": 478408
+    }
+  },
+  {
+    "region_code": "7571",
+    "region_name": "Gorontalo",
+    "province_code": "75",
+    "province_name": "Gorontalo",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.83,
+    "poor_population": 26038,
+    "poverty_line": 564957,
+    "poverty": {
+      "poor_population_thousand": 26.04,
+      "poverty_rate_percent": 5.83,
+      "poverty_depth_index_p1": 0.942,
+      "poverty_severity_index_p2": 0.212,
+      "poverty_line_rp_per_capita_month": 564957
+    }
+  },
+  {
+    "region_code": "7501",
+    "region_name": "Limboto",
+    "province_code": "75",
+    "province_name": "Gorontalo",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 16.42,
+    "poor_population": 68351,
+    "poverty_line": 475753,
+    "poverty": {
+      "poor_population_thousand": 68.35,
+      "poverty_rate_percent": 16.42,
+      "poverty_depth_index_p1": 2.394,
+      "poverty_severity_index_p2": 0.538,
+      "poverty_line_rp_per_capita_month": 475753
+    }
+  },
+  {
+    "region_code": "7602",
+    "region_name": "Mamuju",
+    "province_code": "76",
+    "province_name": "Sulawesi Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 7.5,
+    "poor_population": 36554,
+    "poverty_line": 513527,
+    "poverty": {
+      "poor_population_thousand": 36.55,
+      "poverty_rate_percent": 7.5,
+      "poverty_depth_index_p1": 1.268,
+      "poverty_severity_index_p2": 0.301,
+      "poverty_line_rp_per_capita_month": 513527
+    }
+  },
+  {
+    "region_code": "7605",
+    "region_name": "Majene",
+    "province_code": "76",
+    "province_name": "Sulawesi Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 13.32,
+    "poor_population": 33508,
+    "poverty_line": 461223,
+    "poverty": {
+      "poor_population_thousand": 33.51,
+      "poverty_rate_percent": 13.32,
+      "poverty_depth_index_p1": 2.124,
+      "poverty_severity_index_p2": 0.505,
+      "poverty_line_rp_per_capita_month": 461223
+    }
+  },
+  {
+    "region_code": "7604",
+    "region_name": "Polewali",
+    "province_code": "76",
+    "province_name": "Sulawesi Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 14.99,
+    "poor_population": 51785,
+    "poverty_line": 451714,
+    "poverty": {
+      "poor_population_thousand": 51.78,
+      "poverty_rate_percent": 14.99,
+      "poverty_depth_index_p1": 2.364,
+      "poverty_severity_index_p2": 0.562,
+      "poverty_line_rp_per_capita_month": 451714
+    }
+  },
+  {
+    "region_code": "8171",
+    "region_name": "Ambon",
+    "province_code": "81",
+    "province_name": "Maluku",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.23,
+    "poor_population": 40286,
+    "poverty_line": 863664,
+    "poverty": {
+      "poor_population_thousand": 40.29,
+      "poverty_rate_percent": 5.23,
+      "poverty_depth_index_p1": 1.119,
+      "poverty_severity_index_p2": 0.306,
+      "poverty_line_rp_per_capita_month": 863664
+    }
+  },
+  {
+    "region_code": "8172",
+    "region_name": "Tual",
+    "province_code": "81",
+    "province_name": "Maluku",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 19.69,
+    "poor_population": 34531,
+    "poverty_line": 742448,
+    "poverty": {
+      "poor_population_thousand": 34.53,
+      "poverty_rate_percent": 19.69,
+      "poverty_depth_index_p1": 3.681,
+      "poverty_severity_index_p2": 1.005,
+      "poverty_line_rp_per_capita_month": 742448
+    }
+  },
+  {
+    "region_code": "8101",
+    "region_name": "Masohi",
+    "province_code": "81",
+    "province_name": "Maluku",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 16.61,
+    "poor_population": 74818,
+    "poverty_line": 727296,
+    "poverty": {
+      "poor_population_thousand": 74.82,
+      "poverty_rate_percent": 16.61,
+      "poverty_depth_index_p1": 3.122,
+      "poverty_severity_index_p2": 0.852,
+      "poverty_line_rp_per_capita_month": 727296
+    }
+  },
+  {
+    "region_code": "8279",
+    "region_name": "Sofifi",
+    "province_code": "82",
+    "province_name": "Maluku Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.11,
+    "poor_population": 12363,
+    "poverty_line": 688893,
+    "poverty": {
+      "poor_population_thousand": 12.36,
+      "poverty_rate_percent": 5.11,
+      "poverty_depth_index_p1": 0.836,
+      "poverty_severity_index_p2": 0.194,
+      "poverty_line_rp_per_capita_month": 688893
+    }
+  },
+  {
+    "region_code": "8271",
+    "region_name": "Ternate",
+    "province_code": "82",
+    "province_name": "Maluku Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 3.14,
+    "poor_population": 12363,
+    "poverty_line": 741885,
+    "poverty": {
+      "poor_population_thousand": 12.36,
+      "poverty_rate_percent": 3.14,
+      "poverty_depth_index_p1": 0.532,
+      "poverty_severity_index_p2": 0.124,
+      "poverty_line_rp_per_capita_month": 741885
+    }
+  },
+  {
+    "region_code": "8272",
+    "region_name": "Tidore",
+    "province_code": "82",
+    "province_name": "Maluku Utara",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 5.58,
+    "poor_population": 10818,
+    "poverty_line": 649149,
+    "poverty": {
+      "poor_population_thousand": 10.82,
+      "poverty_rate_percent": 5.58,
+      "poverty_depth_index_p1": 0.893,
+      "poverty_severity_index_p2": 0.208,
+      "poverty_line_rp_per_capita_month": 649149
+    }
+  },
+  {
+    "region_code": "9202",
+    "region_name": "Manokwari",
+    "province_code": "92",
+    "province_name": "Papua Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 17.77,
+    "poor_population": 44898,
+    "poverty_line": 872551,
+    "poverty": {
+      "poor_population_thousand": 44.9,
+      "poverty_rate_percent": 17.77,
+      "poverty_depth_index_p1": 3.67,
+      "poverty_severity_index_p2": 1.039,
+      "poverty_line_rp_per_capita_month": 872551
+    }
+  },
+  {
+    "region_code": "9203",
+    "region_name": "Fakfak",
+    "province_code": "92",
+    "province_name": "Papua Barat",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 21.49,
+    "poor_population": 27794,
+    "poverty_line": 814381,
+    "poverty": {
+      "poor_population_thousand": 27.79,
+      "poverty_rate_percent": 21.49,
+      "poverty_depth_index_p1": 4.253,
+      "poverty_severity_index_p2": 1.205,
+      "poverty_line_rp_per_capita_month": 814381
+    }
+  },
+  {
+    "region_code": "9671",
+    "region_name": "Sorong",
+    "province_code": "96",
+    "province_name": "Papua Barat Daya",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 14.72,
+    "poor_population": 45571,
+    "poverty_line": 877640,
+    "poverty": {
+      "poor_population_thousand": 45.57,
+      "poverty_rate_percent": 14.72,
+      "poverty_depth_index_p1": 3.803,
+      "poverty_severity_index_p2": 1.447,
+      "poverty_line_rp_per_capita_month": 877640
+    }
+  },
+  {
+    "region_code": "9605",
+    "region_name": "Raja Ampat",
+    "province_code": "96",
+    "province_name": "Papua Barat Daya",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 17.23,
+    "poor_population": 24857,
+    "poverty_line": 780125,
+    "poverty": {
+      "poor_population_thousand": 24.86,
+      "poverty_rate_percent": 17.23,
+      "poverty_depth_index_p1": 4.301,
+      "poverty_severity_index_p2": 1.637,
+      "poverty_line_rp_per_capita_month": 780125
+    }
+  },
+  {
+    "region_code": "9171",
+    "region_name": "Jayapura",
+    "province_code": "91",
+    "province_name": "Papua",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 10.73,
+    "poor_population": 47986,
+    "poverty_line": 828663,
+    "poverty": {
+      "poor_population_thousand": 47.99,
+      "poverty_rate_percent": 10.73,
+      "poverty_depth_index_p1": 2.658,
+      "poverty_severity_index_p2": 0.866,
+      "poverty_line_rp_per_capita_month": 828663
+    }
+  },
+  {
+    "region_code": "9106",
+    "region_name": "Biak",
+    "province_code": "91",
+    "province_name": "Papua",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 22.61,
+    "poor_population": 44559,
+    "poverty_line": 678647,
+    "poverty": {
+      "poor_population_thousand": 44.56,
+      "poverty_rate_percent": 22.61,
+      "poverty_depth_index_p1": 5.315,
+      "poverty_severity_index_p2": 1.732,
+      "poverty_line_rp_per_capita_month": 678647
+    }
+  },
+  {
+    "region_code": "9301",
+    "region_name": "Merauke",
+    "province_code": "93",
+    "province_name": "Papua Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 10.25,
+    "poor_population": 35880,
+    "poverty_line": 611336,
+    "poverty": {
+      "poor_population_thousand": 35.88,
+      "poverty_rate_percent": 10.25,
+      "poverty_depth_index_p1": 2.325,
+      "poverty_severity_index_p2": 0.629,
+      "poverty_line_rp_per_capita_month": 611336
+    }
+  },
+  {
+    "region_code": "9304",
+    "region_name": "Asmat",
+    "province_code": "93",
+    "province_name": "Papua Selatan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 24.05,
+    "poor_population": 37991,
+    "poverty_line": 520768,
+    "poverty": {
+      "poor_population_thousand": 37.99,
+      "poverty_rate_percent": 24.05,
+      "poverty_depth_index_p1": 5.074,
+      "poverty_severity_index_p2": 1.372,
+      "poverty_line_rp_per_capita_month": 520768
+    }
+  },
+  {
+    "region_code": "9401",
+    "region_name": "Nabire",
+    "province_code": "94",
+    "province_name": "Papua Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 22.54,
+    "poor_population": 72554,
+    "poverty_line": 834191,
+    "poverty": {
+      "poor_population_thousand": 72.55,
+      "poverty_rate_percent": 22.54,
+      "poverty_depth_index_p1": 4.466,
+      "poverty_severity_index_p2": 1.218,
+      "poverty_line_rp_per_capita_month": 834191
+    }
+  },
+  {
+    "region_code": "9404",
+    "region_name": "Mimika",
+    "province_code": "94",
+    "province_name": "Papua Tengah",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 13.87,
+    "poor_population": 60462,
+    "poverty_line": 965044,
+    "poverty": {
+      "poor_population_thousand": 60.46,
+      "poverty_rate_percent": 13.87,
+      "poverty_depth_index_p1": 2.903,
+      "poverty_severity_index_p2": 0.792,
+      "poverty_line_rp_per_capita_month": 965044
+    }
+  },
+  {
+    "region_code": "9501",
+    "region_name": "Jayawijaya (Wamena)",
+    "province_code": "95",
+    "province_name": "Papua Pegunungan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 34.23,
+    "poor_population": 107942,
+    "poverty_line": 1086891,
+    "poverty": {
+      "poor_population_thousand": 107.94,
+      "poverty_rate_percent": 34.23,
+      "poverty_depth_index_p1": 6.299,
+      "poverty_severity_index_p2": 1.609,
+      "poverty_line_rp_per_capita_month": 1086891
+    }
+  },
+  {
+    "region_code": "9503",
+    "region_name": "Yahukimo",
+    "province_code": "95",
+    "province_name": "Papua Pegunungan",
+    "level": "Kota/Kabupaten",
+    "reference_year": 2024,
+    "source_name": "BPS Provinsi / Referensi Kalibrasi Kota-Kabupaten (2024)",
+    "poverty_rate": 35.44,
+    "poor_population": 114689,
+    "poverty_line": 1041604,
+    "poverty": {
+      "poor_population_thousand": 114.69,
+      "poverty_rate_percent": 35.44,
+      "poverty_depth_index_p1": 6.524,
+      "poverty_severity_index_p2": 1.667,
+      "poverty_line_rp_per_capita_month": 1041604
+    }
+  }
+]

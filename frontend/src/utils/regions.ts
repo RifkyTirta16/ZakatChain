@@ -1,3 +1,5 @@
+import { CITY_COORDS_BY_CODE, CITY_COORDS_BY_KEY } from './cityCoords';
+
 export const INDONESIA_REGIONS = {
   Aceh: ['Banda Aceh', 'Lhokseumawe', 'Langsa', 'Meulaboh'],
   'Sumatera Utara': ['Medan', 'Binjai', 'Pematangsiantar', 'Deli Serdang'],
@@ -138,3 +140,22 @@ export const getProvinceCoords = (
   }
   return null;
 };
+
+export const getRegionCoords = (
+  regionCode?: string | null,
+  regionName?: string | null,
+  provinceName?: string | null,
+  level?: string | null
+): [number, number] | null => {
+  const code = regionCode?.trim();
+  if (code && CITY_COORDS_BY_CODE[code]) {
+    return CITY_COORDS_BY_CODE[code];
+  }
+  if (level === 'Kota/Kabupaten' && regionName && provinceName) {
+    const key = `${provinceName.trim().toLowerCase()}::${regionName.trim().toLowerCase()}`;
+    if (CITY_COORDS_BY_KEY[key]) return CITY_COORDS_BY_KEY[key];
+  }
+  return getProvinceCoords(regionCode, regionName ?? provinceName) ?? getProvinceCoords(undefined, provinceName);
+};
+
+export { CITY_COORDS_BY_CODE, CITY_COORDS_BY_KEY };

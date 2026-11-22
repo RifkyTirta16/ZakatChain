@@ -17,7 +17,7 @@ import {
 import apiClient from '../utils/api';
 import { Badge, Button, Card, EmptyState, ErrorState, Skeleton, StatCard } from '../components/ui';
 import { formatIDR, formatNumber, formatPercent } from '../utils/format';
-import { getProvinceCoords } from '../utils/regions';
+import { getRegionCoords, INDONESIA_REGIONS } from '../utils/regions';
 import {
   ProvinceDetailCard,
   type RegionStatDetail,
@@ -25,17 +25,20 @@ import {
 import 'leaflet/dist/leaflet.css';
 
 type IndicatorMode = 'poverty' | 'priority' | 'depth';
+type ViewLevel = 'Provinsi' | 'Kota/Kabupaten';
+
+const PROVINCE_NAMES = Object.keys(INDONESIA_REGIONS);
 
 const INDONESIA_BOUNDS: LatLngBoundsExpression = [
   [-11.0, 94.5],
   [6.2, 141.3],
 ];
 
-const MapBoundsHandler = ({ resetSignal }: { resetSignal: number }) => {
+const MapBoundsHandler = ({ bounds }: { bounds: LatLngBoundsExpression }) => {
   const map = useMap();
   useEffect(() => {
-    map.fitBounds(INDONESIA_BOUNDS, { padding: [24, 24] });
-  }, [map, resetSignal]);
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 10 });
+  }, [map, bounds]);
   return null;
 };
 
@@ -56,6 +59,8 @@ const markerRadius = (poorPopulation: number | null | undefined, selected: boole
 };
 
 const PovertyMapping = () => {
+  const [viewLevel, setViewLevel] = useState<ViewLevel>('Provinsi');
+  const [provinceFilter, setProvinceFilter] = useState('');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -66,18 +71,24 @@ const PovertyMapping = () => {
   const [importError, setImportError] = useState('');
   const [importBusy, setImportBusy] = useState(false);
 
+  const activeProvinceParam = viewLevel === 'Kota/Kabupaten' && provinceFilter ? provinceFilter : undefined;
+
   const statsQuery = useQuery({
-    queryKey: ['mapping-stats'],
+    queryKey: ['mapping-stats', viewLevel, activeProvinceParam ?? ''],
     queryFn: async (): Promise<RegionStatDetail[]> => {
-      const { data } = await apiClient.get('/mapping/stats');
+      const { data } = await apiClient.get('/mapping/stats', {
+        params: { level: viewLevel, province: activeProvinceParam },
+      });
       return data;
     },
   });
 
   const recoQuery = useQuery({
-    queryKey: ['mapping-recommendations'],
+    queryKey: ['mapping-recommendations', viewLevel, activeProvinceParam ?? ''],
     queryFn: async (): Promise<{ region_code: string }[]> => {
-      const { data } = await apiClient.get('/mapping/recommendations');
+      const { data } = await apiClient.get('/mapping/recommendations', {
+        params: { level: viewLevel, province: activeProvinceParam },
+      });
       return data;
     },
   });
@@ -131,6 +142,38 @@ const PovertyMapping = () => {
     () => allStats.find((s) => s.region_code === selectedCode) || null,
     [allStats, selectedCode]
   );
+
+  const provinceCitiesQuery = useQuery({
+    queryKey: ['mapping-province-cities', selectedRegion?.province ?? ''],
+    enabled: viewLevel === 'Provinsi' && Boolean(selectedRegion?.province),
+    queryFn: async (): Promise<RegionStatDetail[]> => {
+      const { data } = await apiClient.get('/mapping/stats', {
+        params: { level: 'Kota/Kabupaten', province: selectedRegion?.province },
+      });
+      return data;
+    },
+  });
+
+  const activeMapBounds = useMemo<LatLngBoundsExpression>(() => {
+    if (viewLevel === 'Kota/Kabupaten' && activeProvinceParam && filteredStats.length > 0) {
+      const pts = filteredStats
+        .map((reg) => getRegionCoords(reg.region_code, reg.region, reg.province, reg.level))
+        .filter((c): c is [number, number] => Boolean(c));
+      if (pts.length > 0) {
+        return pts as unknown as LatLngBoundsExpression;
+      }
+    }
+    return INDONESIA_BOUNDS;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewLevel, activeProvinceParam, filteredStats.length, mapResetTick]);
+
+  const unitLabel = viewLevel === 'Provinsi' ? 'provinsi' : 'kota/kab.';
+
+  const switchLevel = (nextLevel: ViewLevel) => {
+    setViewLevel(nextLevel);
+    setSelectedCode(null);
+    if (nextLevel === 'Provinsi') setProvinceFilter('');
+  };
 
   const isLoading = statsQuery.isLoading || recoQuery.isLoading;
   const error = statsQuery.error || recoQuery.error;
@@ -266,25 +309,25 @@ const PovertyMapping = () => {
         </div>
       )}
 
-      {/* Ringkasan Nasional */}
+      {/* Ringkasan Wilayah Aktif */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           label="Cakupan Wilayah"
-          value={`${allStats.length} provinsi`}
-          sublabel="Seluruh provinsi terdaftar"
+          value={`${allStats.length} ${unitLabel}`}
+          sublabel={activeProvinceParam ? `Filter ${activeProvinceParam}` : `Seluruh ${unitLabel} terdaftar`}
           icon={<Globe size={18} />}
           tone="emerald"
         />
         <StatCard
           label="Populasi Miskin"
           value={`${formatNumber(summary.totalPoor)} jiwa`}
-          sublabel="Akumulasi penduduk miskin"
+          sublabel={`Akumulasi pada ${unitLabel} aktif`}
           icon={<Users size={18} />}
           tone="forest"
         />
         <StatCard
           label="Prioritas Kritis"
-          value={`${summary.criticalCount} provinsi`}
+          value={`${summary.criticalCount} ${unitLabel}`}
           sublabel="Skor prioritas >= 55"
           icon={<AlertTriangle size={18} />}
           tone="danger"
@@ -298,14 +341,54 @@ const PovertyMapping = () => {
         />
       </section>
 
-      {/* Toolbar Filter & Mode Warna */}
-      <Card className="p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* Toolbar Filter, Level Wilayah & Mode Warna */}
+      <Card className="p-3.5 sm:p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          <div className="inline-flex rounded-xl border border-slate-200 bg-cream/60 p-0.5 shrink-0" role="group" aria-label="Level Peta">
+            <button
+              type="button"
+              onClick={() => switchLevel('Provinsi')}
+              className={`px-3 py-1.5 rounded-[10px] text-xs font-semibold transition-colors ${
+                viewLevel === 'Provinsi' ? 'bg-primary text-white shadow-sm' : 'text-forest-dark hover:bg-mint/50'
+              }`}
+            >
+              Provinsi (38)
+            </button>
+            <button
+              type="button"
+              onClick={() => switchLevel('Kota/Kabupaten')}
+              className={`px-3 py-1.5 rounded-[10px] text-xs font-semibold transition-colors ${
+                viewLevel === 'Kota/Kabupaten' ? 'bg-primary text-white shadow-sm' : 'text-forest-dark hover:bg-mint/50'
+              }`}
+            >
+              Kota/Kabupaten
+            </button>
+          </div>
+
+          {viewLevel === 'Kota/Kabupaten' && (
+            <select
+              aria-label="Filter Provinsi"
+              className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs sm:text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-medium"
+              value={provinceFilter}
+              onChange={(e) => {
+                setProvinceFilter(e.target.value);
+                setSelectedCode(null);
+              }}
+            >
+              <option value="">Semua Provinsi (114 Kota/Kab.)</option>
+              {PROVINCE_NAMES.map((prov) => (
+                <option key={prov} value={prov}>
+                  {prov}
+                </option>
+              ))}
+            </select>
+          )}
+
           <div className="relative flex-1 min-w-[200px] max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             <input
               type="text"
-              placeholder="Cari provinsi atau kode BPS…"
+              placeholder={viewLevel === 'Provinsi' ? 'Cari provinsi atau kode BPS…' : 'Cari kota/kabupaten atau kode…'}
               className="w-full bg-cream/60 border border-slate-200 pl-9 pr-3 py-2 rounded-xl text-xs sm:text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/20"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -338,8 +421,12 @@ const PovertyMapping = () => {
 
         <button
           type="button"
-          onClick={() => setMapResetTick((v) => v + 1)}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-forest-dark hover:bg-mint/50 transition-colors self-start md:self-auto"
+          onClick={() => {
+            setProvinceFilter('');
+            setSelectedCode(null);
+            setMapResetTick((v) => v + 1);
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-forest-dark hover:bg-mint/50 transition-colors self-start lg:self-auto"
         >
           <RotateCcw size={13} /> Reset Peta Indonesia
         </button>
@@ -362,7 +449,7 @@ const PovertyMapping = () => {
                 attribution="&copy; OpenStreetMap"
               />
               {mapOrderedStats.map((reg) => {
-                const coords = getProvinceCoords(reg.region_code, reg.region);
+                const coords = getRegionCoords(reg.region_code, reg.region, reg.province, reg.level);
                 if (!coords) return null;
                 const isSelected = selectedCode === reg.region_code;
                 const p1 = Number(reg.indicators?.poverty_depth_index_p1 ?? 0);
@@ -405,7 +492,7 @@ const PovertyMapping = () => {
                   </CircleMarker>
                 );
               })}
-              <MapBoundsHandler resetSignal={mapResetTick} />
+              <MapBoundsHandler bounds={activeMapBounds} />
             </MapContainer>
 
             {/* Legenda Peta Tersinkronisasi */}
@@ -484,6 +571,13 @@ const PovertyMapping = () => {
               region={selectedRegion}
               canDistribute={canImport}
               onClose={() => setSelectedCode(null)}
+              cities={viewLevel === 'Provinsi' ? provinceCitiesQuery.data : undefined}
+              loadingCities={viewLevel === 'Provinsi' && provinceCitiesQuery.isLoading}
+              onSelectCity={(city) => {
+                setViewLevel('Kota/Kabupaten');
+                setProvinceFilter(city.province);
+                setSelectedCode(city.region_code);
+              }}
             />
           ) : (
             <Card className="rounded-3xl p-6 bg-white border border-slate-200/80 shadow-card text-center space-y-3">
@@ -492,7 +586,7 @@ const PovertyMapping = () => {
               </div>
               <h3 className="text-sm font-extrabold text-forest-dark">Pilih Wilayah pada Peta</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Klik titik provinsi di peta atau pilih dari daftar prioritas untuk memeriksa garis kemiskinan, kedalaman (P1/P2), pendidikan, dan ketenagakerjaan.
+                Klik titik {unitLabel} di peta atau pilih dari daftar prioritas untuk memeriksa garis kemiskinan, kedalaman (P1/P2), serta penyaluran zakat.
               </p>
               {topThreeRegions.length > 0 && (
                 <div className="pt-2 flex flex-wrap justify-center gap-1.5">

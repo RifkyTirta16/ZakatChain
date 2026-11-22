@@ -530,6 +530,21 @@ test('GET /api/mapping/region/:region normalizes province names and strips PII f
     const amilRows = amilRes.result.body as any[];
     assert.equal(amilRows.length, 1);
     assert.equal(amilRows[0].recipient_name, 'Budi Santoso');
+
+    // City-specific query matches Bandung cleanly and excludes Bogor
+    const bandungRes = mockResponse();
+    await getRegionalDistribution(
+      req(db, { params: { region: 'Bandung' } as any, user: { id: 2, username: 'u', role: 'USER' } } as any),
+      bandungRes.response
+    );
+    assert.equal((bandungRes.result.body as any[]).length, 1);
+
+    const bogorRes = mockResponse();
+    await getRegionalDistribution(
+      req(db, { params: { region: 'Jawa Barat, Bogor' } as any, user: { id: 2, username: 'u', role: 'USER' } } as any),
+      bogorRes.response
+    );
+    assert.equal((bogorRes.result.body as any[]).length, 0);
   } finally {
     await db.close();
   }

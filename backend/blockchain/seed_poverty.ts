@@ -8,20 +8,30 @@ import { PovertyImportSchema } from './utils/validation.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_FILE = path.join(__dirname, 'data', 'poverty_provinces_38.json');
+const PROVINCES_FILE = path.join(__dirname, 'data', 'poverty_provinces_38.json');
+const CITIES_FILE = path.join(__dirname, 'data', 'poverty_cities.json');
 
-async function seedPovertyData() {
-  const raw = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+function loadAndValidate(filePath: string) {
+  const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   const parsed = PovertyImportSchema.safeParse({ data: raw });
   if (!parsed.success) {
-    console.error('Validation failed for poverty dataset:', parsed.error.issues);
+    console.error(`Validation failed for ${path.basename(filePath)}:`, parsed.error.issues);
     process.exit(1);
   }
+  return parsed.data.data;
+}
+
+async function seedPovertyData() {
+  const provinceRows = loadAndValidate(PROVINCES_FILE);
+  const cityRows = fs.existsSync(CITIES_FILE) ? loadAndValidate(CITIES_FILE) : [];
 
   const db = await initDb();
   try {
-    const count = await upsertPovertyRows(db, parsed.data.data);
-    console.log(`Seeded ${count} province poverty records into poverty_stats.`);
+    const provCount = await upsertPovertyRows(db, provinceRows);
+    const cityCount = cityRows.length > 0 ? await upsertPovertyRows(db, cityRows) : 0;
+    console.log(
+      `Seeded ${provCount} province and ${cityCount} city/kabupaten poverty records into poverty_stats.`
+    );
   } finally {
     await db.close();
   }

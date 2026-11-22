@@ -69,10 +69,21 @@ interface ProvinceDetailCardProps {
   region: RegionStatDetail;
   canDistribute?: boolean;
   onClose: () => void;
+  cities?: RegionStatDetail[];
+  loadingCities?: boolean;
+  onSelectCity?: (city: RegionStatDetail) => void;
 }
 
-export const ProvinceDetailCard = ({ region, canDistribute = false, onClose }: ProvinceDetailCardProps) => {
+export const ProvinceDetailCard = ({
+  region,
+  canDistribute = false,
+  onClose,
+  cities,
+  loadingCities = false,
+  onSelectCity,
+}: ProvinceDetailCardProps) => {
   const ind = region.indicators;
+  const isCity = region.level === 'Kota/Kabupaten';
   return (
     <Card className="rounded-3xl p-5 sm:p-6 bg-white border border-primary/30 shadow-card space-y-4">
       <div className="flex justify-between items-start gap-2 pb-3 border-b border-slate-100">
@@ -83,7 +94,7 @@ export const ProvinceDetailCard = ({ region, canDistribute = false, onClose }: P
           <div className="min-w-0">
             <h2 className="text-lg font-extrabold text-forest-dark leading-tight truncate">{region.region}</h2>
             <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-0.5">
-              {region.level || 'Provinsi'} · Kode BPS {region.region_code}
+              {isCity ? `${region.province} · Kode ${region.region_code}` : `${region.level || 'Provinsi'} · Kode BPS ${region.region_code}`}
             </p>
           </div>
         </div>
@@ -157,6 +168,42 @@ export const ProvinceDetailCard = ({ region, canDistribute = false, onClose }: P
           </span>
         </div>
       </div>
+
+      {/* Rincian Kota/Kabupaten (Saat Melihat Level Provinsi) */}
+      {!isCity && (loadingCities || (cities && cities.length > 0)) && (
+        <div className="pt-2.5 border-t border-slate-200/80 space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <p className="font-bold uppercase tracking-wider text-[11px] text-slate-500">
+              Kota &amp; Kabupaten ({cities?.length ?? 0})
+            </p>
+            <span className="text-[10px] text-slate-500">Klik untuk detail</span>
+          </div>
+          {loadingCities ? (
+            <p className="text-[11px] text-slate-500 py-1">Memuat rincian kota/kabupaten…</p>
+          ) : (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+              {(cities ?? []).map((city) => (
+                <button
+                  key={city.region_code}
+                  type="button"
+                  onClick={() => onSelectCity?.(city)}
+                  className="w-full flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 hover:bg-mint/60 border border-slate-200/70 transition-colors text-left"
+                >
+                  <div className="min-w-0">
+                    <span className="font-semibold text-forest-dark block truncate">{city.region}</span>
+                    <span className="text-[10px] text-slate-500">
+                      {formatPercent(city.poverty_rate, 2)} miskin · {formatIDR(city.total_distributed)}
+                    </span>
+                  </div>
+                  <Badge tone={city.status === 'CRITICAL' ? 'coral' : city.status === 'WARNING' ? 'gold' : 'success'}>
+                    {city.priority_score}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Indikator Sosial Ekonomi Lanjutan (P1/P2, Pendidikan, Pekerjaan, Sanitasi) */}
       {ind && (

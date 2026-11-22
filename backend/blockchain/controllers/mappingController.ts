@@ -50,18 +50,67 @@ const REGION_ALIASES: Record<string, string> = {
   kepri: 'kepulauan riau',
 };
 
+const REGION_SPLIT_REGEX = /[,\-–—|]/;
+
+const stripCityPrefix = (value: string | null | undefined): string => {
+  if (!value) return '';
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^(kota|kabupaten|kab\.?)\s+/i, '')
+    .trim();
+};
+
 const normalizeRegionName = (value: string | null | undefined): string => {
   if (!value) return '';
-  const head = value.split(/[,\-–—|]/)[0]?.trim().toLowerCase() ?? '';
+  const head = value.split(REGION_SPLIT_REGEX)[0]?.trim().toLowerCase() ?? '';
   return REGION_ALIASES[head] ?? head;
+};
+
+const matchCityDistribution = (
+  rowRegion: string | null | undefined,
+  cityName: string,
+  provinceName: string,
+  regionCode: string
+): boolean => {
+  const raw = (rowRegion ?? '').trim().toLowerCase();
+  if (!raw) return false;
+  const codeTarget = regionCode.trim().toLowerCase();
+  if (raw === codeTarget) return true;
+
+  const cityTarget = stripCityPrefix(cityName);
+  const provTarget = normalizeRegionName(provinceName);
+  const parts = (rowRegion ?? '').split(REGION_SPLIT_REGEX).map((s) => s.trim()).filter(Boolean);
+  const firstPart = parts[0];
+  if (!firstPart) return false;
+
+  if (parts.length === 1) {
+    const token = stripCityPrefix(firstPart);
+    if (token !== cityTarget) return false;
+    // Avoid attributing ambiguous province-only strings (e.g., "Jambi", "Gorontalo") to capital cities unless explicit prefix
+    return cityTarget !== provTarget || /^kota\s+/i.test(firstPart);
+  }
+
+  const headProv = normalizeRegionName(firstPart);
+  const tailMatchesCity = parts.slice(1).some((seg) => stripCityPrefix(seg) === cityTarget);
+  if (headProv === provTarget && tailMatchesCity) return true;
+
+  const secondPart = parts[1];
+  return (
+    cityTarget !== provTarget &&
+    stripCityPrefix(firstPart) === cityTarget &&
+    normalizeRegionName(secondPart) === provTarget
+  );
 };
 
 const aggregateRegionDistribution = (
   rows: EffectiveDistributionRow[],
   regionName: string,
   provinceName: string,
-  regionCode: string
+  regionCode: string,
+  level?: string | null
 ): { total_distributed: number; total_reports: number } => {
+  const isCityLevel = (level ?? 'Provinsi') === 'Kota/Kabupaten';
   const targets = new Set(
     [normalizeRegionName(regionName), normalizeRegionName(provinceName), regionCode.trim().toLowerCase()].filter(Boolean)
   );
@@ -70,7 +119,10 @@ const aggregateRegionDistribution = (
   for (const row of rows) {
     const raw = (row.region ?? '').trim().toLowerCase();
     const norm = normalizeRegionName(row.region);
-    if (targets.has(raw) || targets.has(norm)) {
+    const isMatch = isCityLevel
+      ? matchCityDistribution(row.region, regionName, provinceName, regionCode)
+      : targets.has(raw) || targets.has(norm);
+    if (isMatch) {
       total_distributed += Number(row.amount) || 0;
       matchedTxIds.add(row.tx_id);
     }
@@ -102,7 +154,7 @@ const parseIndicators = (raw: string | null | undefined): Record<string, unknown
 };
 
 const computeRegionMetrics = (p: PovertyRow, distributionRows: EffectiveDistributionRow[]) => {
-  const dist = aggregateRegionDistribution(distributionRows, p.region_name, p.province_name, p.region_code);
+  const dist = aggregateRegionDistribution(distributionRows, p.region_name, p.province_name, p.region_code, p.level);
   const indicators = parseIndicators(p.indicators_json);
   const rawP1 = indicators?.poverty_depth_index_p1;
   const p1 = typeof rawP1 === 'number' && Number.isFinite(rawP1) ? rawP1 : null;
@@ -150,12 +202,50 @@ const FALLBACK_POVERTY_STATS: PovertyRow[] = [
   { region_code: '53', region_name: 'Nusa Tenggara Timur', province_name: 'Nusa Tenggara Timur', poverty_rate: 18.6, poor_population: 1088780 },
 ];
 
+type LevelFilter = 'Provinsi' | 'Kota/Kabupaten' | 'all';
+
+const parseLevelFilter = (raw: unknown): LevelFilter => {
+  if (typeof raw !== 'string') return 'Provinsi';
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === 'all' || normalized === 'semua') return 'all';
+  if (normalized === 'kota/kabupaten' || normalized === 'kota' || normalized === 'city') return 'Kota/Kabupaten';
+  return 'Provinsi';
+};
+
+const queryPovertyRows = async (
+  db: Database,
+  req: Request,
+  allowFallback = true
+): Promise<PovertyRow[]> => {
+  const level = parseLevelFilter(req.query.level);
+  const rawProvince = typeof req.query.province === 'string' ? req.query.province.trim() : '';
+
+  const allDbRows = (await (db as any).all(
+    level === 'all'
+      ? 'SELECT * FROM poverty_stats ORDER BY region_code ASC'
+      : "SELECT * FROM poverty_stats WHERE COALESCE(level, 'Provinsi') = ? ORDER BY region_code ASC",
+    level === 'all' ? [] : [level]
+  )) as PovertyRow[];
+
+  const rows =
+    allDbRows.length === 0 && allowFallback && level === 'Provinsi' && !rawProvince
+      ? FALLBACK_POVERTY_STATS
+      : allDbRows;
+
+  if (!rawProvince) return rows;
+  const provTarget = normalizeRegionName(rawProvince);
+  const codePrefix = /^\d{2}$/.test(rawProvince) ? rawProvince : null;
+  return rows.filter((row) => {
+    if (codePrefix && row.region_code.startsWith(codePrefix)) return true;
+    return normalizeRegionName(row.province_name) === provTarget;
+  });
+};
+
 export const getRegionStats = async (req: Request, res: Response) => {
   const { db } = req;
   try {
     const distributionStats = await fetchEffectiveDistributions(db);
-    const povertyStats = (await (db as any).all('SELECT * FROM poverty_stats ORDER BY region_code ASC')) as PovertyRow[];
-    const dataToProcess = povertyStats.length === 0 ? FALLBACK_POVERTY_STATS : povertyStats;
+    const dataToProcess = await queryPovertyRows(db, req);
 
     const finalStats = dataToProcess.map((p) => {
       const { _p1: _, _scoreNum: __, ...publicFields } = computeRegionMetrics(p, distributionStats);
@@ -229,8 +319,10 @@ export const getRegionalDistribution = async (req: Request, res: Response) => {
   const requesterRole = (req as AuthRequest).user?.role ?? 'USER';
   const canViewPii = ['AMIL', 'AUDITOR', 'ADMIN'].includes(requesterRole);
 
+  const targetParts = region.split(REGION_SPLIT_REGEX).map((s) => s.trim()).filter(Boolean);
   const normalizedTarget = normalizeRegionName(region);
   const rawTarget = region.trim().toLowerCase();
+  const targetCity = targetParts.length >= 2 ? stripCityPrefix(targetParts[1]) : stripCityPrefix(region);
 
   try {
     const rows = await (db as any).all(
@@ -248,9 +340,23 @@ export const getRegionalDistribution = async (req: Request, res: Response) => {
 
     const matched = rows
       .filter((row: any) => {
-        const candidateRaw = String(row.matched_region ?? '').trim().toLowerCase();
-        const candidateNorm = normalizeRegionName(row.matched_region);
-        return candidateRaw === rawTarget || (normalizedTarget && candidateNorm === normalizedTarget);
+        const candidateStr = String(row.matched_region ?? '');
+        const candidateRaw = candidateStr.trim().toLowerCase();
+        if (candidateRaw === rawTarget) return true;
+
+        const candidateParts = candidateStr.split(REGION_SPLIT_REGEX).map((s) => s.trim()).filter(Boolean);
+        const candidateProv = normalizeRegionName(candidateStr);
+
+        if (targetParts.length >= 2) {
+          return (
+            Boolean(normalizedTarget) &&
+            candidateProv === normalizedTarget &&
+            candidateParts.slice(1).some((seg) => stripCityPrefix(seg) === targetCity)
+          );
+        }
+
+        if (normalizedTarget && candidateProv === normalizedTarget) return true;
+        return Boolean(targetCity) && candidateParts.slice(1).some((seg) => stripCityPrefix(seg) === targetCity);
       })
       .map((row: any) => {
         const base = {
@@ -284,7 +390,7 @@ export const getRegionalDistribution = async (req: Request, res: Response) => {
 export const getRecommendations = async (req: Request, res: Response) => {
   const { db } = req;
   try {
-    const povertyStats = (await (db as any).all('SELECT * FROM poverty_stats ORDER BY region_code ASC')) as PovertyRow[];
+    const povertyStats = await queryPovertyRows(db, req, false);
     const distributionStats = await fetchEffectiveDistributions(db);
 
     const recommendations = povertyStats

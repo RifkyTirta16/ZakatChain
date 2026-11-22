@@ -671,6 +671,38 @@ test('integration: mapping stats calibrate CRITICAL/WARNING/STABLE and aggregate
           poverty_rate: 3.72,
           poverty: { poor_population_thousand: 173.24, poverty_depth_index_p1: 0.56, poverty_line_rp_per_capita_month: 607847 },
         },
+        {
+          region_code: '3273',
+          region_name: 'Bandung',
+          province_name: 'Jawa Barat',
+          level: 'Kota/Kabupaten',
+          poverty_rate: 4.07,
+          poor_population: 219000,
+        },
+        {
+          region_code: '3271',
+          region_name: 'Bogor',
+          province_name: 'Jawa Barat',
+          level: 'Kota/Kabupaten',
+          poverty_rate: 6.46,
+          poor_population: 219000,
+        },
+        {
+          region_code: '5171',
+          region_name: 'Denpasar',
+          province_name: 'Bali',
+          level: 'Kota/Kabupaten',
+          poverty_rate: 2.68,
+          poor_population: 31180,
+        },
+        {
+          region_code: '5105',
+          region_name: 'Klungkung',
+          province_name: 'Bali',
+          level: 'Kota/Kabupaten',
+          poverty_rate: 4.91,
+          poor_population: 24250,
+        },
       ],
     });
     assert.equal(importRes.status, 200, importRes.text);
@@ -685,18 +717,52 @@ test('integration: mapping stats calibrate CRITICAL/WARNING/STABLE and aggregate
       "INSERT INTO transactions (recipient_name, amount, category, region, audit_hash, proof_status, blockchain_status) VALUES ('Revoked Uji', 5000000, 'Pendidikan', 'Bali, Klungkung', '0x222', 'APPROVED', 'REVOKED')"
     );
     await db.run(
-      "INSERT INTO transactions (recipient_name, amount, category, region, audit_hash, proof_status, blockchain_status) VALUES ('Rejected Uji', 4000000, 'Kesehatan', 'Jawa Barat, Bogor', '0x333', 'REJECTED', 'PENDING_BLOCKCHAIN')"
+      "INSERT INTO transactions (recipient_name, amount, category, region, audit_hash, proof_status, blockchain_status) VALUES ('Rejected Uji', 400000, 'Kesehatan', 'Jawa Barat, Bogor', '0x333', 'REJECTED', 'PENDING_BLOCKCHAIN')"
     );
     await db.close();
 
+    // Default /mapping/stats stays province-level without double-counting cities
     const statsRes = await request(server.base, 'GET', '/api/mapping/stats', { token: amilJwt });
     assert.equal(statsRes.status, 200);
+    assert.equal(statsRes.body.length, 3);
     const byCode = Object.fromEntries(statsRes.body.map((r: any) => [r.region_code, r]));
     assert.equal(byCode['95'].status, 'CRITICAL');
     assert.equal(byCode['32'].status, 'WARNING');
     assert.equal(byCode['51'].status, 'STABLE');
     assert.equal(byCode['32'].total_distributed, 700000);
     assert.equal(byCode['51'].total_distributed, 300000);
+
+    // City-level filtering & exact city distribution matching
+    const cityJabarRes = await request(
+      server.base,
+      'GET',
+      '/api/mapping/stats?level=Kota/Kabupaten&province=Jawa%20Barat',
+      { token: amilJwt }
+    );
+    assert.equal(cityJabarRes.status, 200);
+    assert.equal(cityJabarRes.body.length, 2);
+    const cityByCode = Object.fromEntries(cityJabarRes.body.map((r: any) => [r.region_code, r]));
+    assert.equal(cityByCode['3273'].level, 'Kota/Kabupaten');
+    assert.equal(cityByCode['3273'].total_distributed, 700000);
+    assert.equal(cityByCode['3271'].total_distributed, 0);
+
+    const cityBaliRecoRes = await request(
+      server.base,
+      'GET',
+      '/api/mapping/recommendations?level=Kota/Kabupaten&province=Bali',
+      { token: amilJwt }
+    );
+    assert.equal(cityBaliRecoRes.status, 200);
+    assert.equal(cityBaliRecoRes.body.length, 2);
+    const baliCityStatsRes = await request(
+      server.base,
+      'GET',
+      '/api/mapping/stats?level=Kota/Kabupaten&province=Bali',
+      { token: amilJwt }
+    );
+    const baliByCode = Object.fromEntries(baliCityStatsRes.body.map((r: any) => [r.region_code, r]));
+    assert.equal(baliByCode['5171'].total_distributed, 300000);
+    assert.equal(baliByCode['5105'].total_distributed, 0);
   } finally {
     await server.close();
   }
