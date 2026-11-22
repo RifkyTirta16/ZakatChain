@@ -1,5 +1,10 @@
 # Session Log
 
+## 2026-11-22 - Paket 4 Kota/Kabupaten, Konsolidasi Kontrak, Tes Unit Frontend & Merge ke `main`
+- Konsolidasi kontrak (`DEC-007`): hapus workspace lama `contracts/` & direktori kosong `backend/contracts/`, menyisakan `blockchain/` sebagai satu-satunya workspace kanonik; perbarui `AGENTS.md`, `DECISIONS.md`, dan `agent-memory/DECISIONS.md`.
+- Paket 4 Kota/Kabupaten: buat dataset 114 Kota/Kabupaten terkalibrasi (`backend/blockchain/data/poverty_cities.json`), perbarui `seed_poverty.ts`, tambah filter `?level=`/`?province=` & pencocokan kota presisi di `mappingController.ts`, tambah `cityCoords.ts`/`getRegionCoords` di `regions.ts`, serta antarmuka toggle `Provinsi (38)` / `Kota/Kabupaten` + drilldown di `PovertyMapping.tsx` & `ProvinceDetailCard.tsx`.
+- Suite tes unit frontend: ekstrak logika zakat murni ke `frontend/src/utils/zakat.ts`, tambah `frontend/tsconfig.test.json` + 4 berkas tes di `frontend/tests/*.test.ts` (`14/14` passing via `npm test` tanpa dependency tambahan).
+
 ## 2026-11-22 - Audit Menyeluruh & Perbaikan Paket 1–3 (`fix/audit-packages-1-2-3`)
 - Paket 1 (Backend, Chain Signer & Keamanan): tambah `BLOCKCHAIN_PRIVATE_KEY` lokal & `PAYMENT_WEBHOOK_SECRET` di `backend/.env`, perbaiki `CampaignSchema` (`deadline: null`), blokir `proofController` (`APPROVED` tanpa `proof_url` -> 409), normalkan wilayah + strip PII di `mappingController`, hapus `donor_id`/`payment_reference` publik di `campaignController`, tahan trace `PENDING` di `donationController`, isolasi upload test di `os.tmpdir()`, dan tambah `GET /api/public/network` + cache 5s `probeNetworkStatus` (`backend/blockchain/*`).
 - Paket 2 (DB Hygiene & Konsistensi KPI): perbaiki data dummy (`campaigns` #1 + 2 kampanye aktif baru, 4 `mustahik`, koreksi label transaksi, status `REJECTED` jujur pada `#3`, penyeimbangan donasi -> `+Rp 9.350.000 BALANCED`), seragamkan `AmilHome`/`AuditorHome`/`StatCard` (tanpa elipsis)/`ImpactPanel`, dan migrasikan `EvidenceGraph` ke `useQuery` (`frontend/src/wagmiConfig.ts` cache 60s).

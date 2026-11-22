@@ -49,8 +49,8 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/seed.ts           seed 5 transaksi, TIDAK membuat user
 - backend/blockchain/seed_test_users.ts seed 4 akun uji per role (dev/test saja)
 - backend/blockchain/seed_admin.ts     CLI provisioning akun ADMIN awal (aman untuk produksi)
-- backend/blockchain/seed_poverty.ts   impor data kemiskinan 38 provinsi ke SQLite (dari data/poverty_provinces_38.json)
-- backend/blockchain/data/             dataset referensi statis (poverty_provinces_38.json)
+- backend/blockchain/seed_poverty.ts   impor data kemiskinan 38 provinsi + 114 kota/kabupaten ke SQLite
+- backend/blockchain/data/             dataset referensi statis (poverty_provinces_38.json, poverty_cities.json)
 - backend/database.sqlite              DB aktif (+ -shm/-wal: jangan dihapus manual)
 - backend/uploads/                     file bukti (terproteksi AMIL/AUDITOR/ADMIN via /uploads)
 - backend/.env                         RAHASIA. Dilarang dibaca/dicetak nilainya.
@@ -65,7 +65,8 @@ Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + wag
                              NewDistributionRecord, OnChainExplorer, EvidenceGraph, PovertyMapping,
                              PublicVerify, anomalies/, audit/, export/, proofs/, reconciliation/
 - frontend/src/components/   Analytics, PaymentModal, auth/, dashboard/, ethereum/, layout/, mapping/, ui/
-- frontend/src/utils/        api.ts (axios), format.ts, regions.ts, status.ts
+- frontend/src/utils/        api.ts (axios), format.ts, regions.ts, cityCoords.ts, zakat.ts, status.ts
+- frontend/tests/            suite tes unit frontend (node:test + tsconfig.test.json, npm test)
 - frontend/src/assets/       zakatchain-logo.png (mark logo geometris ETH)
 - frontend/tailwind.config.js  token desain (lihat docs/design/DESIGN_SYSTEM.md & DESIGN.md)
 
@@ -111,10 +112,10 @@ payments, payment_events, anomalies, audit_logs, reconciliation_logs, poverty_st
 - Sebelum menambah dependency: sebut alasan, cek ukuran dan maintainer, minta persetujuan.
 
 ## 7. Masalah yang sudah diketahui (jangan diperbaiki diam-diam, laporkan dulu)
-- Workspace kontrak sudah terkonsolidasi ke `blockchain/` (workspace lama `contracts/` & `backend/contracts/` sudah dihapus).
-- Frontend belum punya suite tes otomatis.
+- Workspace kontrak sudah terkonsolidasi ke `blockchain/` (workspace lama `contracts/` & `backend/contracts/` sudah dihapus per `DEC-007`).
+- Frontend telah memiliki suite tes unit TypeScript via Node `node:test` (`cd frontend && npm test`); pengujian interaksi UI React penuh tetap mengandalkan Playwright/browser verifier.
 - paymentRoutes masih menjaga alias endpoint pembuat sesi (`generate`/`session`/`create`) dan legacy `/api/payment/generate` untuk kompatibilitas.
-- Data kemiskinan `poverty_stats` di database baru berlevel 38 Provinsi; rincian Kota/Kabupaten masih daftar referensi statis di `frontend/src/utils/regions.ts` (Paket 4 opsional).
+- Data kemiskinan `poverty_stats` kini mencakup 38 Provinsi BPS dan 114 Kota/Kabupaten kalibrasi referensi (dapat ditimpa dengan impor JSON BPS resmi tingkat kota lewat `POST /api/mapping/import`).
 Sumber lengkap: agent-memory/KNOWN_ISSUES.md. Temuan baru dicatat di sana.
 
 ## 8. Protokol memori (di akhir setiap tugas)

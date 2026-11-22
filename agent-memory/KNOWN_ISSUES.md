@@ -38,6 +38,10 @@
   - **PII & filter `/mapping/region/:region`, `/campaigns/:id`, `/donations/:id/trace` (RESOLVED)**: `mappingController` menormalisasi provinsi & menyembunyikan `recipient_name`/`donor_name`/`proof_url` untuk `USER`; `/campaigns/:id` menghapus `donor_id` & `payment_reference`; `/donations/:id/trace` menahan alokasi sebelum donasi `CONFIRMED`.
   - **Test upload mengotori `backend/uploads/` & spam `/public/transparency` pemicu `HTTP 429` (RESOLVED)**: upload test dipisah ke `os.tmpdir()` (+ 36 file dummy dibersihkan); ditambah `GET /api/public/network` + cache 5s `probeNetworkStatus` + `QueryClient` `staleTime: 60s` + penghapusan `NetworkBadge` global pada shell Muzakki/footer publik; `EvidenceGraph` dipindah ke `useQuery`.
   - **UI/UX Overload Publik & Muzakki, StatCard terpotong, inkonsistensi bayar & KPI (RESOLVED)**: penyederhanaan `LandingPage` + `DonorHome`, perbaikan `StatCard` wrapping & `JourneyTracker` `min-w-0`, keseragaman polling + tombol Sandbox di `PaymentModal` & `CampaignDetail`, serta pembersihan data dummy & saldo defisit di `database.sqlite`.
+- **2026-11-22 Konsolidasi Kontrak, Paket 4 Kota/Kabupaten, & Tes Unit Frontend — RESOLVED:**
+  - Workspace kontrak lama `contracts/` dan `backend/contracts/` dihapus sesuai `DEC-007`; `blockchain/` (`18/18`) adalah satu-satunya sumber kanonik.
+  - Tabel `poverty_stats` diperluas dengan 114 baris `level = 'Kota/Kabupaten'` (`backend/blockchain/data/poverty_cities.json`, referensi terkalibrasi berbasis BPS provinsi); `mappingController.ts` memisahkan filter `?level=`/`?province=` agar tidak terjadi penghitungan ganda.
+  - Suite tes unit TypeScript `frontend/tests/*.test.ts` (**14/14 passing**) dijalankan via `npm test` (`tsconfig.test.json` + Node `node:test`, tanpa menambah package eksternal).
 - **Terbuka / Backlog:**
-  - Data kemiskinan level **Kota/Kabupaten** di `poverty_stats` (Paket 4 sedang dikerjakan).
-  - Suite tes unit frontend (sedang ditambahkan tanpa dependency eksternal baru).
+  - Catatan kalibrasi data: angka 114 Kota/Kabupaten pada `poverty_cities.json` masih kalibrasi berbasis baseline BPS provinsi; tim Amil/Admin dapat mengimpor data BPS Kab/Kota resmi lewat `/mapping` (`POST /api/mapping/import`).
+  - Catatan produksi: ganti `BLOCKCHAIN_PRIVATE_KEY` Hardhat lokal, `JWT_SECRET`, dan kredensial DOKU Sandbox dengan kunci produksi sebelum go-live.
