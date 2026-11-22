@@ -131,7 +131,7 @@ export const CampaignSchema = z.object({
       .positive('Target harus lebih besar dari 0')
   ),
   deadline: z.preprocess(
-    (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+    (val) => (val === null || val === undefined || (typeof val === 'string' && val.trim() === '') ? undefined : val),
     z
       .string()
       .refine((value) => !Number.isNaN(Date.parse(value)), { message: 'Tanggal tenggat tidak valid' })

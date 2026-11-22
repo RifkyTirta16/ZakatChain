@@ -71,6 +71,27 @@ export const getDonationTrace = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
+    if (donation.status !== 'CONFIRMED') {
+      return res.json({
+        donation: {
+          id: donation.id,
+          campaign_id: donation.campaign_id,
+          campaign_title: donation.campaign_title ?? null,
+          donor_username: donation.donor_username ?? null,
+          amount: Number(donation.amount) || 0,
+          payment_reference: donation.payment_reference,
+          status: donation.status,
+          timestamp: donation.timestamp,
+        },
+        pool_scope: donation.campaign_id !== null ? 'CAMPAIGN_POOL' : 'GENERAL_ZAKAT_POOL',
+        pool_distributed_total: 0,
+        regions: [],
+        reports: [],
+        disclaimer:
+          'Pembayaran donasi ini belum terkonfirmasi sehingga dana belum masuk ke pool penyaluran.',
+      });
+    }
+
     const poolCondition = donation.campaign_id !== null ? 't.campaign_id = ?' : 't.campaign_id IS NULL';
     const poolParams = donation.campaign_id !== null ? [donation.campaign_id] : [];
 

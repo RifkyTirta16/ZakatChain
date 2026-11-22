@@ -20,6 +20,9 @@ async function startServer() {
   process.env.BLOCKCHAIN_RPC_URL = 'http://127.0.0.1:1';
 
   const { app, resetDbForTests } = await import('../index.js');
+  // Ensure test isolation regardless of developer backend/.env values.
+  delete process.env.BLOCKCHAIN_PRIVATE_KEY;
+  process.env.BLOCKCHAIN_RPC_URL = 'http://127.0.0.1:1';
   await resetDbForTests();
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -564,6 +567,8 @@ test('integration: mustahik CRUD, multi-region distribution trace, QRIS scan-con
     goodAllocForm.append('region', 'Jawa Barat, Bandung');
     goodAllocForm.append('campaign_id', String(campaignId));
     goodAllocForm.append('mustahik_id', String(mustahikId));
+    const allocPng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+    goodAllocForm.append('proof_file', new Blob([allocPng], { type: 'image/png' }), 'alloc-proof.png');
     goodAllocForm.append(
       'allocations',
       JSON.stringify([

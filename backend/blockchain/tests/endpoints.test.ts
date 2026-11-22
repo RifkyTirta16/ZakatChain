@@ -6,6 +6,8 @@ import { getTransactions, createTransaction } from '../controllers/transactionCo
 import { updateProofStatus } from '../controllers/proofController.js';
 import { resolveAnomaly, getAnomalies } from '../controllers/anomalyController.js';
 import { getCampaignDetail, createCampaign } from '../controllers/campaignController.js';
+import { getDonationTrace } from '../controllers/donationController.js';
+import { getRegionalDistribution } from '../controllers/mappingController.js';
 import { exportTransactionsCSV } from '../controllers/exportController.js';
 import { getAuditLogs } from '../controllers/auditController.js';
 import { verifyReportProof } from '../controllers/explorerController.js';
@@ -429,6 +431,106 @@ test('GET /api/explorer/verify/hash/:hash accepts a 0x-prefixed audit hash', asy
   } finally {
     if (previousRpc === undefined) delete process.env.BLOCKCHAIN_RPC_URL;
     else process.env.BLOCKCHAIN_RPC_URL = previousRpc;
+    await db.close();
+  }
+});
+
+/* ------------------------------ package 1 fixes ---------------------------- */
+
+test('createCampaign accepts null deadline and getCampaignDetail omits donor_id & payment_reference', async () => {
+  const db = await initDb(':memory:');
+  try {
+    const created = mockResponse();
+    await createCampaign(
+      req(db, { body: { title: 'Beasiswa Santri', description: 'Bantuan pendidikan', target_amount: 1000000, deadline: null } }),
+      created.response
+    );
+    assert.equal(created.result.statusCode, 201);
+
+    await db.run("INSERT INTO users (username, password, role) VALUES ('donor_camp', 'hash', 'USER')");
+    await db.run(
+      "INSERT INTO donations (campaign_id, donor_id, amount, payment_reference, status) VALUES (1, 1, 250000, 'SECRET-REF-1', 'CONFIRMED')"
+    );
+    const detail = mockResponse();
+    await getCampaignDetail(req(db, { params: { id: '1' } as any }), detail.response);
+    assert.equal(detail.result.statusCode, 200);
+    const body = detail.result.body as any;
+    assert.equal(body.donations.length, 1);
+    assert.equal('donor_id' in body.donations[0], false);
+    assert.equal('payment_reference' in body.donations[0], false);
+  } finally {
+    await db.close();
+  }
+});
+
+test('PATCH /api/proofs/verify/:id refuses APPROVED when proof_url is missing', async () => {
+  const db = await initDb(':memory:');
+  try {
+    const inserted = await seedTransaction(db, { proof_url: null });
+    const blocked = mockResponse();
+    await updateProofStatus(
+      req(db, { params: { id: String(inserted.lastID) } as any, body: { status: 'APPROVED' } }),
+      blocked.response
+    );
+    assert.equal(blocked.result.statusCode, 409);
+
+    const rejected = mockResponse();
+    await updateProofStatus(
+      req(db, { params: { id: String(inserted.lastID) } as any, body: { status: 'REJECTED', reason: 'Belum ada foto bukti' } }),
+      rejected.response
+    );
+    assert.equal(rejected.result.statusCode, 200);
+  } finally {
+    await db.close();
+  }
+});
+
+test('GET /api/donations/:id/trace withholds distribution estimates until payment is CONFIRMED', async () => {
+  const db = await initDb(':memory:');
+  try {
+    await db.run("INSERT INTO users (username, password, role) VALUES ('donor_a', 'hash', 'USER')");
+    await db.run("INSERT INTO donations (donor_id, amount, payment_reference, status) VALUES (1, 100000, 'REF-PENDING', 'PENDING')");
+    await seedTransaction(db, { campaign_id: null, proof_status: 'APPROVED', blockchain_status: 'CONFIRMED' });
+
+    const res = mockResponse();
+    await getDonationTrace(req(db, { params: { id: '1' } as any, user: { id: 1, username: 'donor_a', role: 'USER' } } as any), res.response);
+    assert.equal(res.result.statusCode, 200);
+    const body = res.result.body as any;
+    assert.deepEqual(body.regions, []);
+    assert.deepEqual(body.reports, []);
+    assert.equal(body.pool_distributed_total, 0);
+  } finally {
+    await db.close();
+  }
+});
+
+test('GET /api/mapping/region/:region normalizes province names and strips PII for USER role', async () => {
+  const db = await initDb(':memory:');
+  try {
+    await seedTransaction(db, { region: 'Jawa Barat, Bandung', proof_status: 'APPROVED', blockchain_status: 'CONFIRMED' });
+
+    const userRes = mockResponse();
+    await getRegionalDistribution(
+      req(db, { params: { region: 'Jawa Barat' } as any, user: { id: 2, username: 'u', role: 'USER' } } as any),
+      userRes.response
+    );
+    assert.equal(userRes.result.statusCode, 200);
+    const userRows = userRes.result.body as any[];
+    assert.equal(userRows.length, 1);
+    assert.equal('recipient_name' in userRows[0], false);
+    assert.equal('donor_name' in userRows[0], false);
+    assert.equal('proof_url' in userRows[0], false);
+
+    const amilRes = mockResponse();
+    await getRegionalDistribution(
+      req(db, { params: { region: 'Jawa Barat' } as any, user: { id: 3, username: 'a', role: 'AMIL' } } as any),
+      amilRes.response
+    );
+    assert.equal(amilRes.result.statusCode, 200);
+    const amilRows = amilRes.result.body as any[];
+    assert.equal(amilRows.length, 1);
+    assert.equal(amilRows[0].recipient_name, 'Budi Santoso');
+  } finally {
     await db.close();
   }
 });

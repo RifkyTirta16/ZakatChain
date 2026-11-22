@@ -2,10 +2,21 @@
 import multer from 'multer';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-const uploadDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../uploads');
+const resolveUploadDirectory = () => {
+  if (process.env.UPLOAD_DIR?.trim()) {
+    return path.resolve(process.env.UPLOAD_DIR.trim());
+  }
+  if (process.env.NODE_ENV === 'test') {
+    return path.join(os.tmpdir(), 'zakatchain-test-uploads');
+  }
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../uploads');
+};
+
+const uploadDirectory = resolveUploadDirectory();
 fs.mkdirSync(uploadDirectory, { recursive: true });
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB

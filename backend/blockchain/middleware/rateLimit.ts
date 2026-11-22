@@ -6,7 +6,7 @@ interface RateLimitEntry {
 }
 
 const WINDOW_MS = 15 * 60 * 1000; // 15 menit
-export const DEFAULT_LIMIT = 100;
+export const DEFAULT_LIMIT = process.env.NODE_ENV === 'production' ? 120 : 500;
 export const AUTH_LIMIT = 20;
 
 const clientKey = (req: Request): string =>

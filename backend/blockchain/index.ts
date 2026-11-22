@@ -25,6 +25,7 @@ import mustahikRoutes from './routes/mustahikRoutes.js';
 import { createPaymentSession } from './controllers/paymentController.js';
 import { authenticate, authorize } from './middleware/auth.js';
 import { rateLimit, AUTH_LIMIT } from './middleware/rateLimit.js';
+import { uploadDirectory } from './middleware/upload.js';
 
 const backendEnvPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env');
 dotenv.config({ path: backendEnvPath });
@@ -53,8 +54,6 @@ app.use((_req, res, next) => {
   res.setHeader('Referrer-Policy', 'no-referrer');
   next();
 });
-
-const uploadDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads');
 
 const rawCorsOrigins = process.env.CORS_ORIGIN?.trim()
   || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');

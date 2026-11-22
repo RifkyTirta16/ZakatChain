@@ -54,7 +54,7 @@ export const getCampaignDetail = async (req: Request, res: Response) => {
     );
 
     const donations = await (db as any).all(
-      'SELECT * FROM donations WHERE campaign_id = ? ORDER BY timestamp DESC, id DESC',
+      'SELECT id, campaign_id, amount, status, timestamp FROM donations WHERE campaign_id = ? ORDER BY timestamp DESC, id DESC',
       [Number(id)]
     );
 

@@ -66,3 +66,13 @@ export const getPublicTransparency = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to load public transparency data' });
   }
 };
+
+export const getPublicNetwork = async (_req: Request, res: Response) => {
+  try {
+    const networkStatus = await probeNetworkStatus(2000);
+    res.json({ networkStatus });
+  } catch (error: any) {
+    console.error('[PUBLIC NETWORK ERROR]', error?.message);
+    res.status(500).json({ error: 'Failed to probe blockchain network' });
+  }
+};

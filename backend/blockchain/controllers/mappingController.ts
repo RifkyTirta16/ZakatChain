@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PovertyImportSchema, formatIssues, type NormalizedPovertyRow } from '../utils/validation.js';
 import { runInTransaction, type Database } from '../models/db.js';
+import type { AuthRequest } from '../middleware/auth.js';
 
 interface EffectiveDistributionRow {
   tx_id: number;
@@ -225,12 +226,55 @@ export const getRegionalDistribution = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'A valid region is required' });
   }
 
+  const requesterRole = (req as AuthRequest).user?.role ?? 'USER';
+  const canViewPii = ['AMIL', 'AUDITOR', 'ADMIN'].includes(requesterRole);
+
+  const normalizedTarget = normalizeRegionName(region);
+  const rawTarget = region.trim().toLowerCase();
+
   try {
-    const data = await (db as any).all(
-      'SELECT * FROM transactions WHERE region = ? ORDER BY timestamp DESC, id DESC',
-      [region]
+    const rows = await (db as any).all(
+      `SELECT t.id, t.amount, t.donor_name, t.recipient_name, t.category,
+              COALESCE(ta.region, t.region) AS matched_region,
+              COALESCE(ta.amount, t.amount) AS allocated_amount,
+              t.region, t.timestamp, t.proof_url, t.audit_hash, t.tx_hash,
+              t.blockchain_status, t.proof_status
+       FROM transactions t
+       LEFT JOIN transaction_allocations ta ON ta.transaction_id = t.id
+       WHERE COALESCE(t.proof_status, 'PENDING') != 'REJECTED'
+         AND COALESCE(t.blockchain_status, '') != 'REVOKED'
+       ORDER BY t.timestamp DESC, t.id DESC`
     );
-    res.json(data);
+
+    const matched = rows
+      .filter((row: any) => {
+        const candidateRaw = String(row.matched_region ?? '').trim().toLowerCase();
+        const candidateNorm = normalizeRegionName(row.matched_region);
+        return candidateRaw === rawTarget || (normalizedTarget && candidateNorm === normalizedTarget);
+      })
+      .map((row: any) => {
+        const base = {
+          id: row.id,
+          amount: row.allocated_amount ?? row.amount,
+          total_amount: row.amount,
+          category: row.category,
+          region: row.matched_region ?? row.region,
+          timestamp: row.timestamp,
+          audit_hash: row.audit_hash,
+          tx_hash: row.tx_hash,
+          blockchain_status: row.blockchain_status,
+          proof_status: row.proof_status,
+        };
+        if (!canViewPii) return base;
+        return {
+          ...base,
+          donor_name: row.donor_name,
+          recipient_name: row.recipient_name,
+          proof_url: row.proof_url,
+        };
+      });
+
+    res.json(matched);
   } catch (error: any) {
     console.error('[REGIONAL DISTRIBUTION ERROR]', error?.message);
     res.status(500).json({ error: 'Failed to fetch regional data' });

@@ -23,18 +23,25 @@ export const updateProofStatus = async (req: Request, res: Response) => {
   }
 
   try {
-    const oldRecord = await (db as any).get('SELECT proof_status FROM transactions WHERE id = ?', [numericId]);
+    const oldRecord = await (db as any).get(
+      'SELECT proof_status, proof_url FROM transactions WHERE id = ?',
+      [numericId]
+    );
+    if (!oldRecord) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    if (status === 'APPROVED' && !oldRecord.proof_url) {
+      return res.status(409).json({
+        error: 'Tidak dapat menyetujui laporan karena berkas bukti penyaluran belum diunggah.',
+      });
+    }
 
-    const result = await (db as any).run(
+    await (db as any).run(
       `UPDATE transactions SET proof_status = ?, proof_rejection_reason = ? WHERE id = ?`,
       [status, status === 'REJECTED' ? reason ?? null : null, numericId]
     );
 
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
-
-    await logActivity(req, 'UPDATE_PROOF_STATUS', 'TRANSACTION', numericId, oldRecord?.proof_status, status);
+    await logActivity(req, 'UPDATE_PROOF_STATUS', 'TRANSACTION', numericId, oldRecord.proof_status, status);
 
     res.json({ message: `Proof status updated to ${status}` });
   } catch (error: any) {

@@ -116,13 +116,24 @@ export const resolveNetworkName = (chainId: number | null | undefined): string =
   return 'Jaringan Tidak Tersedia';
 };
 
+let cachedProbe: { key: string; expiresAt: number; value: NetworkProbeResult } | null = null;
+
 /**
  * Probes the configured JSON-RPC provider and ZakatVerify contract bytecode
  * with a strict timeout so unreachable nodes surface an explicit degraded state.
+ * Caches briefly outside test mode to prevent page-navigation bursts from hammering RPC.
  */
 export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbeResult> => {
+  const rpcUrl = process.env.BLOCKCHAIN_RPC_URL || 'http://127.0.0.1:8545';
   const contractAddress = getContractAddress();
+  const cacheKey = `${rpcUrl}|${contractAddress}`;
+  const cacheEnabled = process.env.NODE_ENV !== 'test';
+  if (cacheEnabled && cachedProbe && cachedProbe.key === cacheKey && cachedProbe.expiresAt > Date.now()) {
+    return cachedProbe.value;
+  }
+
   let provider: ReturnType<typeof getBlockchainProvider> | null = null;
+  let result: NetworkProbeResult;
   try {
     provider = getBlockchainProvider();
     const probe = (async () => {
@@ -141,7 +152,7 @@ export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbe
     ]);
 
     const contractActive = Boolean(contractAddress && code && code !== '0x');
-    return {
+    result = {
       rpc: 'Connected',
       contract: contractActive ? 'Active' : 'No contract code',
       status: contractActive ? 'Healthy' : 'Degraded',
@@ -151,7 +162,7 @@ export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbe
       blockNumber,
     };
   } catch {
-    return {
+    result = {
       rpc: 'Unreachable',
       contract: 'Unknown',
       status: 'Degraded',
@@ -163,4 +174,9 @@ export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbe
   } finally {
     provider?.destroy();
   }
+
+  if (cacheEnabled) {
+    cachedProbe = { key: cacheKey, expiresAt: Date.now() + 5000, value: result };
+  }
+  return result;
 };

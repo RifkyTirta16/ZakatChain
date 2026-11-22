@@ -69,6 +69,11 @@ test('GET /api/public/transparency returns aggregate KPIs without beneficiary/do
     assert.equal('recipient_name' in tx, false, 'Mustahik name must never be exposed publicly');
     assert.equal('donor_name' in tx, false, 'Donor name must never be exposed publicly');
     assert.equal('proof_url' in tx, false, 'Proof URL must never be exposed publicly');
+
+    const netRes = await fetch(`${server.base}/api/public/network`);
+    assert.equal(netRes.status, 200);
+    const netBody = (await netRes.json()) as any;
+    assert.equal(netBody.networkStatus.rpc, 'Unreachable');
   } finally {
     await server.close();
   }
