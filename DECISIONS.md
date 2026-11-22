@@ -84,3 +84,18 @@ and trusted webhook reconciliation create/update the corresponding donation reco
 
 **Consequences:** Existing campaign payment payloads remain supported. General-session accounting
 and trusted-provider integration remain open work; no sandbox response is treated as payment proof.
+
+---
+
+## DEC-007 — 2026-11-22 — ACCEPTED — Legacy contract workspaces consolidated into blockchain/
+
+**Context:** Verification of the codebase and integration tests confirmed zero consumers imported
+`contracts/` (`ZakatAuditRegistry.sol`, empty `database.sqlite`, stale ignition module) or
+empty `backend/contracts/`. The canonical Hardhat workspace `blockchain/` (`ZakatVerify.sol`,
+18/18 passing) already handles all deployment, ABI alignment, and on-chain audit tests.
+
+**Decision:** Removed deprecated `contracts/` and empty `backend/contracts/`, designating
+`blockchain/` as the sole contract workspace per the user-approved consolidation plan.
+
+**Consequences:** Fewer duplicate manifests/dependencies in the repo; `docs/audit/HARDHAT_CONSOLIDATION.md`
+is fulfilled and `DEC-001` legacy guard is retired.

@@ -69,9 +69,7 @@ Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + wag
 - frontend/src/assets/       zakatchain-logo.png (mark logo geometris ETH)
 - frontend/tailwind.config.js  token desain (lihat docs/design/DESIGN_SYSTEM.md & DESIGN.md)
 
-Blockchain: kanonik di blockchain/ (ZakatVerify.sol, Hardhat 2.29, Solidity 0.8.24).
-contracts/ dan backend/contracts/ = salinan lama/divergen: DILARANG diubah atau dihapus
-sebelum ada keputusan konsolidasi eksplisit.
+Blockchain: kanonik di `blockchain/` (ZakatVerify.sol, Hardhat 2.29, Solidity 0.8.24). Workspace lama (`contracts/` dan `backend/contracts/`) telah dikonsolidasikan dan dihapus.
 
 ## 4. Hak akses (diturunkan dari routes, verifikasi ulang bila route berubah)
 Role: USER, ADMIN, AMIL, AUDITOR. Login memakai USERNAME. Register selalu membuat USER.
@@ -113,7 +111,7 @@ payments, payment_events, anomalies, audit_logs, reconciliation_logs, poverty_st
 - Sebelum menambah dependency: sebut alasan, cek ukuran dan maintainer, minta persetujuan.
 
 ## 7. Masalah yang sudah diketahui (jangan diperbaiki diam-diam, laporkan dulu)
-- Tiga workspace Hardhat (blockchain/, contracts/, backend/contracts/); hanya blockchain/ kanonik.
+- Workspace kontrak sudah terkonsolidasi ke `blockchain/` (workspace lama `contracts/` & `backend/contracts/` sudah dihapus).
 - Frontend belum punya suite tes otomatis.
 - paymentRoutes masih menjaga alias endpoint pembuat sesi (`generate`/`session`/`create`) dan legacy `/api/payment/generate` untuk kompatibilitas.
 - Data kemiskinan `poverty_stats` di database baru berlevel 38 Provinsi; rincian Kota/Kabupaten masih daftar referensi statis di `frontend/src/utils/regions.ts` (Paket 4 opsional).

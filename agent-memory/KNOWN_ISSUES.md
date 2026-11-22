@@ -3,7 +3,7 @@
 - No Git repo at workspace root, no diff/history or recoverable commit available.
 - Blockchain tests remain unverified: default Hardhat reports zero passing; explicit TypeScript test invocation fails parsing.
 - Frontend lint: 0 warnings (`oxlint`); production initial JS chunk reduced to `70.98 kB` (`18.49 kB` gzip) with zero chunk `>500 kB` warnings via route lazy-loading + Vite `manualChunks`.
-- CORS strict allowlist (403 on untrusted origin, no wildcard `*`), security headers, `trust proxy` (`loopback` default / configurable), `ALLOW_PUBLIC_REGISTRATION` toggle, `create:admin` (`seed_admin.ts`) production admin provisioning CLI, strict JWT role validation (`ALLOWED_ROLES`), `web3.ts`/`frontend/src/web3.ts` ABI + production contract address guard, and `/uploads`/`/transactions`/`/donations`/`/users` RBAC are implemented. Note: `contracts/` and `backend/contracts/` remain untouched legacy folders pending explicit consolidation decision.
+- CORS strict allowlist (403 on untrusted origin, no wildcard `*`), security headers, `trust proxy` (`loopback` default / configurable), `ALLOW_PUBLIC_REGISTRATION` toggle, `create:admin` (`seed_admin.ts`) production admin provisioning CLI, strict JWT role validation (`ALLOWED_ROLES`), `web3.ts`/`frontend/src/web3.ts` ABI + production contract address guard, and `/uploads`/`/transactions`/`/donations`/`/users` RBAC are implemented. (`contracts/` and `backend/contracts/` have been consolidated/removed per `DEC-007`.)
 - Actual `.env`, private keys, active RPC, deployed contract address, deployed owner/signer, real payment provider, and beneficiary records were not inspected.
 - `.env` presence was checked without reading contents: root, backend, and frontend `.env` files were absent at that check. Without `JWT_SECRET`, backend warns and remains running; health succeeds while protected APIs return 503. Configure a unique secret to enable auth.
 - SQLite integrity/FK checks do not prove business correctness, privacy, backup readiness, or successful restoration.
@@ -39,5 +39,5 @@
   - **Test upload mengotori `backend/uploads/` & spam `/public/transparency` pemicu `HTTP 429` (RESOLVED)**: upload test dipisah ke `os.tmpdir()` (+ 36 file dummy dibersihkan); ditambah `GET /api/public/network` + cache 5s `probeNetworkStatus` + `QueryClient` `staleTime: 60s` + penghapusan `NetworkBadge` global pada shell Muzakki/footer publik; `EvidenceGraph` dipindah ke `useQuery`.
   - **UI/UX Overload Publik & Muzakki, StatCard terpotong, inkonsistensi bayar & KPI (RESOLVED)**: penyederhanaan `LandingPage` + `DonorHome`, perbaikan `StatCard` wrapping & `JourneyTracker` `min-w-0`, keseragaman polling + tombol Sandbox di `PaymentModal` & `CampaignDetail`, serta pembersihan data dummy & saldo defisit di `database.sqlite`.
 - **Terbuka / Backlog:**
-  - Data kemiskinan level **Kota/Kabupaten** di `poverty_stats` (Paket 4 opsional belum diminta).
-  - Konsolidasi folder kontrak lama (`contracts/`, `backend/contracts/`) & penambahan suite tes unit frontend.
+  - Data kemiskinan level **Kota/Kabupaten** di `poverty_stats` (Paket 4 sedang dikerjakan).
+  - Suite tes unit frontend (sedang ditambahkan tanpa dependency eksternal baru).
