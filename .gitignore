@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+.test-dist/
 artifacts/
 cache/
 typechain-types/

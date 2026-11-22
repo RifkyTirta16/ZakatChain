@@ -2,19 +2,14 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Calculator, CheckCircle2, Info, Sparkles } from 'lucide-react';
 import { Card, Input, SectionHeader } from '../../components/ui';
-import { formatIDR, formatNumber } from '../../utils/format';
-
-type ZakatType = 'penghasilan' | 'maal' | 'emas';
-
-const NISAB_GOLD_GRAMS = 85;
-const ZAKAT_RATE = 0.025;
-// Default reference gold price per gram (IDR) — user-editable so calculation never relies on hidden assumptions.
-const DEFAULT_GOLD_PRICE_IDR = 1_450_000;
-
-const parseDigits = (raw: string): number => {
-  const num = Number(raw.replace(/[^\d.]/g, ''));
-  return Number.isFinite(num) && num >= 0 ? num : 0;
-};
+import { formatIDR } from '../../utils/format';
+import {
+  calculateZakat,
+  computeNisab,
+  DEFAULT_GOLD_PRICE_IDR,
+  parseDigits,
+  type ZakatType,
+} from '../../utils/zakat';
 
 const ZakatCalculatorPage = () => {
   const [zakatType, setZakatType] = useState<ZakatType>('penghasilan');
@@ -35,64 +30,35 @@ const ZakatCalculatorPage = () => {
   const [wornGoldGrams, setWornGoldGrams] = useState('');
 
   const goldPrice = Math.max(0, parseDigits(goldPriceStr));
-  const nisabAnnual = NISAB_GOLD_GRAMS * goldPrice;
-  const nisabMonthly = nisabAnnual / 12;
+  const { nisabAnnual, nisabMonthly } = computeNisab(goldPrice);
 
-  const result = useMemo(() => {
-    if (zakatType === 'penghasilan') {
-      const net = Math.max(0, parseDigits(monthlyIncome) + parseDigits(monthlyBonus) - parseDigits(monthlyDebt));
-      const eligible = nisabMonthly > 0 && net >= nisabMonthly;
-      const zakatAmount = eligible ? Math.round(net * ZAKAT_RATE) : 0;
-      return {
-        netBase: net,
-        nisabTarget: nisabMonthly,
-        eligible,
-        zakatAmount,
-        periodLabel: 'per bulan',
-        formulaText: `(${formatIDR(parseDigits(monthlyIncome))} + ${formatIDR(parseDigits(monthlyBonus))} - ${formatIDR(parseDigits(monthlyDebt))}) × 2,5%`,
-      };
-    }
-
-    if (zakatType === 'maal') {
-      const net = Math.max(0, parseDigits(savings) + parseDigits(investments) - parseDigits(shortTermDebt));
-      const eligible = nisabAnnual > 0 && net >= nisabAnnual;
-      const zakatAmount = eligible ? Math.round(net * ZAKAT_RATE) : 0;
-      return {
-        netBase: net,
-        nisabTarget: nisabAnnual,
-        eligible,
-        zakatAmount,
-        periodLabel: 'per tahun (haul 1 tahun)',
-        formulaText: `(${formatIDR(parseDigits(savings))} + ${formatIDR(parseDigits(investments))} - ${formatIDR(parseDigits(shortTermDebt))}) × 2,5%`,
-      };
-    }
-
-    const netGrams = Math.max(0, parseDigits(goldGrams) - parseDigits(wornGoldGrams));
-    const netValue = netGrams * goldPrice;
-    const eligible = netGrams >= NISAB_GOLD_GRAMS && goldPrice > 0;
-    const zakatAmount = eligible ? Math.round(netValue * ZAKAT_RATE) : 0;
-    return {
-      netBase: netValue,
-      nisabTarget: nisabAnnual,
-      eligible,
-      zakatAmount,
-      periodLabel: 'per tahun (haul 1 tahun)',
-      formulaText: `(${formatNumber(netGrams)} gram × ${formatIDR(goldPrice)}) × 2,5%`,
-    };
-  }, [
-    zakatType,
-    monthlyIncome,
-    monthlyBonus,
-    monthlyDebt,
-    savings,
-    investments,
-    shortTermDebt,
-    goldGrams,
-    wornGoldGrams,
-    goldPrice,
-    nisabAnnual,
-    nisabMonthly,
-  ]);
+  const result = useMemo(
+    () =>
+      calculateZakat({
+        zakatType,
+        goldPrice,
+        monthlyIncome: parseDigits(monthlyIncome),
+        monthlyBonus: parseDigits(monthlyBonus),
+        monthlyDebt: parseDigits(monthlyDebt),
+        savings: parseDigits(savings),
+        investments: parseDigits(investments),
+        shortTermDebt: parseDigits(shortTermDebt),
+        goldGrams: parseDigits(goldGrams),
+        wornGoldGrams: parseDigits(wornGoldGrams),
+      }),
+    [
+      zakatType,
+      monthlyIncome,
+      monthlyBonus,
+      monthlyDebt,
+      savings,
+      investments,
+      shortTermDebt,
+      goldGrams,
+      wornGoldGrams,
+      goldPrice,
+    ]
+  );
 
   const payHref = result.zakatAmount > 0 ? `/donate?amount=${result.zakatAmount}` : '/donate';
 

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
+    "rootDir": ".",
+    "outDir": ".test-dist",
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src/utils/format.ts",
+    "src/utils/cityCoords.ts",
+    "src/utils/regions.ts",
+    "src/utils/status.ts",
+    "src/utils/zakat.ts",
+    "src/components/ui/badgeStatus.ts",
+    "src/components/layout/navConfig.ts",
+    "tests/**/*.test.ts"
+  ]
+}
