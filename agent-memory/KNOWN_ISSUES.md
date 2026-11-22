@@ -42,6 +42,11 @@
   - Workspace kontrak lama `contracts/` dan `backend/contracts/` dihapus sesuai `DEC-007`; `blockchain/` (`18/18`) adalah satu-satunya sumber kanonik.
   - Tabel `poverty_stats` diperluas dengan 114 baris `level = 'Kota/Kabupaten'` (`backend/blockchain/data/poverty_cities.json`, referensi terkalibrasi berbasis BPS provinsi); `mappingController.ts` memisahkan filter `?level=`/`?province=` agar tidak terjadi penghitungan ganda.
   - Suite tes unit TypeScript `frontend/tests/*.test.ts` (**14/14 passing**) dijalankan via `npm test` (`tsconfig.test.json` + Node `node:test`, tanpa menambah package eksternal).
+- **2026-11-23 Paket 5 Integritas KPI, Audit Trail, & Isolasi Sesi — RESOLVED (`fix/audit-package-5`):**
+  - `dashboardController`, `publicController`, dan `mustahikController` kini mengecualikan transaksi `REJECTED`/`REVOKED` agar `pendingReports`, `categoryDistribution`, dan total penerima mustahik cocok dengan `totalDistributed`.
+  - `reconcileTransaction` & `OnChainExplorer.tsx` memblokir `REJECTED`/`REVOKED`; `reconcileTransaction` & `performReconciliation` menulis log ke `audit_logs`; `anomalyController.ts` mengabaikan record `REJECTED`/`REVOKED` untuk `MISSING_PROOF`/`POTENTIAL_DUPLICATE` dan `ON_CHAIN_REVOKED` bila DB sudah sinkron `REVOKED`.
+  - `MainApp.tsx` membersihkan `queryClient` lintas sesi & `canAccessPath` menjaga redirect pasca-login tetap aman per peran; `ProofsPage.tsx` menampilkan pesan error backend spesifik tanpa teks jalur `/uploads`.
 - **Terbuka / Backlog:**
+  - Paket 6 opsional: `.github/workflows/ci.yml`, sinkronisasi `BUG_TRACKER.md`/`TASK_BACKLOG.md`/`ARCHITECTURE.md`, matriks `/mustahik` di `RolesPermissionsPage.tsx`, serta keputusan terkait file dump `docs/audit/integration-scan.txt` (13,3 MB).
   - Catatan kalibrasi data: angka 114 Kota/Kabupaten pada `poverty_cities.json` masih kalibrasi berbasis baseline BPS provinsi; tim Amil/Admin dapat mengimpor data BPS Kab/Kota resmi lewat `/mapping` (`POST /api/mapping/import`).
   - Catatan produksi: ganti `BLOCKCHAIN_PRIVATE_KEY` Hardhat lokal, `JWT_SECRET`, dan kredensial DOKU Sandbox dengan kunci produksi sebelum go-live.

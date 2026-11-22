@@ -1,5 +1,10 @@
 # Session Log
 
+## 2026-11-23 - Paket 5 Integritas KPI, Jejak Audit, Anti-Loop Anomali & Isolasi Sesi (`fix/audit-package-5`)
+- Backend KPI & audit (`dashboardController.ts`, `publicController.ts`, `mustahikController.ts`, `transactionController.ts`, `reconciliationController.ts`, `anomalyController.ts`): kecualikan transaksi `REJECTED`/`REVOKED` dari `pendingReports`/`categoryDistribution`/`total_received` & false-positive loop scan anomali; blokir `reconcileTransaction` untuk record `REJECTED`/`REVOKED` (HTTP `409`); catat `RECONCILE_TRANSACTION` & `RUN_RECONCILIATION` ke `audit_logs`.
+- Frontend sesi & UI (`navConfig.ts`, `RequireRole.tsx`, `MainApp.tsx`, `OnChainExplorer.tsx`, `ProofsPage.tsx`): bersihkan cache `queryClient` saat login/logout, validasi `zakat_redirect` dengan `canAccessPath`, sembunyikan aksi `Catat ke Ethereum` untuk laporan `REJECTED`, dan tampilkan pesan error backend spesifik di `ProofsPage`.
+- Verifikasi: backend `tsc --noEmit` + **82/82 passing**, frontend `tsc -b` + `oxlint` (**0/0**, 90 file) + `npm test` (**14/14 passing**) + `vite build`, blockchain `npm test` **18/18**, serta uji live `:5000` `/api/dashboard/stats` & `/api/public/transparency`.
+
 ## 2026-11-22 - Paket 4 Kota/Kabupaten, Konsolidasi Kontrak, Tes Unit Frontend & Merge ke `main`
 - Konsolidasi kontrak (`DEC-007`): hapus workspace lama `contracts/` & direktori kosong `backend/contracts/`, menyisakan `blockchain/` sebagai satu-satunya workspace kanonik; perbarui `AGENTS.md`, `DECISIONS.md`, dan `agent-memory/DECISIONS.md`.
 - Paket 4 Kota/Kabupaten: buat dataset 114 Kota/Kabupaten terkalibrasi (`backend/blockchain/data/poverty_cities.json`), perbarui `seed_poverty.ts`, tambah filter `?level=`/`?province=` & pencocokan kota presisi di `mappingController.ts`, tambah `cityCoords.ts`/`getRegionCoords` di `regions.ts`, serta antarmuka toggle `Provinsi (38)` / `Kota/Kabupaten` + drilldown di `PovertyMapping.tsx` & `ProvinceDetailCard.tsx`.
