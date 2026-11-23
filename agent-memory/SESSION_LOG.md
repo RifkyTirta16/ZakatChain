@@ -1,5 +1,8 @@
 # Session Log
 
+## 2026-11-23 - Selaraskan Navbar & Layout Portal Transparansi Muzakki (`fix/transparency-workspace-shell`)
+- `MainApp.tsx` & `PublicTransparencyPage.tsx`: ubah rute `/transparency` dari `alwaysPublic(...)` menjadi `publicOrWorkspace(...)` agar saat login (khususnya peran `USER`/Muzakki) halaman Portal Transparansi tetap memakai `MuzakkiShell` / `ShellFrame` (sidebar & top bar konsisten dengan `/calculator`, `/campaigns`, `/verify`) tanpa double padding, sementara pengunjung anonim tetap memakai `PublicShell`.
+
 ## 2026-11-23 - Fix Autocomplete Username & Handler 401 Ubah Sandi (`fix/profile-password-autocomplete`)
 - Frontend (`Input.tsx`, `ProfilePage.tsx`, `api.ts`): tambahkan input `username` terikat (`autoComplete="username"`) beserta `autoComplete="current-password"`/`"new-password"` pada form Ubah Kata Sandi agar password manager browser langsung mengaitkan sandi baru ke akun yang sedang login alih-alih meminta memilih akun peran tersimpan; kecualikan error salah sandi lama pada `/auth/password` agar `api.ts` tidak melogout pengguna pada `401`.
 

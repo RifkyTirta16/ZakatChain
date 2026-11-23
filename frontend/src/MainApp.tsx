@@ -160,9 +160,9 @@ const MainApp = () => {
   return (
     <Router>
       <Routes>
-        {/* Public Website Pages */}
+        {/* Public Website Pages (render inside workspace ShellFrame when logged in) */}
         <Route path="/" element={alwaysPublic(<LandingPage />)} />
-        <Route path="/transparency" element={alwaysPublic(<PublicTransparencyPage />)} />
+        <Route path="/transparency" element={publicOrWorkspace(<PublicTransparencyPage />)} />
         <Route path="/programs" element={publicOrWorkspace(<Campaigns />)} />
         <Route path="/campaigns" element={publicOrWorkspace(<Campaigns />)} />
         <Route path="/campaigns/:id" element={publicOrWorkspace(<CampaignDetail />)} />
