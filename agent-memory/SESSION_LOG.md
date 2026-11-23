@@ -1,5 +1,10 @@
 # Session Log
 
+## 2026-11-23 - CORS Dev, Siklus Kampanye, Ubah Sandi, CI & Pembersihan Repo (`feat/lifecycle-cors-ci-cleanup`)
+- Backend (`index.ts`, `validation.ts`, `campaignController.ts`, `campaignRoutes.ts`, `authController.ts`, `authRoutes.ts`, `apiIntegration.test.ts`): CORS dev menerima port loopback lokal dinamis (sambil tetap blokir origin eksternal `403`), tambah `PATCH /api/campaigns/:id` (AMIL/ADMIN + audit log) & `PATCH /api/auth/password` (`bcrypt`, min. 10 char + audit log).
+- Frontend (`main.tsx`, `MainApp.tsx`, `queryClient.ts`, `vite.config.ts`, `CampaignDetail.tsx`, `ProfilePage.tsx`, `RolesPermissionsPage.tsx`, `DonationDrawer.tsx`, `EvidenceGraph.tsx`): cabut dependensi `wagmi` yang tidak terpakai, hapus seluruh cast `any` di frontend, tambah UI kelola program (AMIL/ADMIN), form ubah kata sandi, serta baris `/mustahik` di matriks RBAC.
+- CI & Dokumen (`.github/workflows/ci.yml`, `ARCHITECTURE.md`, `AGENTS.md`, `agent-memory/*`): tambah CI GitHub Actions 3-job, hapus dump lama `docs/audit/integration-scan.txt` (13,3 MB), dan sinkronkan seluruh dokumen memori.
+
 ## 2026-11-23 - Paket 5 Integritas KPI, Jejak Audit, Anti-Loop Anomali & Isolasi Sesi (`fix/audit-package-5`)
 - Backend KPI & audit (`dashboardController.ts`, `publicController.ts`, `mustahikController.ts`, `transactionController.ts`, `reconciliationController.ts`, `anomalyController.ts`): kecualikan transaksi `REJECTED`/`REVOKED` dari `pendingReports`/`categoryDistribution`/`total_received` & false-positive loop scan anomali; blokir `reconcileTransaction` untuk record `REJECTED`/`REVOKED` (HTTP `409`); catat `RECONCILE_TRANSACTION` & `RUN_RECONCILIATION` ke `audit_logs`.
 - Frontend sesi & UI (`navConfig.ts`, `RequireRole.tsx`, `MainApp.tsx`, `OnChainExplorer.tsx`, `ProofsPage.tsx`): bersihkan cache `queryClient` saat login/logout, validasi `zakat_redirect` dengan `canAccessPath`, sembunyikan aksi `Catat ke Ethereum` untuk laporan `REJECTED`, dan tampilkan pesan error backend spesifik di `ProofsPage`.

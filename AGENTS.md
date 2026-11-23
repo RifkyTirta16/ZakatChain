@@ -56,8 +56,8 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/.env                         RAHASIA. Dilarang dibaca/dicetak nilainya.
   Lihat nama variabel saja: sed 's/=.*/=/' backend/.env
 
-Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + wagmi/viem):
-- frontend/src/main.tsx -> MainApp.tsx (routing)
+Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + viem):
+- frontend/src/main.tsx -> queryClient.ts -> MainApp.tsx (routing)
 - frontend/src/pages/        public/ (LandingPage, ZakatCalculatorPage, PublicTransparencyPage, SandboxPayPage),
                              home/ (DonorHome, AmilHome, AuditorHome, AdminHome),
                              amil/ (MustahikPage), muzakki/ (MyDonationsPage), admin/ (NetworkMonitorPage, RolesPermissionsPage),
@@ -77,10 +77,10 @@ Role: USER, ADMIN, AMIL, AUDITOR. Login memakai USERNAME. Register selalu membua
 - Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*,
           GET /public/transparency (agregat + non-PII), POST /payments/webhook, POST /payments/doku/notify (HMACSHA256),
           GET /payments/sandbox/session/:sessionId & POST /payments/sandbox/scan-confirm/:sessionId (non-production, token HMAC)
-- Login saja: dashboard/stats, mapping (stats, recommendations, region/:r),
+- Login saja: PATCH /auth/password (ubah sandi akun sendiri), dashboard/stats, mapping (stats, recommendations, region/:r),
   payments (generate/session/create/status/verify), POST /payments/sandbox/confirm/:sessionId (non-production)
 - AMIL+AUDITOR+ADMIN: GET /transactions, GET /donations, GET /uploads/*, GET /mustahik, GET /mustahik/:id
-- ADMIN+AMIL: POST /campaigns, POST /mapping/import, POST /mustahik, PATCH /mustahik/:id
+- ADMIN+AMIL: POST /campaigns, PATCH /campaigns/:id, POST /mapping/import, POST /mustahik, PATCH /mustahik/:id
 - ADMIN+AUDITOR: anomalies (GET, scan, resolve), audit logs, proofs/verify/:id,
   reconciliation/history, export/csv
 - ADMIN: reconciliation/run, transactions/:id/reconcile, transactions/:id/revoke, GET /users, PATCH /users/:id/role

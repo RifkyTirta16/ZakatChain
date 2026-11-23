@@ -46,7 +46,11 @@
   - `dashboardController`, `publicController`, dan `mustahikController` kini mengecualikan transaksi `REJECTED`/`REVOKED` agar `pendingReports`, `categoryDistribution`, dan total penerima mustahik cocok dengan `totalDistributed`.
   - `reconcileTransaction` & `OnChainExplorer.tsx` memblokir `REJECTED`/`REVOKED`; `reconcileTransaction` & `performReconciliation` menulis log ke `audit_logs`; `anomalyController.ts` mengabaikan record `REJECTED`/`REVOKED` untuk `MISSING_PROOF`/`POTENTIAL_DUPLICATE` dan `ON_CHAIN_REVOKED` bila DB sudah sinkron `REVOKED`.
   - `MainApp.tsx` membersihkan `queryClient` lintas sesi & `canAccessPath` menjaga redirect pasca-login tetap aman per peran; `ProofsPage.tsx` menampilkan pesan error backend spesifik tanpa teks jalur `/uploads`.
+- **2026-11-23 Fitur Siklus Kampanye/Sandi, CORS Dev, CI, & Pembersihan `wagmi`/Dump — RESOLVED (`feat/lifecycle-cors-ci-cleanup`):**
+  - CORS dev non-produksi menerima seluruh port loopback `localhost`/`127.0.0.1` bila `CORS_ORIGIN` tidak dikunci (tetap menolak domain eksternal `403`).
+  - Ditambahkan `PATCH /api/campaigns/:id` (`AMIL`/`ADMIN`, `CampaignDetail.tsx`), `PATCH /api/auth/password` (`ProfilePage.tsx`), matriks `/mustahik` (`RolesPermissionsPage.tsx`), serta pembersihan `wagmi` + `any` di `DonationDrawer.tsx` & `EvidenceGraph.tsx`.
+  - Ditambahkan `.github/workflows/ci.yml`, dihapus `docs/audit/integration-scan.txt` (`13,3 MB`), dan disinkronkan `BUG_TRACKER.md`/`TASK_BACKLOG.md`/`ARCHITECTURE.md`.
 - **Terbuka / Backlog:**
-  - Paket 6 opsional: `.github/workflows/ci.yml`, sinkronisasi `BUG_TRACKER.md`/`TASK_BACKLOG.md`/`ARCHITECTURE.md`, matriks `/mustahik` di `RolesPermissionsPage.tsx`, serta keputusan terkait file dump `docs/audit/integration-scan.txt` (13,3 MB).
+  - `DEC-002` (duplikasi tabel `payments` vs `donations` + alias legacy route) dan refaktor opsional pemecahan file `>300` baris (`paymentController.ts`, `PovertyMapping.tsx`, `NewDistributionRecord.tsx`).
   - Catatan kalibrasi data: angka 114 Kota/Kabupaten pada `poverty_cities.json` masih kalibrasi berbasis baseline BPS provinsi; tim Amil/Admin dapat mengimpor data BPS Kab/Kota resmi lewat `/mapping` (`POST /api/mapping/import`).
   - Catatan produksi: ganti `BLOCKCHAIN_PRIVATE_KEY` Hardhat lokal, `JWT_SECRET`, dan kredensial DOKU Sandbox dengan kunci produksi sebelum go-live.

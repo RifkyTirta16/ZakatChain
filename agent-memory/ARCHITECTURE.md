@@ -1,9 +1,14 @@
-# Architecture Notes (Verified)
+# ZakatChain — Architecture Snapshot (Verified)
 
-- Frontend entry: `frontend/src/main.tsx` → Wagmi + TanStack Query providers → `frontend/src/MainApp.tsx` routes.
-- Backend entry: `backend/blockchain/index.ts` (Express 5); route/controller modules under `backend/blockchain/`.
-- Database: SQLite via `backend/blockchain/models/db.ts`; default path resolves to `backend/database.sqlite`; additive migrations; FK enforcement and WAL enabled.
-- Blockchain canonical workspace per root DEC-001: `blockchain/`; runtime ABI/wallet utilities are in `backend/blockchain/utils/web3.ts`.
-- `contracts/` and `backend/contracts/` contain legacy/divergent source copies; do not extend or delete pending a deliberate consolidation decision.
-- Frontend chain/API config is env-driven since 2026-11-18 (branch `chore/chain-config`): `VITE_API_URL` (api.ts), `VITE_RPC_URL` + `VITE_CHAIN_ID` (web3.ts + wagmiConfig.ts), default = local Hardhat (31337, http://127.0.0.1:8545). Mainnet/Sepolia only activate when VITE_CHAIN_ID explicitly lists them. Reference template: `frontend/.env.example`. Backend chain defaults already env-driven (`BLOCKCHAIN_RPC_URL`, `ZAKAT_CONTRACT_ADDRESS` in `backend/.env.example`). End-to-end verification against a live local node is still pending.
-- Uploads are stored under `backend/uploads` and publicly served from `/uploads` today; privacy policy is unresolved.
+**Updated:** 2026-11-23 · Synchronized with root [ARCHITECTURE.md](../ARCHITECTURE.md).
+
+## Monorepo Layout
+- `blockchain/`: Canonical Hardhat `2.29` + Solidity `0.8.24` (`ZakatVerify.sol`, `18/18` passing, auto-deploy + `sync_local_chain` recovery on `npx hardhat node`). Legacy `contracts/` and `backend/contracts/` were removed per `DEC-007`.
+- `backend/`: Express 5 + TypeScript (`tsx` ESM), prefix `/api`, SQLite (`models/db.ts` with `FK ON`, `WAL`, `busy_timeout = 5000`), Zod validation, `bcrypt` + JWT auth (`USER`, `AMIL`, `AUDITOR`, `ADMIN`), `ethers` v6 (`utils/web3.ts`), and DOKU Sandbox QRIS Checkout + HMAC webhook (`utils/doku.ts`). `npm test`: **83/83** passing.
+- `frontend/`: React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + `viem` (`utils/web3.ts` / `queryClient.ts`; unused `wagmi` removed). `npm test` (**14/14** via `node:test`), `tsc -b`, `oxlint` (`0/0`), and Vite chunked build cleanly passing.
+- `.github/workflows/ci.yml`: Automated CI running blockchain, backend, and frontend suites on push/PR to `main`.
+
+## Core Architectural Decisions & Flow
+- **Audit Hashing (`DEC-003`):** Deterministic SHA-256 over record payload + database row ID (`generateRecordAuditHash`), anchored via `ethers.id(hash)` (`bytes32`) to `ZakatVerify.registerReport`. Blockchain proves hash presence only — never field distribution truth.
+- **Access & Privacy Boundaries:** `/uploads/*` and operational ledgers require `AMIL`/`AUDITOR`/`ADMIN`; `/public/transparency` and `/mapping/region/:region` strip beneficiary/donor PII for public/`USER`; `queryClient.clear()` + `canAccessPath` isolate multi-role switching on shared browsers.
+- **Payments & Reconciliation:** Both campaign and campaign-less ("Zakat Umum") donations persist across `payments` + `donations` + `payment_events` (`DEC-002` deduplication open backlog) and settle idempotently via webhook/status sync; `reconcileTransaction` and `performReconciliation` write immutable entries to `audit_logs` and refuse `REJECTED`/`REVOKED` distributions.
