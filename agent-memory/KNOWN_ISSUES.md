@@ -50,6 +50,9 @@
   - CORS dev non-produksi menerima seluruh port loopback `localhost`/`127.0.0.1` bila `CORS_ORIGIN` tidak dikunci (tetap menolak domain eksternal `403`).
   - Ditambahkan `PATCH /api/campaigns/:id` (`AMIL`/`ADMIN`, `CampaignDetail.tsx`), `PATCH /api/auth/password` (`ProfilePage.tsx`), matriks `/mustahik` (`RolesPermissionsPage.tsx`), serta pembersihan `wagmi` + `any` di `DonationDrawer.tsx` & `EvidenceGraph.tsx`.
   - Ditambahkan `.github/workflows/ci.yml`, dihapus `docs/audit/integration-scan.txt` (`13,3 MB`), dan disinkronkan `BUG_TRACKER.md`/`TASK_BACKLOG.md`/`ARCHITECTURE.md`.
+- **2026-11-23 QA Menyeluruh Semua Role & Perbaikan Cache QRIS/UI — RESOLVED (`fix/qris-cache-and-ui-polish`):**
+  - Bug `['donor-donations']` cache stale 60s pasca-pembuatan QRIS `PENDING` diselesaikan lewat `invalidateDonationQueries(queryClient, options)` pada `useDashboardData.ts`, `DonationPayment.tsx`, `PaymentModal.tsx`, `CampaignDetail.tsx`, `DonationDrawer.tsx`, dan `useDonation.ts`.
+  - Kondisi dead banner Zakat Umum (`selectedCampaignId === 'GENERAL'`) di `DonationPayment.tsx` serta perataan vertikal `<select>` di `MyDonationsPage.tsx` (`py-2 leading-5`) diperbaiki dan diverifikasi ulang via Chromium headless (`hasSessionAfterSpaNav: true`, `modalSessionInHistoryAfterSpa: true`, 0 console/HTTP/overflow error).
 - **Terbuka / Backlog:**
   - `DEC-002` (duplikasi tabel `payments` vs `donations` + alias legacy route) dan refaktor opsional pemecahan file `>300` baris (`paymentController.ts`, `PovertyMapping.tsx`, `NewDistributionRecord.tsx`).
   - Catatan kalibrasi data: angka 114 Kota/Kabupaten pada `poverty_cities.json` masih kalibrasi berbasis baseline BPS provinsi; tim Amil/Admin dapat mengimpor data BPS Kab/Kota resmi lewat `/mapping` (`POST /api/mapping/import`).
