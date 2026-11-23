@@ -72,11 +72,11 @@ Blockchain: kanonik di `blockchain/` (ZakatVerify.sol, Hardhat 2.29, Solidity 0.
 
 ## 4. Hak akses (diturunkan dari routes, verifikasi ulang bila route berubah)
 Role: USER, ADMIN, AMIL, AUDITOR. Login memakai USERNAME. Register selalu membuat USER.
-- Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*,
+- Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*, POST /auth/login, POST /auth/register, POST /auth/logout,
           GET /public/transparency (agregat + non-PII), POST /payments/webhook, POST /payments/doku/notify (HMACSHA256),
           GET /payments/sandbox/session/:sessionId & POST /payments/sandbox/scan-confirm/:sessionId (non-production, token HMAC)
-- Login saja: PATCH /auth/password (ubah sandi akun sendiri), dashboard/stats, mapping (stats, recommendations, region/:r),
-  payments (generate/session/create/status/verify), POST /payments/sandbox/confirm/:sessionId (non-production)
+- Login saja: GET /auth/me, PATCH /auth/password (ubah sandi akun sendiri), dashboard/stats, mapping (stats, recommendations, region/:r),
+  payments (generate/session/create/status/verify dengan cek pemilik), POST /payments/sandbox/confirm/:sessionId (non-production)
 - AMIL+AUDITOR+ADMIN: GET /transactions, GET /donations, GET /uploads/*, GET /mustahik, GET /mustahik/:id
 - ADMIN+AMIL: POST /campaigns, PATCH /campaigns/:id, POST /mapping/import, POST /mustahik, PATCH /mustahik/:id
 - ADMIN+AUDITOR: anomalies (GET, scan, resolve), audit logs, proofs/verify/:id,

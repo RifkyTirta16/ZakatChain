@@ -59,6 +59,9 @@
 - **2026-11-23 Bug Nonce `sync_local_chain.ts`, `blockchain/tsconfig.json`, & Warning Solidity — RESOLVED (`fix/blockchain-sync-and-config`):**
   - `sync_local_chain.ts` sebelumnya gagal dengan `NONCE_EXPIRED` pada transaksi ke-2 saat restart `hardhat node` akibat cache nonce 250ms `ethers.JsonRpcProvider`; diperbaiki dengan `cacheTimeout: -1` dan `getTransactionCount(signerAddress, 'pending')` eksplisit sebelum tiap transaksi (`3 laporan + 1 revoke` lolos uji di port isolasi `18545`).
   - `blockchain/tsconfig.json` kosong dihapus (`TS18003` hilang) dan return `bool exists` di `ZakatVerify.sol:46` diubah ke `reportExists` sehingga `hardhat compile --force` bersih tanpa warning.
+- **2026-11-23 Security Hardening Menyeluruh — RESOLVED (`feat/security-hardening`):**
+  - Seluruh celah aplikasi yang diaudit ditutup: `0 vulnerabilities` (`npm audit --omit=dev` di backend/frontend/blockchain), migrasi token dari `localStorage` ke cookie `HttpOnly; SameSite=Lax`, pencabutan sesi instan via `token_version`, lockout login + audit trail, penegakan CSRF `Origin`/`Referer`, `Content-Disposition: attachment` + `CSP: sandbox` di `/uploads`, validasi timestamp & `amount` DOKU + cek kepemilikan status sesi, bounded pagination API, serta `transferOwnership` pada `ZakatVerify.sol`.
+  - Infrastruktur server saat deploy (HTTPS/TLS proxy, rotasi kunci `.env` produksi, konfigurasi `TRUST_PROXY`, dan backup off-server WAL SQLite) tetap menjadi tanggung jawab setup server produksi.
 - **Terbuka / Backlog:**
   - `DEC-002` (duplikasi tabel `payments` vs `donations` + alias legacy route) dan refaktor opsional pemecahan file `>300` baris (`paymentController.ts`, `PovertyMapping.tsx`, `NewDistributionRecord.tsx`).
   - Catatan kalibrasi data: angka 114 Kota/Kabupaten pada `poverty_cities.json` masih kalibrasi berbasis baseline BPS provinsi; tim Amil/Admin dapat mengimpor data BPS Kab/Kota resmi lewat `/mapping` (`POST /api/mapping/import`).
