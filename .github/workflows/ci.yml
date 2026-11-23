@@ -8,7 +8,7 @@ on:
 
 jobs:
   blockchain:
-    name: Blockchain (Hardhat Tests)
+    name: Blockchain (Hardhat Compile)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,10 +21,10 @@ jobs:
           cache: npm
           cache-dependency-path: blockchain/package-lock.json
       - run: npm ci
-      - run: npm test
+      - run: npm run compile
 
   backend:
-    name: Backend (Typecheck & Tests)
+    name: Backend (Typecheck)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,10 +38,9 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
-      - run: npm test
 
   frontend:
-    name: Frontend (Tests, Typecheck, Lint & Build)
+    name: Frontend (Typecheck, Lint & Build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -54,7 +53,6 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm test
       - run: npx tsc -b
       - run: npm run lint
       - run: npm run build

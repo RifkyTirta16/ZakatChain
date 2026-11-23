@@ -4,8 +4,7 @@ import { ArrowRight, CheckCircle2, Clock, Info, QrCode, X } from 'lucide-react';
 import apiClient from '../../utils/api';
 import { formatDateTime, formatIDR } from '../../utils/format';
 import { Badge, Button, Card, Input, JourneyTracker, ON_CHAIN_NOTE, QrCodeBox, Select } from '../../components/ui';
-import { invalidateDonationQueries } from './hooks/useDashboardData';
-import type { Campaign } from './useDonation';
+import { invalidateDonationQueries, type Campaign } from './hooks/useDashboardData';
 
 interface DonationDrawerProps {
   isOpen: boolean;
