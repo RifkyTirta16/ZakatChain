@@ -3,6 +3,7 @@
     "dev": "nodemon --exec node --import tsx blockchain/index.ts",
     "start": "node --import tsx blockchain/index.ts",
     "seed:poverty": "node --import tsx blockchain/seed_poverty.ts",
+    "seed:demo": "node --import tsx blockchain/seed_demo.ts",
     "create:admin": "node --import tsx blockchain/seed_admin.ts",
     "sync:local-chain": "node --import tsx blockchain/sync_local_chain.ts"
   },
