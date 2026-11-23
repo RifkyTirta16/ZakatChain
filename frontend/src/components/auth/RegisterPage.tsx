@@ -6,7 +6,7 @@ import { Button, Card, Input } from '../ui';
 import { PoweredByEthereum } from '../ethereum';
 
 interface RegisterPageProps {
-  onLoginSuccess: (user: unknown, token: string) => void;
+  onLoginSuccess: (user: unknown) => void;
 }
 
 const RegisterPage = ({ onLoginSuccess }: RegisterPageProps) => {
@@ -28,8 +28,8 @@ const RegisterPage = ({ onLoginSuccess }: RegisterPageProps) => {
       setError('Username minimal 3 karakter dan hanya boleh huruf, angka, titik, garis bawah, atau tanda hubung.');
       return;
     }
-    if (password.length < 10) {
-      setError('Password minimal 10 karakter.');
+    if (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+      setError('Password minimal 10 karakter dengan huruf besar, huruf kecil, dan angka.');
       return;
     }
     if (password !== confirmPassword) {
@@ -42,7 +42,7 @@ const RegisterPage = ({ onLoginSuccess }: RegisterPageProps) => {
       await apiClient.post('/auth/register', { username: trimmed, password });
       const loginRes = await apiClient.post('/auth/login', { username: trimmed, password });
       setSuccessMsg('Akun Muzakki berhasil dibuat.');
-      onLoginSuccess(loginRes.data.user, loginRes.data.token);
+      onLoginSuccess(loginRes.data.user);
       navigate('/dashboard');
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { error?: string; details?: { message?: string }[] } } };
@@ -90,6 +90,7 @@ const RegisterPage = ({ onLoginSuccess }: RegisterPageProps) => {
           <Input
             id="reg-username"
             label="Username"
+            autoComplete="username"
             placeholder="Contoh: ahmad.muzakki"
             hint="Minimal 3 karakter (huruf, angka, ., _, -)."
             required
@@ -100,8 +101,9 @@ const RegisterPage = ({ onLoginSuccess }: RegisterPageProps) => {
             id="reg-password"
             type="password"
             label="Password"
+            autoComplete="new-password"
             placeholder="Minimal 10 karakter"
-            hint="Gunakan kombinasi huruf dan angka minimal 10 karakter."
+            hint="Minimal 10 karakter, wajib memuat huruf besar, huruf kecil, dan angka."
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -110,6 +112,7 @@ const RegisterPage = ({ onLoginSuccess }: RegisterPageProps) => {
             id="reg-confirm"
             type="password"
             label="Ulangi Password"
+            autoComplete="new-password"
             placeholder="Masukkan ulang password"
             required
             value={confirmPassword}

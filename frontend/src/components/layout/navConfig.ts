@@ -116,6 +116,25 @@ export const PAGE_TITLES: Record<string, string> = {
 export const toRole = (role: string | undefined): Role | null =>
   role === 'USER' || role === 'AMIL' || role === 'AUDITOR' || role === 'ADMIN' ? role : null;
 
+export const getStoredSessionUser = (): SessionUser | null => {
+  if (typeof window === 'undefined') return null;
+  const raw = localStorage.getItem('zakat_user');
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<SessionUser>;
+    if (
+      typeof parsed.id === 'number' &&
+      typeof parsed.username === 'string' &&
+      toRole(parsed.role) !== null
+    ) {
+      return { id: parsed.id, username: parsed.username, role: parsed.role as Role };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 export const itemsForRole = (role: Role | null): NavItem[] => {
   if (role === null) return [];
   return NAV_ITEMS.filter((item) => item.roles.length === 0 || item.roles.includes(role));

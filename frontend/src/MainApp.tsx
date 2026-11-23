@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import {
   BrowserRouter as Router,
   Link,
@@ -8,7 +8,8 @@ import {
 } from 'react-router-dom';
 import RoleLayout from './components/layout/RoleLayout';
 import RequireRole from './components/layout/RequireRole';
-import { canAccessPath, rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
+import { canAccessPath, getStoredSessionUser, rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
+import apiClient from './utils/api';
 import { queryClient } from './queryClient';
 import { Button, Card, Skeleton } from './components/ui';
 
@@ -91,26 +92,32 @@ const RoleDashboardSwitch = ({ user }: { user: SessionUser | null }) => {
 };
 
 const MainApp = () => {
-  const [user, setUser] = useState<SessionUser | null>(() => {
-    const storedUser = localStorage.getItem('zakat_user');
-    const storedToken = localStorage.getItem('zakat_token');
-    if (storedUser && storedToken) {
-      try {
-        return JSON.parse(storedUser) as SessionUser;
-      } catch {
-        localStorage.removeItem('zakat_user');
-        localStorage.removeItem('zakat_token');
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState<SessionUser | null>(() => getStoredSessionUser());
 
-  const handleLoginSuccess = (userData: unknown, authToken: string) => {
+  useEffect(() => {
+    let active = true;
+    apiClient
+      .get<{ user: SessionUser }>('/auth/me')
+      .then(({ data }) => {
+        if (!active || !data?.user) return;
+        setUser(data.user);
+        localStorage.setItem('zakat_user', JSON.stringify(data.user));
+      })
+      .catch(() => {
+        if (!active) return;
+        setUser(null);
+        localStorage.removeItem('zakat_user');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleLoginSuccess = (userData: unknown) => {
     queryClient.clear();
     sessionStorage.removeItem('zakat_manual_logout');
     setUser(userData as SessionUser);
     localStorage.setItem('zakat_user', JSON.stringify(userData));
-    localStorage.setItem('zakat_token', authToken);
   };
 
   const handleLogout = () => {
@@ -118,8 +125,8 @@ const MainApp = () => {
     sessionStorage.setItem('zakat_manual_logout', '1');
     setUser(null);
     localStorage.removeItem('zakat_user');
-    localStorage.removeItem('zakat_token');
     queryClient.clear();
+    void apiClient.post('/auth/logout').catch(() => {});
   };
 
   const withSuspense = (element: ReactNode) => (

@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import apiClient from '../utils/api';
+import { getStoredSessionUser } from '../components/layout/navConfig';
 import { Badge, Button, Card, EmptyState, ErrorState, Skeleton, StatCard } from '../components/ui';
 import { formatIDR, formatNumber, formatPercent } from '../utils/format';
 import { getRegionCoords, INDONESIA_REGIONS } from '../utils/regions';
@@ -183,14 +184,7 @@ const PovertyMapping = () => {
     void recoQuery.refetch();
   };
 
-  const currentRole = (() => {
-    try {
-      const raw = localStorage.getItem('zakat_user');
-      return raw ? (JSON.parse(raw) as { role?: string }).role : undefined;
-    } catch {
-      return undefined;
-    }
-  })();
+  const currentRole = getStoredSessionUser()?.role;
   const canImport = currentRole === 'ADMIN' || currentRole === 'AMIL';
 
   const handleImport = async () => {

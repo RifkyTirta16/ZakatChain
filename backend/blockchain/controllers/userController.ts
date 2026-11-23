@@ -56,7 +56,10 @@ export const updateUserRole = async (req: Request, res: Response) => {
       return res.json({ message: 'Role unchanged', user: target });
     }
 
-    await (db as any).run('UPDATE users SET role = ? WHERE id = ?', [nextRole, numericId]);
+    await (db as any).run(
+      'UPDATE users SET role = ?, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?',
+      [nextRole, numericId]
+    );
     await logActivity(req, 'UPDATE_USER_ROLE', 'USER', numericId, target.role, nextRole);
 
     res.json({

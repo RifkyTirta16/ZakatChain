@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { MustahikSchema, MustahikStatusSchema, formatIssues } from '../utils/validation.js';
+import { MustahikSchema, MustahikStatusSchema, formatIssues, parsePagination } from '../utils/validation.js';
 import { logActivity } from '../utils/auditLogger.js';
 import type { AuthRequest } from '../middleware/auth.js';
 
@@ -26,6 +26,7 @@ export const listMustahik = async (req: Request, res: Response) => {
       params.push(status.trim());
     }
 
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const rows = await (db as any).all(
       `SELECT m.id, m.full_name, m.category_asnaf, m.region, m.phone_masked,
@@ -39,8 +40,9 @@ export const listMustahik = async (req: Request, res: Response) => {
         AND COALESCE(t.blockchain_status, '') != 'REVOKED'
        ${where}
        GROUP BY m.id
-       ORDER BY m.created_at DESC, m.id DESC`,
-      params
+       ORDER BY m.created_at DESC, m.id DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
     );
     res.json(rows);
   } catch (error: any) {

@@ -1,14 +1,18 @@
 import { Request, Response } from 'express';
 import type { AuthRequest } from '../middleware/auth.js';
+import { parsePagination } from '../utils/validation.js';
 
 export const getDonations = async (req: Request, res: Response) => {
   const { db } = req;
   try {
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     const donations = await (db as any).all(
       `SELECT d.*, c.title AS campaign_title
        FROM donations d
        LEFT JOIN campaigns c ON c.id = d.campaign_id
-       ORDER BY d.timestamp DESC, d.id DESC`
+       ORDER BY d.timestamp DESC, d.id DESC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
     );
     res.json(donations);
   } catch (error: any) {
@@ -26,13 +30,15 @@ export const getDonorHistory = async (req: Request, res: Response) => {
   }
 
   try {
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     const donations = await (db as any).all(
       `SELECT d.*, c.title AS campaign_title
        FROM donations d
        LEFT JOIN campaigns c ON c.id = d.campaign_id
        WHERE d.donor_id = ?
-       ORDER BY d.timestamp DESC, d.id DESC`,
-      [Number(donor_id)]
+       ORDER BY d.timestamp DESC, d.id DESC
+       LIMIT ? OFFSET ?`,
+      [Number(donor_id), limit, offset]
     );
     res.json(donations);
   } catch (error: any) {

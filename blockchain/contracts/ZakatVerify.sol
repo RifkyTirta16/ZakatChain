@@ -20,9 +20,18 @@ contract ZakatVerify {
 
     event ReportRegistered(bytes32 indexed reportHash, uint256 reportId, uint256 timestamp);
     event ReportRevoked(bytes32 indexed reportHash, string reason);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     constructor() {
         owner = msg.sender;
+    }
+
+    function transferOwnership(address newOwner) public {
+        require(msg.sender == owner, "Only owner can call this function");
+        require(newOwner != address(0), "New owner must not be zero address");
+        address prev = owner;
+        owner = newOwner;
+        emit OwnershipTransferred(prev, newOwner);
     }
 
     function registerReport(bytes32 reportHash, uint256 reportId) public {

@@ -6,6 +6,7 @@ import apiClient from '../utils/api';
 import { formatDateTime, formatIDR } from '../utils/format';
 import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, QrCodeBox, Skeleton } from '../components/ui';
 import { invalidateDonationQueries } from '../components/dashboard/hooks/useDashboardData';
+import { getStoredSessionUser } from '../components/layout/navConfig';
 
 interface Donation {
   id: number;
@@ -72,14 +73,9 @@ const CampaignDetail = () => {
   const [manageFeedback, setManageFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const queryClient = useQueryClient();
-  const isAuthenticated = Boolean(localStorage.getItem('zakat_token') && localStorage.getItem('zakat_user'));
-  let userRole = '';
-  try {
-    const raw = localStorage.getItem('zakat_user');
-    userRole = raw ? ((JSON.parse(raw) as { role?: string }).role ?? '') : '';
-  } catch {
-    userRole = '';
-  }
+  const sessionUser = getStoredSessionUser();
+  const isAuthenticated = Boolean(sessionUser);
+  const userRole = sessionUser?.role ?? '';
   const canManage = userRole === 'AMIL' || userRole === 'ADMIN';
 
   const query = useQuery({

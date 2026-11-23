@@ -5,6 +5,7 @@ import apiClient from '../../utils/api';
 import { formatDateTime, formatIDR } from '../../utils/format';
 import { Badge, Button, Card, Input, JourneyTracker, ON_CHAIN_NOTE, QrCodeBox, Select } from '../../components/ui';
 import { invalidateDonationQueries, type Campaign } from './hooks/useDashboardData';
+import { getStoredSessionUser } from '../layout/navConfig';
 
 interface DonationDrawerProps {
   isOpen: boolean;
@@ -96,15 +97,8 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
     },
   });
 
-  const token = localStorage.getItem('zakat_token');
-  let user: { username?: string } | null = null;
-  try {
-    const raw = localStorage.getItem('zakat_user');
-    user = raw ? (JSON.parse(raw) as { username?: string }) : null;
-  } catch {
-    user = null;
-  }
-  const isLoggedIn = Boolean(token);
+  const user = getStoredSessionUser();
+  const isLoggedIn = Boolean(user);
 
   const numericAmount = quickAmount ?? (amount ? Number(amount) : 0);
 

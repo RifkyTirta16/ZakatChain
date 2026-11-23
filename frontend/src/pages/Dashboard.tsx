@@ -6,6 +6,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import apiClient from '../utils/api';
+import { getStoredSessionUser } from '../components/layout/navConfig';
 import { formatIDR, formatNumber, formatDateTime, formatDateKey, shortHash } from '../utils/format';
 import { Card, Badge, Button, Skeleton, EmptyState, ErrorState, proofBadge, ON_CHAIN_NOTE } from '../components/ui';
 
@@ -68,13 +69,7 @@ const Dashboard = () => {
   const [filterRegion, setFilterRegion] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  const storedUser = localStorage.getItem('zakat_user');
-  let role = '';
-  try {
-    role = storedUser ? (JSON.parse(storedUser) as { role?: string }).role || '' : '';
-  } catch {
-    role = '';
-  }
+  const role = getStoredSessionUser()?.role ?? '';
 
   const statsQuery = useQuery({
     queryKey: ['dashboard-stats'],

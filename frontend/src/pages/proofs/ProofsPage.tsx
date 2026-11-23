@@ -82,11 +82,15 @@ export const ProofsPage = () => {
     setPreviewLoading(true);
 
     try {
-      // Request via apiClient so the Authorization Bearer token is attached cleanly.
+      // Request via apiClient so HttpOnly session cookies & CORS credentials attach cleanly,
+      // overriding baseURL ('/api' or 'https://.../api') so '/uploads/*' hits server root.
       const base = apiClient.defaults.baseURL || '';
       const rootOrigin = base.replace(/\/api\/?$/, '');
-      const uploadUrl = tx.proof_url.startsWith('/') ? `${rootOrigin}${tx.proof_url}` : tx.proof_url;
-      const response = await apiClient.get<Blob>(uploadUrl, { responseType: 'blob' });
+      const isRelative = tx.proof_url.startsWith('/');
+      const response = await apiClient.get<Blob>(tx.proof_url, {
+        ...(isRelative ? { baseURL: rootOrigin } : {}),
+        responseType: 'blob',
+      });
       const url = URL.createObjectURL(response.data);
       setPreviewBlobUrl(url);
       setPreviewMime(response.data.type || '');

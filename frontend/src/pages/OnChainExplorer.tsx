@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, Ban, Check, CheckCircle2, Copy, ExternalLink, Filter, RefreshCw, Search } from 'lucide-react';
 import apiClient from '../utils/api';
+import { getStoredSessionUser } from '../components/layout/navConfig';
 import { formatDateTime, formatIDR, shortHash } from '../utils/format';
 import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, SectionHeader, Skeleton, proofBadge } from '../components/ui';
 import { EthereumLogo, NetworkBadge, explorerBaseForChain, useNetworkInfo } from '../components/ethereum';
@@ -67,13 +68,7 @@ const OnChainExplorer = () => {
   const [revokeReason, setRevokeReason] = useState('');
   const [revokingId, setRevokingId] = useState<number | null>(null);
 
-  let isAdmin = false;
-  try {
-    const raw = localStorage.getItem('zakat_user');
-    isAdmin = raw ? (JSON.parse(raw) as { role?: string }).role === 'ADMIN' : false;
-  } catch {
-    isAdmin = false;
-  }
+  const isAdmin = getStoredSessionUser()?.role === 'ADMIN';
 
   const { data: transactions, isLoading, isError, refetch } = useQuery<Transaction[]>({
     queryKey: ['explorer-transactions'],

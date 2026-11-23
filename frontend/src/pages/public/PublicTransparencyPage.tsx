@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { CheckCircle2, Copy, HeartHandshake, Search, ShieldCheck, Wallet } from 'lucide-react';
 import apiClient from '../../utils/api';
+import { getStoredSessionUser } from '../../components/layout/navConfig';
 import { formatDateTime, formatIDR, formatNumber, shortHash } from '../../utils/format';
 import {
   Badge,
@@ -38,7 +39,7 @@ const PublicTransparencyPage = () => {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const transparency = usePublicTransparency();
   const network = useNetworkInfo();
-  const inWorkspace = Boolean(localStorage.getItem('zakat_token') && localStorage.getItem('zakat_user'));
+  const inWorkspace = Boolean(getStoredSessionUser());
   const wrapperClass = inWorkspace
     ? 'space-y-6'
     : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8';

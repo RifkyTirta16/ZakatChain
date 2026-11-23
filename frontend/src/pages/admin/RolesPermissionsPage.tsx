@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import apiClient from '../../utils/api';
 import { Badge, Button, Card, ErrorState, SectionHeader, Skeleton } from '../../components/ui';
-import { ROLE_LABELS, type Role } from '../../components/layout/navConfig';
+import { ROLE_LABELS, getStoredSessionUser, type Role } from '../../components/layout/navConfig';
 
 interface UserRow {
   id: number;
@@ -93,13 +93,7 @@ const RolesPermissionsPage = () => {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
-  let selfId: number | null = null;
-  try {
-    const raw = localStorage.getItem('zakat_user');
-    selfId = raw ? ((JSON.parse(raw) as { id?: number }).id ?? null) : null;
-  } catch {
-    selfId = null;
-  }
+  const selfId = getStoredSessionUser()?.id ?? null;
 
   const usersQuery = useQuery<UserRow[]>({
     queryKey: ['admin-users'],

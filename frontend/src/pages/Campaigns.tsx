@@ -6,6 +6,7 @@ import apiClient from '../utils/api';
 import { formatDateKey, formatIDR } from '../utils/format';
 import { Badge, Button, Card, EmptyState, ErrorState, SectionHeader, Skeleton } from '../components/ui';
 import DonationDrawer from '../components/dashboard/DonationDrawer';
+import { getStoredSessionUser } from '../components/layout/navConfig';
 
 interface Campaign {
   id: number;
@@ -16,12 +17,6 @@ interface Campaign {
   deadline: string | null;
   status: string;
   created_at: string;
-}
-
-interface SessionUser {
-  id?: number;
-  username?: string;
-  role?: string;
 }
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -55,14 +50,7 @@ const Campaigns = () => {
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  const storedUser = localStorage.getItem('zakat_user');
-  const token = localStorage.getItem('zakat_token');
-  let user: SessionUser | null = null;
-  try {
-    user = storedUser ? (JSON.parse(storedUser) as SessionUser) : null;
-  } catch {
-    user = null;
-  }
+  const user = getStoredSessionUser();
   const canCreateCampaign = ['ADMIN', 'AMIL'].includes(user?.role ?? '');
   const canDonateAsMuzakki = !user || user.role === 'USER';
 
@@ -98,7 +86,7 @@ const Campaigns = () => {
     : campaigns;
 
   const handleDonate = (campaignId: number) => {
-    if (!user || !token) {
+    if (!user) {
       sessionStorage.setItem('zakat_redirect', `/campaigns/${campaignId}`);
       navigate('/login');
       return;

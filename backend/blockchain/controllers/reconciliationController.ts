@@ -73,7 +73,7 @@ export const getReconciliationHistory = async (req: Request, res: Response) => {
   const { db } = req;
   try {
     const logs = await (db as any).all(
-      'SELECT * FROM reconciliation_logs ORDER BY reconciliation_date DESC, id DESC'
+      'SELECT * FROM reconciliation_logs ORDER BY reconciliation_date DESC, id DESC LIMIT 200'
     );
     res.json(logs);
   } catch (error: any) {

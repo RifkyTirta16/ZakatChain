@@ -31,8 +31,8 @@ const ProfilePage = ({ user, onLogout }: ProfilePageProps) => {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwFeedback(null);
-    if (newPassword.length < 10) {
-      setPwFeedback({ type: 'err', text: 'Kata sandi baru minimal 10 karakter.' });
+    if (newPassword.length < 10 || !/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      setPwFeedback({ type: 'err', text: 'Kata sandi baru minimal 10 karakter dengan huruf besar, huruf kecil, dan angka.' });
       return;
     }
     if (newPassword !== confirmPassword) {

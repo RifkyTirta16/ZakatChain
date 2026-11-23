@@ -6,7 +6,7 @@ import { Button, Card, Input } from '../ui';
 import { PoweredByEthereum } from '../ethereum';
 
 interface LoginPageProps {
-  onLoginSuccess: (user: unknown, token: string) => void;
+  onLoginSuccess: (user: unknown) => void;
 }
 
 const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
@@ -24,7 +24,7 @@ const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
         username: username.trim(),
         password,
       });
-      onLoginSuccess(data.user, data.token);
+      onLoginSuccess(data.user);
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { error?: string } } };
       setError(e2.response?.data?.error || 'Login gagal. Periksa username dan kata sandi Anda.');
@@ -63,6 +63,7 @@ const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
           <Input
             id="username"
             label="Username"
+            autoComplete="username"
             placeholder="Masukkan username Anda"
             required
             value={username}
@@ -73,6 +74,7 @@ const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
             id="password"
             type="password"
             label="Password"
+            autoComplete="current-password"
             placeholder="Masukkan kata sandi"
             required
             value={password}

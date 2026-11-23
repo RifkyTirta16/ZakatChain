@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, ClipboardList, Plus, Search, ShieldCheck, X } from 'lucide-react';
 import apiClient from '../../utils/api';
+import { getStoredSessionUser } from '../../components/layout/navConfig';
 import { INDONESIA_REGIONS } from '../../utils/regions';
 import { formatDateTime, formatIDR } from '../../utils/format';
 import { Badge, Button, Card, EmptyState, ErrorState, SectionHeader, Skeleton } from '../../components/ui';
@@ -63,14 +64,8 @@ const MustahikPage = () => {
   const [phoneMasked, setPhoneMasked] = useState('');
   const [notes, setNotes] = useState('');
 
-  let canEdit = false;
-  try {
-    const raw = localStorage.getItem('zakat_user');
-    const role = raw ? (JSON.parse(raw) as { role?: string }).role : '';
-    canEdit = role === 'AMIL' || role === 'ADMIN';
-  } catch {
-    canEdit = false;
-  }
+  const role = getStoredSessionUser()?.role ?? '';
+  const canEdit = role === 'AMIL' || role === 'ADMIN';
 
   const listQuery = useQuery<MustahikRow[]>({
     queryKey: ['mustahik-list', search, statusFilter],

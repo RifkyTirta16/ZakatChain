@@ -22,8 +22,10 @@ const QRIS_SANDBOX_CONFIG = {
 
 const isoFromNow = (minutes: number) => new Date(Date.now() + minutes * 60_000).toISOString();
 
+const EPHEMERAL_SANDBOX_KEY = crypto.randomBytes(32).toString('hex');
+
 const getSandboxSigningKey = () =>
-  process.env.PAYMENT_WEBHOOK_SECRET || process.env.JWT_SECRET || 'zakatchain-local-sandbox-key';
+  process.env.PAYMENT_WEBHOOK_SECRET || process.env.JWT_SECRET || EPHEMERAL_SANDBOX_KEY;
 
 export const signSandboxSessionToken = (sessionId: string): string =>
   crypto.createHmac('sha256', getSandboxSigningKey()).update(sessionId).digest('hex').slice(0, 24);
@@ -37,17 +39,26 @@ const verifySandboxSessionToken = (sessionId: string, token: string | undefined)
   return crypto.timingSafeEqual(a, b);
 };
 
+const DOKU_MAX_TIMESTAMP_SKEW_MS = 15 * 60_000;
+
 const resolveFrontendOrigin = (req: Request): string => {
   const configured = process.env.PUBLIC_FRONTEND_URL?.trim();
   if (configured && /^https?:\/\/[^/\s]+$/.test(configured)) {
     return configured.replace(/\/$/, '');
   }
+  const corsList = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter((o) => /^https?:\/\/[^/\s]+$/.test(o));
+
   const rawOrigin = typeof req.get === 'function' ? req.get('origin') : req.headers?.origin;
-  const originHeader = Array.isArray(rawOrigin) ? rawOrigin[0]?.trim() : rawOrigin?.trim();
+  const originHeader = (Array.isArray(rawOrigin) ? rawOrigin[0] : rawOrigin)?.trim().replace(/\/$/, '');
   if (originHeader && /^https?:\/\/[^/\s]+$/.test(originHeader)) {
-    return originHeader.replace(/\/$/, '');
+    if (process.env.NODE_ENV !== 'production' || corsList.includes(originHeader)) {
+      return originHeader;
+    }
   }
-  return 'http://localhost:5173';
+  return corsList[0] || 'http://localhost:5173';
 };
 
 /**
@@ -237,11 +248,21 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
 
   try {
     const payment = await (db as any).get(
-      'SELECT payment_session_id, donor_name, amount, program_id, status, provider_tx_id, expires_at FROM payments WHERE payment_session_id = ?',
+      `SELECT p.payment_session_id, p.donor_name, p.amount, p.program_id, p.status, p.provider_tx_id, p.expires_at,
+              d.donor_id AS donor_id
+       FROM payments p
+       LEFT JOIN donations d ON d.payment_reference = p.payment_session_id
+       WHERE p.payment_session_id = ?`,
       [sessionId]
     );
     if (!payment) {
       return res.status(404).json({ error: 'Payment session not found' });
+    }
+
+    const requester = (req as AuthRequest).user;
+    const isPrivileged = requester?.role === 'ADMIN' || requester?.role === 'AUDITOR';
+    if (!isPrivileged && payment.donor_id !== null && payment.donor_id !== requester?.id) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
     let status = payment.status;
@@ -310,6 +331,7 @@ interface ProviderSettlementInput {
   status: 'SUCCESS' | 'FAILED';
   providerTxId: string;
   eventType?: string;
+  expectedAmount?: number | undefined;
 }
 
 const applyProviderSettlement = async (db: any, opts: ProviderSettlementInput) =>
@@ -343,7 +365,7 @@ const applyProviderSettlement = async (db: any, opts: ProviderSettlementInput) =
     let payment: any = null;
     if (opts.sessionId) {
       payment = await db.get(
-        'SELECT payment_session_id, status, expires_at FROM payments WHERE payment_session_id = ?',
+        'SELECT payment_session_id, amount, status, expires_at FROM payments WHERE payment_session_id = ?',
         [opts.sessionId]
       );
       if (!payment) return { code: 404, body: { error: 'Payment session not found' } };
@@ -357,6 +379,12 @@ const applyProviderSettlement = async (db: any, opts: ProviderSettlementInput) =
           [opts.sessionId]
         );
         return { code: 409, body: { error: 'Payment session has expired' } };
+      }
+      if (
+        opts.expectedAmount !== undefined &&
+        Math.abs(Number(payment.amount) - opts.expectedAmount) >= 0.01
+      ) {
+        return { code: 409, body: { error: 'Payment amount mismatch' } };
       }
     }
 
@@ -455,6 +483,12 @@ export const handleDokuNotification = async (req: Request, res: Response) => {
     return res.status(503).json({ error: 'DOKU webhook is not configured' });
   }
 
+  const rawTimestamp = req.get('request-timestamp') || '';
+  const parsedTs = Date.parse(rawTimestamp);
+  if (!rawTimestamp || Number.isNaN(parsedTs) || Math.abs(Date.now() - parsedTs) > DOKU_MAX_TIMESTAMP_SKEW_MS) {
+    return res.status(401).json({ error: 'Expired or invalid DOKU timestamp' });
+  }
+
   const rawBody = (req as any).rawBody as Buffer | undefined;
   const requestTarget = (req.originalUrl || '/api/payments/doku/notify').split('?')[0] ?? '/api/payments/doku/notify';
   const validSig =
@@ -462,7 +496,7 @@ export const handleDokuNotification = async (req: Request, res: Response) => {
     verifyDokuNotificationSignature({
       clientIdHeader: req.get('client-id') || '',
       requestIdHeader: req.get('request-id') || '',
-      timestampHeader: req.get('request-timestamp') || '',
+      timestampHeader: rawTimestamp,
       signatureHeader: req.get('signature') || '',
       requestTarget,
       rawBody,
@@ -476,6 +510,11 @@ export const handleDokuNotification = async (req: Request, res: Response) => {
 
   const body = req.body ?? {};
   const invoiceNumber = typeof body?.order?.invoice_number === 'string' ? body.order.invoice_number.trim() : '';
+  const rawOrderAmount = body?.order?.amount;
+  const orderAmount = rawOrderAmount !== undefined && rawOrderAmount !== null ? Number(rawOrderAmount) : undefined;
+  if (orderAmount !== undefined && (!Number.isFinite(orderAmount) || orderAmount <= 0)) {
+    return res.status(400).json({ error: 'Invalid DOKU order amount' });
+  }
   const txStatus = String(body?.transaction?.status || '').toUpperCase();
   const providerTxId =
     typeof body?.transaction?.original_request_id === 'string' && body.transaction.original_request_id.trim()
@@ -501,6 +540,7 @@ export const handleDokuNotification = async (req: Request, res: Response) => {
       status: mappedStatus,
       providerTxId,
       eventType: `DOKU_NOTIFY_${txStatus}`,
+      expectedAmount: mappedStatus === 'SUCCESS' ? orderAmount : undefined,
     });
     res.status(outcome.code).json(outcome.body);
   } catch (error: any) {

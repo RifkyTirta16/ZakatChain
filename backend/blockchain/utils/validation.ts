@@ -302,6 +302,30 @@ export const PovertyImportSchema = z.object({
 
 export type NormalizedPovertyRow = z.infer<typeof PovertyImportSchema>['data'][number];
 
+const COMMON_WEAK_PASSWORDS = new Set([
+  'password123',
+  'password1234',
+  'qwerty1234',
+  'qwerty12345',
+  '1234567890',
+  'admin12345',
+  'zakatchain123',
+]);
+
+const strongPassword = (label: string) =>
+  z
+    .string({ message: `${label} wajib diisi` })
+    .min(10, `${label} minimal 10 karakter`)
+    .max(128, `${label} maksimal 128 karakter`)
+    .refine(
+      (val) => /[a-z]/.test(val) && /[A-Z]/.test(val) && /\d/.test(val),
+      { message: `${label} harus memuat huruf besar, huruf kecil, dan angka` }
+    )
+    .refine(
+      (val) => !COMMON_WEAK_PASSWORDS.has(val.trim().toLowerCase()),
+      { message: `${label} terlalu umum, gunakan kombinasi lebih unik` }
+    );
+
 export const RegisterSchema = z.object({
   username: z
     .string({ message: 'Username wajib diisi' })
@@ -311,10 +335,7 @@ export const RegisterSchema = z.object({
     .refine((value) => /^[A-Za-z0-9._-]+$/.test(value), {
       message: 'Username hanya boleh berisi huruf, angka, titik, garis bawah, atau tanda hubung',
     }),
-  password: z
-    .string({ message: 'Password wajib diisi' })
-    .min(10, 'Password minimal 10 karakter')
-    .max(128, 'Password maksimal 128 karakter'),
+  password: strongPassword('Password'),
 });
 
 export const LoginSchema = z.object({
@@ -328,15 +349,24 @@ export const ChangePasswordSchema = z
       .string({ message: 'Password saat ini wajib diisi' })
       .min(1, 'Password saat ini wajib diisi')
       .max(128),
-    new_password: z
-      .string({ message: 'Password baru wajib diisi' })
-      .min(10, 'Password baru minimal 10 karakter')
-      .max(128, 'Password baru maksimal 128 karakter'),
+    new_password: strongPassword('Password baru'),
   })
   .refine((data) => data.current_password !== data.new_password, {
     path: ['new_password'],
     message: 'Password baru harus berbeda dari password saat ini',
   });
+
+export const parsePagination = (
+  query: Record<string, unknown>,
+  defaultLimit = 500,
+  maxLimit = 1000
+): { limit: number; offset: number } => {
+  const rawLimit = Number(query?.limit);
+  const rawOffset = Number(query?.offset);
+  const limit = Number.isInteger(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, maxLimit) : defaultLimit;
+  const offset = Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+  return { limit, offset };
+};
 
 export const ReconciliationSchema = z.object({
   period: z.string().max(64).optional(),

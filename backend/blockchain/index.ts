@@ -23,7 +23,7 @@ import publicRoutes from './routes/publicRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import mustahikRoutes from './routes/mustahikRoutes.js';
 import { createPaymentSession } from './controllers/paymentController.js';
-import { authenticate, authorize } from './middleware/auth.js';
+import { authenticate, authorize, readSessionCookie } from './middleware/auth.js';
 import { rateLimit, AUTH_LIMIT } from './middleware/rateLimit.js';
 import { uploadDirectory } from './middleware/upload.js';
 
@@ -52,6 +52,11 @@ app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   next();
 });
 
@@ -66,11 +71,13 @@ const corsOrigin = rawCorsOrigins
   .filter((o) => Boolean(o) && o !== '*');
 
 const LOCAL_DEV_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+const isAllowedOrigin = (origin: string): boolean =>
+  corsOrigin.includes(origin) || (allowLocalDevOrigin && LOCAL_DEV_ORIGIN_RE.test(origin));
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow same-origin/CLI requests (no Origin), explicit allowlist, or any loopback Vite port in non-production.
-    if (!origin || corsOrigin.includes(origin) || (allowLocalDevOrigin && LOCAL_DEV_ORIGIN_RE.test(origin))) {
+    if (!origin || isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
       const err = Object.assign(new Error('Origin tidak diizinkan oleh kebijakan CORS'), {
@@ -83,6 +90,33 @@ app.use(cors({
   credentials: true,
 }));
 
+// Defense-in-depth CSRF guard for cookie-authenticated mutations: verify Origin/Referer
+// matches an allowed frontend origin (skipping HMAC-signed provider webhooks).
+app.use((req, res, next) => {
+  const mutating = req.method === 'POST' || req.method === 'PATCH' || req.method === 'PUT' || req.method === 'DELETE';
+  if (!mutating || !readSessionCookie(req)) return next();
+  if (req.path === '/api/payments/webhook' || req.path === '/api/payments/doku/notify') return next();
+
+  const rawOrigin = req.get('origin');
+  const rawReferer = req.get('referer');
+  let candidateOrigin = rawOrigin?.trim() || '';
+  if (!candidateOrigin && rawReferer) {
+    try {
+      candidateOrigin = new URL(rawReferer).origin;
+    } catch {
+      return res.status(403).json({ error: 'Invalid Referer origin' });
+    }
+  }
+  if (candidateOrigin) {
+    const requestHost = req.get('host');
+    const sameServerOrigin = requestHost ? `${req.protocol}://${requestHost}` : '';
+    if (!isAllowedOrigin(candidateOrigin) && candidateOrigin !== sameServerOrigin) {
+      return res.status(403).json({ error: 'Cross-site request blocked' });
+    }
+  }
+  next();
+});
+
 // Rate limit global: 100 permintaan per 15 menit per IP. Rute auth lebih ketat.
 app.use(rateLimit());
 app.use(express.json({
@@ -91,14 +125,6 @@ app.use(express.json({
     // Raw body retained for HMAC webhook signature verification.
     (req as any).rawBody = Buffer.from(buffer);
   }
-}));
-
-// Serve uploaded proof files only to authorized operational/oversight roles.
-// `dotfiles: deny` and `index: false` prevent directory browsing.
-app.use('/uploads', authenticate, authorize(['AMIL', 'AUDITOR', 'ADMIN']), express.static(uploadDirectory, {
-  dotfiles: 'deny',
-  index: false,
-  maxAge: '1h',
 }));
 
 app.get('/health', (req, res) => {
@@ -130,6 +156,19 @@ app.use(async (req, res, next) => {
     res.status(503).json({ error: 'Database is unavailable' });
   }
 });
+
+// Serve uploaded proof files only after DB middleware so `authenticate` checks live token_version/role.
+// Force attachment download + sandbox CSP so PDF/files cannot run scripts on app origin.
+app.use('/uploads', authenticate, authorize(['AMIL', 'AUDITOR', 'ADMIN']), express.static(uploadDirectory, {
+  dotfiles: 'deny',
+  index: false,
+  maxAge: '1h',
+  setHeaders: (res) => {
+    res.setHeader('Content-Disposition', 'attachment');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
+  },
+}));
 
 // Must stay after express.json() and the DB middleware: auth needs req.body and req.db.
 app.use('/api/auth', rateLimit({ limit: AUTH_LIMIT }), authRoutes);
@@ -168,6 +207,9 @@ app.use((error: any, req: express.Request, res: express.Response, _next: express
   }
   if (typeof error?.message === 'string' && error.message.includes('Format berkas tidak didukung')) {
     return res.status(400).json({ error: error.message });
+  }
+  if (error?.type === 'entity.parse.failed' || error?.status === 400) {
+    return res.status(400).json({ error: 'Format JSON tidak valid.' });
   }
   if (error?.type === 'entity.too.large') {
     return res.status(413).json({ error: 'Payload terlalu besar.' });

@@ -1,7 +1,7 @@
 
 import { Request, Response } from 'express';
 import { generateRecordAuditHash } from '../utils/crypto.js';
-import { RevokeReportSchema, TransactionSchema, formatIssues } from '../utils/validation.js';
+import { RevokeReportSchema, TransactionSchema, formatIssues, parsePagination } from '../utils/validation.js';
 import { getBlockchainProvider, getBlockchainWallet, getZakatContract } from '../utils/web3.js';
 import { persistUpload, removeUpload } from '../middleware/upload.js';
 import { runInTransaction } from '../models/db.js';
@@ -39,6 +39,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       params.push(status.trim());
     }
 
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const query = `
       SELECT t.*, c.title AS campaign_title
@@ -46,9 +47,10 @@ export const getTransactions = async (req: Request, res: Response) => {
       LEFT JOIN campaigns c ON c.id = t.campaign_id
       ${whereClause}
       ORDER BY t.timestamp DESC, t.id DESC
+      LIMIT ? OFFSET ?
     `;
 
-    const transactions = await (db as any).all(query, params);
+    const transactions = await (db as any).all(query, [...params, limit, offset]);
     const ids = transactions.map((row: { id: number }) => row.id);
     if (ids.length > 0) {
       const placeholders = ids.map(() => '?').join(', ');

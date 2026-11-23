@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, AlertCircle, RefreshCcw } from 'lucide-react';
 import apiClient from '../../utils/api';
+import { getStoredSessionUser } from '../../components/layout/navConfig';
 import { formatDateTime, formatIDR } from '../../utils/format';
 import {
   Badge,
@@ -30,13 +31,7 @@ export const ReconciliationPage = () => {
   const [running, setRunning] = useState(false);
   const [actionError, setActionError] = useState('');
 
-  let role = '';
-  try {
-    const raw = localStorage.getItem('zakat_user');
-    role = raw ? ((JSON.parse(raw) as { role?: string }).role ?? '') : '';
-  } catch {
-    role = '';
-  }
+  const role = getStoredSessionUser()?.role ?? '';
   const canRun = role === 'ADMIN';
 
   const { data, isLoading, error, refetch } = useQuery<ReconciliationLog[]>({
