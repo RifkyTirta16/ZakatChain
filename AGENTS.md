@@ -45,11 +45,10 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
                                        rateLimit.ts, upload.ts (multer)
 - backend/blockchain/models/db.ts      init SQLite + migrasi aditif (FK on, WAL on)
 - backend/blockchain/utils/            crypto.ts, validation.ts (Zod), web3.ts, auditLogger.ts, doku.ts
-- backend/blockchain/tests/*.test.ts   tes (node:test)
 - backend/blockchain/seed.ts           seed 5 transaksi, TIDAK membuat user
-- backend/blockchain/seed_test_users.ts seed 4 akun uji per role (dev/test saja)
 - backend/blockchain/seed_admin.ts     CLI provisioning akun ADMIN awal (aman untuk produksi)
 - backend/blockchain/seed_poverty.ts   impor data kemiskinan 38 provinsi + 114 kota/kabupaten ke SQLite
+- backend/blockchain/sync_local_chain.ts memulihkan hash terkonfirmasi/dicabut ke node Hardhat lokal
 - backend/blockchain/data/             dataset referensi statis (poverty_provinces_38.json, poverty_cities.json)
 - backend/database.sqlite              DB aktif (+ -shm/-wal: jangan dihapus manual)
 - backend/uploads/                     file bukti (terproteksi AMIL/AUDITOR/ADMIN via /uploads)
@@ -65,8 +64,7 @@ Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + vie
                              NewDistributionRecord, OnChainExplorer, EvidenceGraph, PovertyMapping,
                              PublicVerify, anomalies/, audit/, export/, proofs/, reconciliation/
 - frontend/src/components/   Analytics, PaymentModal, auth/, dashboard/, ethereum/, layout/, mapping/, ui/
-- frontend/src/utils/        api.ts (axios), format.ts, regions.ts, cityCoords.ts, zakat.ts, status.ts
-- frontend/tests/            suite tes unit frontend (node:test + tsconfig.test.json, npm test)
+- frontend/src/utils/        api.ts (axios), format.ts, regions.ts, cityCoords.ts, zakat.ts
 - frontend/src/assets/       zakatchain-logo.png (mark logo geometris ETH)
 - frontend/tailwind.config.js  token desain (lihat docs/design/DESIGN_SYSTEM.md & DESIGN.md)
 
@@ -113,7 +111,7 @@ payments, payment_events, anomalies, audit_logs, reconciliation_logs, poverty_st
 
 ## 7. Masalah yang sudah diketahui (jangan diperbaiki diam-diam, laporkan dulu)
 - Workspace kontrak sudah terkonsolidasi ke `blockchain/` (workspace lama `contracts/` & `backend/contracts/` sudah dihapus per `DEC-007`).
-- Frontend telah memiliki suite tes unit TypeScript via Node `node:test` (`cd frontend && npm test`); pengujian interaksi UI React penuh tetap mengandalkan Playwright/browser verifier.
+- File test & orphan telah dibersihkan atas permintaan pengguna (verifikasi melalui `tsc`, `oxlint`, `vite build`, `hardhat compile`, dan uji manual/live server).
 - paymentRoutes masih menjaga alias endpoint pembuat sesi (`generate`/`session`/`create`) dan legacy `/api/payment/generate` untuk kompatibilitas.
 - Data kemiskinan `poverty_stats` kini mencakup 38 Provinsi BPS dan 114 Kota/Kabupaten kalibrasi referensi (dapat ditimpa dengan impor JSON BPS resmi tingkat kota lewat `POST /api/mapping/import`).
 Sumber lengkap: agent-memory/KNOWN_ISSUES.md. Temuan baru dicatat di sana.
@@ -135,15 +133,15 @@ Jangan menulis secret ke file memori.
   (400 validasi, 401 belum login, 403 tidak berhak, 404, 409 konflik, 500 generik).
 - Frontend: komponen fungsional, data fetching via TanStack Query (bukan useEffect+fetch),
   satu axios instance di utils/api.ts, tidak ada URL/hex warna hardcode.
-- Format uang & tanggal hanya lewat utils/format.ts. Status bukti hanya lewat utils/status.ts.
+- Format uang & tanggal hanya lewat utils/format.ts. Status bukti hanya lewat components/ui/badgeStatus.ts.
 - Nama file: komponen PascalCase, util camelCase. Impor ESM dengan ekstensi .js di backend.
 - Komentar menjelaskan KENAPA, bukan APA. Hapus kode mati yang kamu buat sendiri.
 - Teks UI Bahasa Indonesia; kode, nama variabel, commit message Bahasa Inggris.
 
 ## 10. Definition of Done
-Backend: cd backend && npm test lulus; server start tanpa error; endpoint dicoba
+Backend: cd backend && npx tsc --noEmit; server start tanpa error; endpoint dicoba
   (curl) untuk kasus berhasil, input salah, tanpa token, role salah.
-Frontend: cd frontend && npm run build && npm run lint bersih; halaman punya state
+Frontend: cd frontend && npx tsc -b && npm run build && npm run lint bersih; halaman punya state
   loading/kosong/error; responsif; sesuai DESIGN.md.
 Umum: tidak ada secret di diff (git diff --staged), peta file & memori terbarui,
   laporan menyebut file + bukti verifikasi + risiko tersisa.
@@ -205,11 +203,7 @@ Jangan mencoba "mengecilkan" repo dengan menghapus file sumber.
 - Tailwind: tulis class UTUH. Dilarang text-${x}, shadow-${x}, bg-${x} (tidak terdeteksi build).
 - Komentar JSX hanya berbentuk {/* teks */}. Setelah mengubah .tsx langsung jalankan tsc -b.
 - tailwind.config.js: hanya GABUNGKAN ke theme.extend. Tidak ada theme.dark (bukan kunci Tailwind).
-  Palet wattvision (10 kunci: alert, alertBg, bg, border, hover, primary, success, surface,
-  textMain, textSecondary) + fontFamily.mono JANGAN dihapus selama
-  `grep -rc "wattvision-" frontend/src` masih > 0.
-- frontend/src/utils/status.ts: JANGAN diubah (BadgeTone lama success|warning|danger|neutral
-  dipakai halaman lama). Pemetaan status baru ada di frontend/src/components/ui/badgeStatus.ts.
+- Pemetaan status UI terpusat di frontend/src/components/ui/badgeStatus.ts.
 - JANGAN membuat Design.preview.tsx atau route /_design.
 - JANGAN menimpa opencode.json.
 - Verifikasi frontend: cd frontend && npx tsc -b 2>&1 | head -20 && npm run build 2>&1 | grep -v "^\s*at " | tail -15
