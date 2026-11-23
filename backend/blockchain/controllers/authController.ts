@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
-import { LoginSchema, RegisterSchema, formatIssues } from '../utils/validation.js';
+import { LoginSchema, RegisterSchema, ChangePasswordSchema, formatIssues } from '../utils/validation.js';
+import { logActivity } from '../utils/auditLogger.js';
+import type { AuthRequest } from '../middleware/auth.js';
 
 const BCRYPT_ROUNDS = 10;
 
@@ -81,5 +83,39 @@ export const login = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[LOGIN ERROR]', error);
     res.status(500).json({ error: 'Login failed' });
+  }
+};
+
+export const changePassword = async (req: Request, res: Response) => {
+  const { db } = req;
+  const authUser = (req as AuthRequest).user;
+  if (!authUser) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
+  }
+
+  const parsed = ChangePasswordSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Validation failed', details: formatIssues(parsed.error) });
+  }
+
+  try {
+    const userRow = await (db as any).get('SELECT id, password FROM users WHERE id = ?', [authUser.id]);
+    if (!userRow) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const matches = await bcrypt.compare(parsed.data.current_password, userRow.password);
+    if (!matches) {
+      return res.status(401).json({ error: 'Kata sandi saat ini tidak sesuai' });
+    }
+
+    const nextHash = await bcrypt.hash(parsed.data.new_password, BCRYPT_ROUNDS);
+    await (db as any).run('UPDATE users SET password = ? WHERE id = ?', [nextHash, authUser.id]);
+    await logActivity(req, 'CHANGE_PASSWORD', 'USER', authUser.id, null, 'PASSWORD_UPDATED');
+
+    res.json({ message: 'Kata sandi berhasil diperbarui' });
+  } catch (error: any) {
+    console.error('[CHANGE PASSWORD ERROR]', error?.message);
+    res.status(500).json({ error: 'Gagal memperbarui kata sandi' });
   }
 };

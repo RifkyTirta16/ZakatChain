@@ -139,6 +139,38 @@ export const CampaignSchema = z.object({
   ),
 });
 
+export const CampaignUpdateSchema = z
+  .object({
+    title: trimmedString(MAX_TEXT).optional(),
+    description: z
+      .string()
+      .transform((value) => value.trim())
+      .refine((value) => value.length <= 2000, { message: 'Deskripsi maksimal 2000 karakter' })
+      .optional(),
+    target_amount: z
+      .preprocess(
+        (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
+        z
+          .number({ message: 'Target harus berupa angka' })
+          .finite('Target harus berupa angka yang valid')
+          .positive('Target harus lebih besar dari 0')
+      )
+      .optional(),
+    deadline: z.preprocess(
+      (val) => (val === '' ? null : val),
+      z
+        .union([
+          z.null(),
+          z.string().refine((value) => !Number.isNaN(Date.parse(value)), { message: 'Tanggal tenggat tidak valid' }),
+        ])
+        .optional()
+    ),
+    status: z.enum(['ACTIVE', 'CLOSED', 'COMPLETED'], { message: 'Status kampanye tidak valid' }).optional(),
+  })
+  .refine((data) => Object.values(data).some((v) => v !== undefined), {
+    message: 'Minimal satu field harus diperbarui',
+  });
+
 export const PaymentIntentSchema = z.object({
   campaign_id: z.preprocess(
     (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
@@ -289,6 +321,22 @@ export const LoginSchema = z.object({
   username: z.string({ message: 'Username wajib diisi' }).min(1, 'Username wajib diisi').max(64),
   password: z.string({ message: 'Password wajib diisi' }).min(1, 'Password wajib diisi').max(128),
 });
+
+export const ChangePasswordSchema = z
+  .object({
+    current_password: z
+      .string({ message: 'Password saat ini wajib diisi' })
+      .min(1, 'Password saat ini wajib diisi')
+      .max(128),
+    new_password: z
+      .string({ message: 'Password baru wajib diisi' })
+      .min(10, 'Password baru minimal 10 karakter')
+      .max(128, 'Password baru maksimal 128 karakter'),
+  })
+  .refine((data) => data.current_password !== data.new_password, {
+    path: ['new_password'],
+    message: 'Password baru harus berbeda dari password saat ini',
+  });
 
 export const ReconciliationSchema = z.object({
   period: z.string().max(64).optional(),

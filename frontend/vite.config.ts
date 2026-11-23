@@ -25,7 +25,7 @@ export default defineConfig({
           if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router')) {
             return 'vendor-react'
           }
-          if (id.includes('/wagmi/') || id.includes('/viem/') || id.includes('/@wagmi/')) {
+          if (id.includes('/viem/')) {
             return 'vendor-web3'
           }
           if (id.includes('/@tanstack/')) {

@@ -9,7 +9,7 @@ import {
 import RoleLayout from './components/layout/RoleLayout';
 import RequireRole from './components/layout/RequireRole';
 import { canAccessPath, rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
-import { queryClient } from './wagmiConfig';
+import { queryClient } from './queryClient';
 import { Button, Card, Skeleton } from './components/ui';
 
 // Eager Auth & Landing

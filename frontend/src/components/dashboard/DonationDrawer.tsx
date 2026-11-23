@@ -12,6 +12,16 @@ interface DonationDrawerProps {
   initialCampaignId?: number | null;
 }
 
+interface DrawerPaymentSession {
+  paymentData: {
+    session_id: string;
+    qris_url: string;
+    lan_qris_url?: string;
+    amount?: number;
+    expires_at?: string;
+  };
+}
+
 const QUICK_AMOUNTS = [50_000, 100_000, 250_000];
 const MIN_AMOUNT = 1;
 const MAX_AMOUNT = 1_000_000_000_000;
@@ -30,7 +40,7 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
   const [amount, setAmount] = useState('');
   const [quickAmount, setQuickAmount] = useState<number | null>(null);
   const [error, setError] = useState('');
-  const [paymentData, setPaymentData] = useState<any>(null);
+  const [paymentData, setPaymentData] = useState<DrawerPaymentSession | null>(null);
   const [pollExpired, setPollExpired] = useState(false);
 
   const { data: campaigns, isLoading: campaignsLoading } = useQuery<Campaign[]>({
@@ -50,7 +60,7 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
   }, [userSelectedCampaign, initialCampaignId, campaigns]);
 
   const createSession = useMutation<
-    any,
+    DrawerPaymentSession,
     Error,
     { amount: number; donor_name?: string; campaign_id?: number; program_id?: string }
   >({

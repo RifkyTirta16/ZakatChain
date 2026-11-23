@@ -55,7 +55,9 @@ app.use((_req, res, next) => {
   next();
 });
 
-const rawCorsOrigins = process.env.CORS_ORIGIN?.trim()
+const explicitCorsOrigins = process.env.CORS_ORIGIN?.trim() ?? '';
+const allowLocalDevOrigin = process.env.NODE_ENV !== 'production' && !explicitCorsOrigins;
+const rawCorsOrigins = explicitCorsOrigins
   || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
 
 const corsOrigin = rawCorsOrigins
@@ -63,10 +65,12 @@ const corsOrigin = rawCorsOrigins
   .map((o) => o.trim())
   .filter((o) => Boolean(o) && o !== '*');
 
+const LOCAL_DEV_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Izinkan request tanpa origin (curl, native mobile) dan origin dalam allowlist.
-    if (!origin || corsOrigin.includes(origin)) {
+    // Allow same-origin/CLI requests (no Origin), explicit allowlist, or any loopback Vite port in non-production.
+    if (!origin || corsOrigin.includes(origin) || (allowLocalDevOrigin && LOCAL_DEV_ORIGIN_RE.test(origin))) {
       callback(null, true);
     } else {
       const err = Object.assign(new Error('Origin tidak diizinkan oleh kebijakan CORS'), {

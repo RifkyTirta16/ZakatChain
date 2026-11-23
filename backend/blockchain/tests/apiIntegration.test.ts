@@ -767,3 +767,86 @@ test('integration: mapping stats calibrate CRITICAL/WARNING/STABLE and aggregate
     await server.close();
   }
 });
+
+test('integration: dev loopback CORS allows 5174/127.0.0.1, PATCH /campaigns/:id closes campaign, and PATCH /auth/password updates password safely', async () => {
+  const server = await startServer();
+  try {
+    // Dev CORS accepts alternate localhost ports (e.g. 5174) & 127.0.0.1
+    const cors5174 = await fetch(`${server.base}/health`, { headers: { Origin: 'http://localhost:5174' } });
+    assert.equal(cors5174.status, 200);
+    const corsLoop = await fetch(`${server.base}/health`, { headers: { Origin: 'http://127.0.0.1:5173' } });
+    assert.equal(corsLoop.status, 200);
+
+    // Self-service password change
+    const userToken = await loginAs(server.base, 'user_pw', 'initialpass1');
+    const unauthPw = await request(server.base, 'PATCH', '/api/auth/password', {
+      json: { current_password: 'initialpass1', new_password: 'updatedpass2' },
+    });
+    assert.equal(unauthPw.status, 401);
+
+    const wrongPw = await request(server.base, 'PATCH', '/api/auth/password', {
+      token: userToken,
+      json: { current_password: 'wrongpass99', new_password: 'updatedpass2' },
+    });
+    assert.equal(wrongPw.status, 401);
+
+    const okPw = await request(server.base, 'PATCH', '/api/auth/password', {
+      token: userToken,
+      json: { current_password: 'initialpass1', new_password: 'updatedpass2' },
+    });
+    assert.equal(okPw.status, 200);
+
+    const oldLogin = await request(server.base, 'POST', '/api/auth/login', {
+      json: { username: 'user_pw', password: 'initialpass1' },
+    });
+    assert.equal(oldLogin.status, 401);
+    const newLogin = await request(server.base, 'POST', '/api/auth/login', {
+      json: { username: 'user_pw', password: 'updatedpass2' },
+    });
+    assert.equal(newLogin.status, 200);
+
+    // Campaign lifecycle PATCH /api/campaigns/:id
+    await loginAs(server.base, 'amil_camp', 'supersecret1');
+    const { initDb } = await import('../models/db.js');
+    const db = await initDb(process.env.DATABASE_PATH as string);
+    await db.run("UPDATE users SET role = 'AMIL' WHERE username = 'amil_camp'");
+    await db.close();
+
+    const amilLogin = await request(server.base, 'POST', '/api/auth/login', {
+      json: { username: 'amil_camp', password: 'supersecret1' },
+    });
+    const amilJwt = amilLogin.body.token;
+
+    const createdCamp = await request(server.base, 'POST', '/api/campaigns', {
+      token: amilJwt,
+      json: { title: 'Program Uji Tutup', target_amount: 1000000 },
+    });
+    assert.equal(createdCamp.status, 201);
+    const campId = createdCamp.body.id;
+
+    // USER cannot modify campaign
+    const userPatch = await request(server.base, 'PATCH', `/api/campaigns/${campId}`, {
+      token: newLogin.body.token,
+      json: { status: 'CLOSED' },
+    });
+    assert.equal(userPatch.status, 403);
+
+    // AMIL closes campaign and adjusts target
+    const closedPatch = await request(server.base, 'PATCH', `/api/campaigns/${campId}`, {
+      token: amilJwt,
+      json: { status: 'CLOSED', target_amount: 1500000 },
+    });
+    assert.equal(closedPatch.status, 200);
+    assert.equal(closedPatch.body.status, 'CLOSED');
+    assert.equal(closedPatch.body.target_amount, 1500000);
+
+    // Donations to a CLOSED campaign are rejected (404 inactive/not active)
+    const donateClosed = await request(server.base, 'POST', '/api/payments/session', {
+      token: newLogin.body.token,
+      json: { campaign_id: campId, amount: 50000 },
+    });
+    assert.equal(donateClosed.status, 404);
+  } finally {
+    await server.close();
+  }
+});

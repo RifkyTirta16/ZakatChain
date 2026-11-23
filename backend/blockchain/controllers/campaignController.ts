@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { CampaignSchema, formatIssues } from '../utils/validation.js';
+import { CampaignSchema, CampaignUpdateSchema, formatIssues } from '../utils/validation.js';
+import { logActivity } from '../utils/auditLogger.js';
 
 export const getCampaigns = async (req: Request, res: Response) => {
   const { db } = req;
@@ -67,5 +68,54 @@ export const getCampaignDetail = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('[CAMPAIGN DETAIL ERROR]', error?.message);
     res.status(500).json({ error: 'Failed to fetch campaign details' });
+  }
+};
+
+export const updateCampaign = async (req: Request, res: Response) => {
+  const { db } = req;
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id) || !/^\d+$/.test(id) || Number(id) < 1) {
+    return res.status(400).json({ error: 'A valid campaign ID is required' });
+  }
+  const numericId = Number(id);
+
+  const parsed = CampaignUpdateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Validation failed', details: formatIssues(parsed.error) });
+  }
+
+  try {
+    const existing = await (db as any).get('SELECT * FROM campaigns WHERE id = ?', [numericId]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    const { title, description, target_amount, deadline, status } = parsed.data;
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    if (title !== undefined) { fields.push('title = ?'); values.push(title); }
+    if (description !== undefined) { fields.push('description = ?'); values.push(description); }
+    if (target_amount !== undefined) { fields.push('target_amount = ?'); values.push(target_amount); }
+    if (deadline !== undefined) { fields.push('deadline = ?'); values.push(deadline); }
+    if (status !== undefined) { fields.push('status = ?'); values.push(status); }
+
+    values.push(numericId);
+    await (db as any).run(`UPDATE campaigns SET ${fields.join(', ')} WHERE id = ?`, values);
+
+    const updated = await (db as any).get('SELECT * FROM campaigns WHERE id = ?', [numericId]);
+    await logActivity(
+      req,
+      'UPDATE_CAMPAIGN',
+      'CAMPAIGN',
+      numericId,
+      { status: existing.status, target_amount: existing.target_amount },
+      { status: updated.status, target_amount: updated.target_amount }
+    );
+    res.json(updated);
+  } catch (error: any) {
+    console.error('[UPDATE CAMPAIGN ERROR]', error?.message);
+    res.status(500).json({ error: 'Failed to update campaign' });
   }
 };

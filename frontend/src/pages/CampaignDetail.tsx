@@ -66,9 +66,20 @@ const CampaignDetail = () => {
   const [paymentResult, setPaymentResult] = useState<PaymentSession | null>(null);
   const [paymentError, setPaymentError] = useState('');
   const [copiedSession, setCopiedSession] = useState(false);
+  const [manageStatus, setManageStatus] = useState<'ACTIVE' | 'COMPLETED' | 'CLOSED' | ''>('');
+  const [manageTarget, setManageTarget] = useState('');
+  const [manageFeedback, setManageFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const queryClient = useQueryClient();
   const isAuthenticated = Boolean(localStorage.getItem('zakat_token') && localStorage.getItem('zakat_user'));
+  let userRole = '';
+  try {
+    const raw = localStorage.getItem('zakat_user');
+    userRole = raw ? ((JSON.parse(raw) as { role?: string }).role ?? '') : '';
+  } catch {
+    userRole = '';
+  }
+  const canManage = userRole === 'AMIL' || userRole === 'ADMIN';
 
   const query = useQuery({
     queryKey: ['campaign', id],
@@ -117,6 +128,23 @@ const CampaignDetail = () => {
       void query.refetch();
       void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
+    },
+  });
+
+  const updateCampaignMutation = useMutation({
+    mutationFn: async (payload: { status?: string; target_amount?: number }) => {
+      const { data } = await apiClient.patch(`/campaigns/${id}`, payload);
+      return data;
+    },
+    onSuccess: () => {
+      setManageFeedback({ type: 'ok', text: 'Perubahan program berhasil disimpan.' });
+      setManageTarget('');
+      void query.refetch();
+      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    },
+    onError: (err: unknown) => {
+      const apiMsg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setManageFeedback({ type: 'err', text: apiMsg || 'Gagal memperbarui program.' });
     },
   });
 
@@ -247,8 +275,80 @@ const CampaignDetail = () => {
           </Card>
         </div>
 
-        <div className="lg:col-span-5">
-          <Card className="lg:sticky lg:top-24 space-y-5">
+        <div className="lg:col-span-5 space-y-5 lg:sticky lg:top-24">
+          {canManage && (
+            <Card className="space-y-4 border border-primary/25 bg-white">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-base font-bold text-forest-dark">Kelola Program (Amil / Admin)</h2>
+                <Badge tone={campaign.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                  {campaign.status}
+                </Badge>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setManageFeedback(null);
+                  const payload: { status?: string; target_amount?: number } = {};
+                  if (manageStatus && manageStatus !== campaign.status) payload.status = manageStatus;
+                  if (manageTarget.trim()) payload.target_amount = Number(manageTarget);
+                  if (!payload.status && payload.target_amount === undefined) {
+                    setManageFeedback({ type: 'err', text: 'Pilih status baru atau isi target nominal baru.' });
+                    return;
+                  }
+                  updateCampaignMutation.mutate(payload);
+                }}
+                className="space-y-3 text-xs"
+              >
+                <div>
+                  <label htmlFor="camp-status" className="block font-semibold text-slate-600 mb-1">
+                    Status Program
+                  </label>
+                  <select
+                    id="camp-status"
+                    value={manageStatus || campaign.status}
+                    onChange={(e) => setManageStatus(e.target.value as 'ACTIVE' | 'COMPLETED' | 'CLOSED')}
+                    className="w-full min-h-[40px] rounded-[10px] border border-slate-300 bg-white px-3 text-forest-dark font-medium"
+                  >
+                    <option value="ACTIVE">ACTIVE (Menerima Donasi)</option>
+                    <option value="COMPLETED">COMPLETED (Target Terpenuhi)</option>
+                    <option value="CLOSED">CLOSED (Ditutup)</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="camp-target" className="block font-semibold text-slate-600 mb-1">
+                    Ubah Target (Opsional, saat ini {formatIDR(target)})
+                  </label>
+                  <input
+                    id="camp-target"
+                    type="number"
+                    min="1000"
+                    step="1000"
+                    value={manageTarget}
+                    onChange={(e) => setManageTarget(e.target.value)}
+                    placeholder={String(target)}
+                    className="w-full min-h-[40px] rounded-[10px] border border-slate-300 bg-white px-3 text-forest-dark font-medium"
+                  />
+                </div>
+                {manageFeedback && (
+                  <p
+                    role={manageFeedback.type === 'err' ? 'alert' : 'status'}
+                    className={`rounded-xl border p-2.5 font-medium ${
+                      manageFeedback.type === 'ok'
+                        ? 'bg-mint border-primary/25 text-forest'
+                        : 'bg-red-50 border-red-200 text-red-800'
+                    }`}
+                  >
+                    {manageFeedback.text}
+                  </p>
+                )}
+                <Button type="submit" size="sm" loading={updateCampaignMutation.isPending} className="w-full">
+                  Simpan Perubahan Program
+                </Button>
+              </form>
+            </Card>
+          )}
+
+          <Card className="space-y-5">
             <h2 className="text-lg font-bold text-forest-dark">Salurkan Zakat ke Program Ini</h2>
 
             <div className="space-y-2.5">
@@ -265,7 +365,11 @@ const CampaignDetail = () => {
               </div>
             </div>
 
-            {!isAuthenticated ? (
+            {campaign.status !== 'ACTIVE' ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 leading-relaxed">
+                Program ini berstatus <strong>{campaign.status}</strong> sehingga saat ini tidak menerima donasi baru.
+              </div>
+            ) : !isAuthenticated ? (
               <div className="rounded-xl border border-slate-200 bg-cream p-4 space-y-3">
                 <p className="text-sm text-slate-700 leading-relaxed">
                   Masuk atau daftar akun Muzakki terlebih dahulu agar pembayaran Anda tercatat di riwayat donasi pribadi.

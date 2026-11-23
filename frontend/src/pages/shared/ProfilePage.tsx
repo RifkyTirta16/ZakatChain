@@ -1,5 +1,7 @@
-import { LogOut, ShieldCheck, User } from 'lucide-react';
-import { Badge, Button, Card, SectionHeader } from '../../components/ui';
+import { useState } from 'react';
+import { CheckCircle2, KeyRound, LogOut, ShieldCheck, User } from 'lucide-react';
+import apiClient from '../../utils/api';
+import { Badge, Button, Card, Input, SectionHeader } from '../../components/ui';
 import { NetworkBadge, PoweredByEthereum, useNetworkInfo } from '../../components/ethereum';
 import { ROLE_LABELS, toRole, type SessionUser } from '../../components/layout/navConfig';
 import { shortHash } from '../../utils/format';
@@ -19,6 +21,42 @@ const ROLE_DESCRIPTION: Record<string, string> = {
 const ProfilePage = ({ user, onLogout }: ProfilePageProps) => {
   const network = useNetworkInfo();
   const role = toRole(user?.role);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwFeedback, setPwFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwFeedback(null);
+    if (newPassword.length < 10) {
+      setPwFeedback({ type: 'err', text: 'Kata sandi baru minimal 10 karakter.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwFeedback({ type: 'err', text: 'Konfirmasi kata sandi baru tidak cocok.' });
+      return;
+    }
+    setPwSaving(true);
+    try {
+      await apiClient.patch('/auth/password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPwFeedback({ type: 'ok', text: 'Kata sandi Anda berhasil diperbarui.' });
+    } catch (err: unknown) {
+      const apiMsg = (err as { response?: { data?: { error?: string; details?: Array<{ message?: string }> } } })?.response?.data;
+      const detail = apiMsg?.details?.[0]?.message;
+      setPwFeedback({ type: 'err', text: detail || apiMsg?.error || 'Gagal memperbarui kata sandi.' });
+    } finally {
+      setPwSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -72,6 +110,56 @@ const ProfilePage = ({ user, onLogout }: ProfilePageProps) => {
             </span>
           </div>
         </div>
+      </Card>
+
+      <Card className="space-y-4">
+        <div className="flex items-center gap-2">
+          <KeyRound size={17} className="text-primary" />
+          <h3 className="text-base font-bold text-forest-dark">Ubah Kata Sandi</h3>
+        </div>
+        <form onSubmit={(e) => void handlePasswordChange(e)} className="space-y-3">
+          <Input
+            label="Kata Sandi Saat Ini"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+          />
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Input
+              label="Kata Sandi Baru (min. 10 karakter)"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+            <Input
+              label="Konfirmasi Kata Sandi Baru"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
+          {pwFeedback && (
+            <p
+              role={pwFeedback.type === 'err' ? 'alert' : 'status'}
+              className={`rounded-xl border p-3 text-xs flex items-center gap-2 font-medium ${
+                pwFeedback.type === 'ok'
+                  ? 'bg-mint border-primary/25 text-forest'
+                  : 'bg-red-50 border-red-200 text-red-800'
+              }`}
+            >
+              {pwFeedback.type === 'ok' && <CheckCircle2 size={14} className="text-primary shrink-0" />}
+              <span>{pwFeedback.text}</span>
+            </p>
+          )}
+          <div className="flex justify-end">
+            <Button type="submit" size="sm" loading={pwSaving} disabled={!currentPassword || !newPassword || !confirmPassword}>
+              Simpan Kata Sandi Baru
+            </Button>
+          </div>
+        </form>
       </Card>
     </div>
   );

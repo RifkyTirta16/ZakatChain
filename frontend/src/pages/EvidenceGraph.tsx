@@ -19,6 +19,25 @@ type GraphNode = {
 
 type GraphLink = { source: string; target: string; type: string };
 
+interface GraphCampaign {
+  id: number;
+  title: string;
+}
+
+interface GraphDonation {
+  id: number;
+  amount: number | string;
+  campaign_id?: number | null;
+}
+
+interface GraphTransaction {
+  id: number;
+  amount: number | string;
+  campaign_id?: number | null;
+  category?: string | null;
+  tx_hash?: string | null;
+}
+
 const NODE_COLORS: Record<GraphNode['type'], string> = {
   campaign: '#047857',
   donation: '#059669',
@@ -33,13 +52,13 @@ const NODE_TYPE_LABELS: Record<GraphNode['type'], string> = {
   blockchain: 'Bukti Hash On-Chain',
 };
 
-const asList = (result: PromiseSettledResult<{ data: unknown }>) => {
+const asList = <T,>(result: PromiseSettledResult<{ data: unknown }>): T[] => {
   if (result.status !== 'fulfilled') return [];
   const data = result.value.data as Record<string, unknown>;
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.transactions)) return data.transactions;
-  if (Array.isArray(data?.donations)) return data.donations;
+  if (Array.isArray(data)) return data as T[];
+  if (Array.isArray(data?.data)) return data.data as T[];
+  if (Array.isArray(data?.transactions)) return data.transactions as T[];
+  if (Array.isArray(data?.donations)) return data.donations as T[];
   return [];
 };
 
@@ -50,14 +69,14 @@ const fetchGraphData = async (): Promise<{ nodes: GraphNode[]; links: GraphLink[
     apiClient.get('/transactions'),
   ]);
 
-  const campaigns = asList(campRes);
-  const donations = asList(donRes);
-  const transactions = asList(txRes);
+  const campaigns = asList<GraphCampaign>(campRes);
+  const donations = asList<GraphDonation>(donRes);
+  const transactions = asList<GraphTransaction>(txRes);
 
   const nodes: GraphNode[] = [];
   const links: GraphLink[] = [];
 
-  campaigns.forEach((c: any) => {
+  campaigns.forEach((c) => {
     nodes.push({
       id: `camp_${c.id}`,
       label: c.title,
@@ -66,7 +85,7 @@ const fetchGraphData = async (): Promise<{ nodes: GraphNode[]; links: GraphLink[
     });
   });
 
-  donations.forEach((d: any) => {
+  donations.forEach((d) => {
     nodes.push({
       id: `don_${d.id}`,
       label: `Donasi Rp ${Number(d.amount).toLocaleString('id-ID')}`,
@@ -79,7 +98,7 @@ const fetchGraphData = async (): Promise<{ nodes: GraphNode[]; links: GraphLink[
     }
   });
 
-  transactions.forEach((t: any) => {
+  transactions.forEach((t) => {
     nodes.push({
       id: `tx_${t.id}`,
       label: `Distribusi Rp ${Number(t.amount).toLocaleString('id-ID')}`,
@@ -91,11 +110,11 @@ const fetchGraphData = async (): Promise<{ nodes: GraphNode[]; links: GraphLink[
     if (t.campaign_id) {
       links.push({ source: `tx_${t.id}`, target: `camp_${t.campaign_id}`, type: 'funded_by' });
     } else if (t.category) {
-      const matchingCamp = campaigns.find((c: any) =>
+      const matchingCamp = campaigns.find((c) =>
         String(c.title || '').toLowerCase().includes(String(t.category).toLowerCase())
       );
       if (matchingCamp) {
-        links.push({ source: `tx_${t.id}`, target: `camp_${(matchingCamp as any).id}`, type: 'funded_by' });
+        links.push({ source: `tx_${t.id}`, target: `camp_${matchingCamp.id}`, type: 'funded_by' });
       }
     }
 
