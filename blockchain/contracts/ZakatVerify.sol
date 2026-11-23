@@ -43,9 +43,9 @@ contract ZakatVerify {
         emit ReportRevoked(reportHash, reason);
     }
 
-    function verifyReport(bytes32 reportHash) public view returns (bool exists, uint256 timestamp, bool revoked) {
+    function verifyReport(bytes32 reportHash) public view returns (bool reportExists, uint256 timestamp, bool revoked) {
         Report storage r = reports[reportHash];
-        exists = r.exists;
+        reportExists = r.exists;
         timestamp = r.timestamp;
         revoked = r.revoked;
     }

@@ -38,7 +38,9 @@ async function main() {
     process.exit(1);
   }
 
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  // Disable ethers' 250ms RPC response cache so sequential automined Hardhat
+  // writes never reuse a stale nonce (`NONCE_EXPIRED` on rapid loops).
+  const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, { cacheTimeout: -1 });
   try {
     const network = await provider.getNetwork();
     if (network.chainId !== 31337n) {
@@ -55,6 +57,7 @@ async function main() {
     const signer = process.env.BLOCKCHAIN_PRIVATE_KEY?.trim()
       ? new ethers.Wallet(process.env.BLOCKCHAIN_PRIVATE_KEY.trim(), provider)
       : await provider.getSigner(0);
+    const signerAddress = await signer.getAddress();
     const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer) as unknown as ZakatContract;
 
     const db = await initDb();
@@ -81,7 +84,8 @@ async function main() {
         const [exists, , isRevoked]: [boolean, bigint, boolean] = await contract.verifyReport(formattedHash);
 
         if (!exists) {
-          const tx = await contract.registerReport(formattedHash, row.id);
+          const nonce = await provider.getTransactionCount(signerAddress, 'pending');
+          const tx = await contract.registerReport(formattedHash, row.id, { nonce });
           const receipt = await tx.wait();
           if (receipt && receipt.status === 1) {
             await db.run(
@@ -93,9 +97,11 @@ async function main() {
         }
 
         if (row.blockchain_status === 'REVOKED' && !isRevoked) {
+          const nonce = await provider.getTransactionCount(signerAddress, 'pending');
           const revokeTx = await contract.revokeReport(
             formattedHash,
-            row.revoke_reason || 'Dicabut sesuai arsip lokal'
+            row.revoke_reason || 'Dicabut sesuai arsip lokal',
+            { nonce }
           );
           const revokeReceipt = await revokeTx.wait();
           if (revokeReceipt && revokeReceipt.status === 1) {
