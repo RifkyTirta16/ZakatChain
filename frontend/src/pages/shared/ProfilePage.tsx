@@ -118,9 +118,22 @@ const ProfilePage = ({ user, onLogout }: ProfilePageProps) => {
           <h3 className="text-base font-bold text-forest-dark">Ubah Kata Sandi</h3>
         </div>
         <form onSubmit={(e) => void handlePasswordChange(e)} className="space-y-3">
+          {/* Bind form updates to the signed-in username so browser password managers do not prompt to pick another saved account. */}
+          <input
+            type="text"
+            name="username"
+            autoComplete="username"
+            value={user?.username ?? ''}
+            readOnly
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+          />
           <Input
             label="Kata Sandi Saat Ini"
+            name="current_password"
             type="password"
+            autoComplete="current-password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             required
@@ -128,14 +141,18 @@ const ProfilePage = ({ user, onLogout }: ProfilePageProps) => {
           <div className="grid sm:grid-cols-2 gap-3">
             <Input
               label="Kata Sandi Baru (min. 10 karakter)"
+              name="new_password"
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
             />
             <Input
               label="Konfirmasi Kata Sandi Baru"
+              name="confirm_password"
               type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required

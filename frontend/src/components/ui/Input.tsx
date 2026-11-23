@@ -16,6 +16,8 @@ export interface InputProps {
   required?: boolean;
   min?: number | string;
   step?: number | string;
+  name?: string;
+  autoComplete?: string;
 }
 
 export const Input = ({
@@ -32,6 +34,8 @@ export const Input = ({
   required,
   min,
   step,
+  name,
+  autoComplete,
 }: InputProps) => {
   const generatedId = useId();
   const inputId = id ?? generatedId;
@@ -47,6 +51,8 @@ export const Input = ({
       <input
         type={type}
         id={inputId}
+        name={name}
+        autoComplete={autoComplete}
         placeholder={placeholder}
         disabled={disabled}
         required={required}

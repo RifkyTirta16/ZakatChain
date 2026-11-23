@@ -1,5 +1,8 @@
 # Session Log
 
+## 2026-11-23 - Fix Autocomplete Username & Handler 401 Ubah Sandi (`fix/profile-password-autocomplete`)
+- Frontend (`Input.tsx`, `ProfilePage.tsx`, `api.ts`): tambahkan input `username` terikat (`autoComplete="username"`) beserta `autoComplete="current-password"`/`"new-password"` pada form Ubah Kata Sandi agar password manager browser langsung mengaitkan sandi baru ke akun yang sedang login alih-alih meminta memilih akun peran tersimpan; kecualikan error salah sandi lama pada `/auth/password` agar `api.ts` tidak melogout pengguna pada `401`.
+
 ## 2026-11-23 - CORS Dev, Siklus Kampanye, Ubah Sandi, CI & Pembersihan Repo (`feat/lifecycle-cors-ci-cleanup`)
 - Backend (`index.ts`, `validation.ts`, `campaignController.ts`, `campaignRoutes.ts`, `authController.ts`, `authRoutes.ts`, `apiIntegration.test.ts`): CORS dev menerima port loopback lokal dinamis (sambil tetap blokir origin eksternal `403`), tambah `PATCH /api/campaigns/:id` (AMIL/ADMIN + audit log) & `PATCH /api/auth/password` (`bcrypt`, min. 10 char + audit log).
 - Frontend (`main.tsx`, `MainApp.tsx`, `queryClient.ts`, `vite.config.ts`, `CampaignDetail.tsx`, `ProfilePage.tsx`, `RolesPermissionsPage.tsx`, `DonationDrawer.tsx`, `EvidenceGraph.tsx`): cabut dependensi `wagmi` yang tidak terpakai, hapus seluruh cast `any` di frontend, tambah UI kelola program (AMIL/ADMIN), form ubah kata sandi, serta baris `/mustahik` di matriks RBAC.

@@ -41,8 +41,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     const requestUrl = String(error.config?.url ?? '');
-    const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
-    if (error.response?.status === 401 && !isAuthRequest) {
+    const apiErrMsg = String((error.response?.data as { error?: string } | undefined)?.error ?? '');
+    const isCredentialMismatch =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      (requestUrl.includes('/auth/password') && apiErrMsg.includes('Kata sandi saat ini'));
+    if (error.response?.status === 401 && !isCredentialMismatch) {
       localStorage.removeItem('zakat_token');
       localStorage.removeItem('zakat_user');
       if (window.location.pathname !== '/login') {
