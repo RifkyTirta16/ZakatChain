@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, QrCode, RefreshCw, X } from 'lucide-react'
 import apiClient from '../utils/api';
 import { formatIDR } from '../utils/format';
 import { Badge, Button, Card, JourneyTracker, ON_CHAIN_NOTE, QrCodeBox } from './ui';
+import { invalidateDonationQueries } from './dashboard/hooks/useDashboardData';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -52,11 +53,9 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
 
   useEffect(() => {
     if (liveStatus === 'PAID') {
-      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
-      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      invalidateDonationQueries(queryClient, { settled: true, ...(campaignId ? { campaignId } : {}) });
     }
-  }, [liveStatus, queryClient]);
+  }, [liveStatus, queryClient, campaignId]);
 
   const sandboxConfirm = useMutation({
     mutationFn: async (sid: string) => {
@@ -65,9 +64,7 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
     onSuccess: () => {
       setStatus('PAID');
       void statusQuery.refetch();
-      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
-      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      invalidateDonationQueries(queryClient, { settled: true, ...(campaignId ? { campaignId } : {}) });
     },
     onError: () => {
       setError('Konfirmasi sandbox gagal. Silakan periksa sesi pembayaran.');
@@ -109,6 +106,7 @@ const PaymentModal = ({ isOpen, onClose, amount, campaignId }: PaymentModalProps
       const { data } = await apiClient.post<PaymentSession>('/payments/session', payload);
       setPaymentData(data);
       setStatus('PENDING');
+      invalidateDonationQueries(queryClient);
     } catch {
       setError('Gagal membuat sesi pembayaran. Pastikan Anda sudah masuk dan nominal valid.');
       setStatus('FAILED');

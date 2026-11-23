@@ -1,5 +1,6 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../utils/api';
+import { invalidateDonationQueries } from './hooks/useDashboardData';
 
 export interface Campaign {
   id: number;
@@ -42,6 +43,7 @@ export const useCampaigns = () => {
 };
 
 export const useCreatePaymentSession = () => {
+  const queryClient = useQueryClient();
   return useMutation<PaymentSessionResponse, Error, {
     amount: number;
     donor_name?: string;
@@ -51,6 +53,9 @@ export const useCreatePaymentSession = () => {
     mutationFn: async (payload) => {
       const { data } = await apiClient.post<PaymentSessionResponse>('/payments/session', payload);
       return data;
+    },
+    onSuccess: () => {
+      invalidateDonationQueries(queryClient);
     },
   });
 };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -15,7 +15,7 @@ import {
 import apiClient from '../utils/api';
 import { formatDateTime, formatIDR } from '../utils/format';
 import { Badge, Button, Card, Input, JourneyTracker, ON_CHAIN_NOTE, QrCodeBox, Select } from '../components/ui';
-import { useCampaigns } from '../components/dashboard/hooks/useDashboardData';
+import { invalidateDonationQueries, useCampaigns } from '../components/dashboard/hooks/useDashboardData';
 
 interface PaymentSession {
   status: string;
@@ -78,6 +78,15 @@ const DonationPayment = () => {
   const effectiveStep =
     step === 'payment' && statusQuery.data?.status === 'PAID' ? 'success' : step;
 
+  useEffect(() => {
+    if (statusQuery.data?.status === 'PAID') {
+      invalidateDonationQueries(queryClient, {
+        settled: true,
+        ...(selectedCampaignId !== 'GENERAL' ? { campaignId: selectedCampaignId } : {}),
+      });
+    }
+  }, [statusQuery.data?.status, queryClient, selectedCampaignId]);
+
   const sessionMutation = useMutation({
     mutationFn: async () => {
       const payload: Record<string, unknown> = {
@@ -95,6 +104,7 @@ const DonationPayment = () => {
       setPaymentData(data);
       setStep('payment');
       setError(null);
+      invalidateDonationQueries(queryClient);
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { error?: string } } };
@@ -108,10 +118,10 @@ const DonationPayment = () => {
     },
     onSuccess: () => {
       void statusQuery.refetch();
-      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
-      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      void queryClient.invalidateQueries({ queryKey: ['public-transparency'] });
+      invalidateDonationQueries(queryClient, {
+        settled: true,
+        ...(selectedCampaignId !== 'GENERAL' ? { campaignId: selectedCampaignId } : {}),
+      });
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { error?: string } } };
@@ -260,9 +270,9 @@ const DonationPayment = () => {
             </div>
           </div>
 
-          {!selectedCampaignId && (
+          {selectedCampaignId === 'GENERAL' && (
             <div className="rounded-xl bg-mint border border-primary/20 p-3 text-xs text-forest">
-              Pembayaran Zakat Umum akan tercatat langsung di riwayat donasi pribadi Anda (`/my-donations`).
+              Pembayaran Zakat Umum akan tercatat langsung di riwayat donasi pribadi Anda (menu Riwayat & Bukti BSZ).
             </div>
           )}
 

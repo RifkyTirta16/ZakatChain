@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Clock, Info, QrCode, X } from 'lucide-react';
 import apiClient from '../../utils/api';
 import { formatDateTime, formatIDR } from '../../utils/format';
 import { Badge, Button, Card, Input, JourneyTracker, ON_CHAIN_NOTE, QrCodeBox, Select } from '../../components/ui';
+import { invalidateDonationQueries } from './hooks/useDashboardData';
 import type { Campaign } from './useDonation';
 
 interface DonationDrawerProps {
@@ -72,6 +73,7 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
       paidHandledRef.current = false;
       setPaymentData(data);
       setStep('pembayaran');
+      invalidateDonationQueries(queryClient);
     },
     onError: () => {
       setError('Gagal membuat sesi pembayaran. Silakan coba lagi.');
@@ -203,12 +205,12 @@ const DonationDrawer = ({ isOpen, onClose, initialCampaignId }: DonationDrawerPr
     if (status === 'PAID' && !paidHandledRef.current) {
       paidHandledRef.current = true;
       setStep('selesai');
-      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
-      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      void queryClient.invalidateQueries({ queryKey: ['donations'] });
-      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      invalidateDonationQueries(queryClient, {
+        settled: true,
+        ...(effectiveSelectedCampaign?.id ? { campaignId: effectiveSelectedCampaign.id } : {}),
+      });
     }
-  }, [statusQuery.data, queryClient]);
+  }, [statusQuery.data, queryClient, effectiveSelectedCampaign?.id]);
 
   if (!isOpen) return null;
 

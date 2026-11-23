@@ -318,7 +318,7 @@ const MyDonationsPage = ({ user }: { user: SessionUser | null }) => {
             aria-label="Filter status pembayaran"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="min-h-[38px] rounded-[10px] border border-slate-300 bg-white px-3 text-xs font-semibold text-forest-dark"
+            className="rounded-[10px] border border-slate-300 bg-white px-3 py-2 text-xs leading-5 font-semibold text-forest-dark cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
           >
             <option value="">Semua Status</option>
             <option value="CONFIRMED">Terkonfirmasi</option>

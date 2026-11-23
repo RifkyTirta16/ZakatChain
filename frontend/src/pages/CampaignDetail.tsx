@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Check, CheckCircle2, Clock, Copy, Heart, Info, LogIn, QrCode, RefreshCw } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatDateTime, formatIDR } from '../utils/format';
 import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, QrCodeBox, Skeleton } from '../components/ui';
+import { invalidateDonationQueries } from '../components/dashboard/hooks/useDashboardData';
 
 interface Donation {
   id: number;
@@ -92,6 +93,7 @@ const CampaignDetail = () => {
     onSuccess: (data) => {
       setPaymentResult(data);
       setPaymentError('');
+      invalidateDonationQueries(queryClient);
     },
     onError: (error: unknown) => {
       const e = error as { response?: { status?: number } };
@@ -119,6 +121,13 @@ const CampaignDetail = () => {
     },
   });
 
+  useEffect(() => {
+    if (statusQuery.data?.status === 'PAID') {
+      void query.refetch();
+      invalidateDonationQueries(queryClient, { settled: true, ...(id ? { campaignId: id } : {}) });
+    }
+  }, [statusQuery.data?.status, query, queryClient, id]);
+
   const sandboxConfirmMutation = useMutation({
     mutationFn: async (sid: string) => {
       await apiClient.post(`/payments/sandbox/confirm/${sid}`, {});
@@ -126,8 +135,7 @@ const CampaignDetail = () => {
     onSuccess: () => {
       void statusQuery.refetch();
       void query.refetch();
-      void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
+      invalidateDonationQueries(queryClient, { settled: true, ...(id ? { campaignId: id } : {}) });
     },
   });
 

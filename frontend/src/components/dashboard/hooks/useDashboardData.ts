@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type QueryClient } from '@tanstack/react-query';
 import apiClient from '../../../utils/api';
 
 export interface Campaign {
@@ -109,3 +109,22 @@ export const useRegionStats = () =>
       return data;
     },
   });
+
+/**
+ * Invalidates cached donation history on session creation and broader aggregates
+ * once settled, preventing `staleTime` from hiding new transactions during SPA nav.
+ */
+export const invalidateDonationQueries = (
+  queryClient: QueryClient,
+  options: { settled?: boolean; campaignId?: string | number } = {},
+) => {
+  void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
+  if (!options.settled) return;
+  void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+  void queryClient.invalidateQueries({ queryKey: ['donations'] });
+  void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+  void queryClient.invalidateQueries({ queryKey: ['public-transparency'] });
+  if (options.campaignId !== undefined) {
+    void queryClient.invalidateQueries({ queryKey: ['campaign', String(options.campaignId)] });
+  }
+};
