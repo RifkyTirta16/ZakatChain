@@ -35,6 +35,9 @@ cache, uploads kecuali tugas memintanya.
 - Tulis path file lengkap setiap menyebut file.
 
 ## 3. Peta file
+Root:
+- README.md                            panduan setup tim, env, blockchain lokal, & seeder
+
 Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/index.ts          entry server
 - backend/blockchain/routes/*.ts       endpoint
@@ -47,6 +50,7 @@ Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/utils/            crypto.ts, validation.ts (Zod), web3.ts, auditLogger.ts, doku.ts
 - backend/blockchain/seed.ts           seed 5 transaksi, TIDAK membuat user
 - backend/blockchain/seed_admin.ts     CLI provisioning akun ADMIN awal (aman untuk produksi)
+- backend/blockchain/seed_demo.ts      CLI data demo fiktif non-PII + PNG bukti (non-production)
 - backend/blockchain/seed_poverty.ts   impor data kemiskinan 38 provinsi + 114 kota/kabupaten ke SQLite
 - backend/blockchain/sync_local_chain.ts memulihkan hash terkonfirmasi/dicabut ke node Hardhat lokal
 - backend/blockchain/data/             dataset referensi statis (poverty_provinces_38.json, poverty_cities.json)

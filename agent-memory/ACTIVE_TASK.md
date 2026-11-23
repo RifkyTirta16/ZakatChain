@@ -1,8 +1,9 @@
 # Active Task / Recovery Checkpoint
 
-**Updated:** 2026-11-23 · **Status:** Security hardening produksi lengkap (`HttpOnly` cookie, `token_version`, lockout, DOKU/CSRF/CSP/upload hardening, `0` npm vuln) selesai (`feat/security-hardening` -> `main`).
+**Updated:** 2026-11-23 · **Status:** Repo dipublikasikan ke GitHub (`https://github.com/RifkyTirta16/ZakatChain`, 25 branch), lengkap dengan `README.md` setup tim dan seeder demo fiktif aman (`npm run seed:demo`).
 
 ## Completed
+- **Team Onboarding & Demo Seed (`docs/team-setup-and-demo-seed`)**: menambahkan `README.md` panduan setup lengkap untuk tim serta `backend/blockchain/seed_demo.ts` (`npm run seed:demo`, data demo fiktif non-PII, bukti PNG valid, opsional `--with-users` via `DEMO_PASSWORD`, tanpa menyentuh DB produksi) dan meng-push semua branch ke `origin` GitHub (`RifkyTirta16/ZakatChain`).
 - **Paket 1–5 (`8fed84d`..`d692a1d`), Paket 6 (`12c100b`, `f2492e0`), QA Lintas-Role (`098c0fc`), Cleanup (`2cfd5ca`), & Blockchain Fix (`c158152`)**: selesai dan tergabung di `main`.
 - **Security Hardening Produksi (`feat/security-hardening`)**:
   - **Dependensi (`0 vulnerabilities` `--omit=dev`)**: `npm audit fix` di `backend/` (`multer`, `body-parser`) & `frontend/` (`follow-redirects`, `seroval`), serta memindahkan `nodemon` ke `devDependencies` `backend/package.json`.

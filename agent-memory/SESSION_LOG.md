@@ -1,5 +1,13 @@
 # Session Log
 
+## 2026-11-23 - Publikasi GitHub, Panduan Setup Tim & Seeder Demo Aman (`docs/team-setup-and-demo-seed`)
+- GitHub (`origin` -> `git@github.com:RifkyTirta16/ZakatChain.git`): memverifikasi seluruh riwayat 25 branch bersih dari `.env`/PII/secret lalu push `main` + semua 25 branch lokal ke GitHub; tetap mengecualikan `.env`, `database.sqlite*`, `uploads/`, dan `node_modules/` dari Git sesuai `AGENTS.md`.
+- Onboarding Tim (`README.md`, `backend/blockchain/seed_demo.ts`, `backend/package.json`): menambah panduan setup langkah demi langkah, menambah script `npm run seed:demo` (data dummy fiktif non-PII, PNG bukti demo, opsional `--with-users` via `DEMO_PASSWORD`), serta menyinkronkan `AGENTS.md` & `agent-memory/PROJECT_STATE.md`.
+- Verifikasi: uji terisolasi `seed_demo.ts` pada DB temp + idempotensi (`ok`, `0` FK error), `backend tsc --noEmit`, `frontend tsc -b` + `oxlint` (`0/0`) + `vite build`, `blockchain npx hardhat compile --force`, serta pengecekan live UI & chain.
+
+## 2026-11-23 - Hardening Keamanan Publik (`feat/security-hardening`)
+- Auth & Sesi (`db.ts`, `auth.ts`, `authController.ts`, `userController.ts`, `MainApp.tsx`, `api.ts`): migrasi ke cookie `HttpOnly; SameSite=Lax` (`zakat_session`), revokasi `token_version`, lockout 5 percobaan (`429`), validasi password kuat, CSP/HSTS/CSRF/attachment `/uploads`, validasi timestamp & nominal DOKU, paginasi terbatasi, `transferOwnership` pada `ZakatVerify.sol`, serta `0` kerentanan produksi (`npm audit --omit=dev`).
+
 ## 2026-11-23 - Selaraskan Navbar & Layout Portal Transparansi Muzakki (`fix/transparency-workspace-shell`)
 - `MainApp.tsx` & `PublicTransparencyPage.tsx`: ubah rute `/transparency` dari `alwaysPublic(...)` menjadi `publicOrWorkspace(...)` agar saat login (khususnya peran `USER`/Muzakki) halaman Portal Transparansi tetap memakai `MuzakkiShell` / `ShellFrame` (sidebar & top bar konsisten dengan `/calculator`, `/campaigns`, `/verify`) tanpa double padding, sementara pengunjung anonim tetap memakai `PublicShell`.
 
