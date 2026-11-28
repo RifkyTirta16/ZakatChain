@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
@@ -79,6 +79,12 @@ const NewDistributionRecord = () => {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const mustahikQuery = useQuery<MustahikOption[]>({
     queryKey: ['verified-mustahik-options'],

@@ -59,6 +59,13 @@ async function main() {
       : await provider.getSigner(0);
     const signerAddress = await signer.getAddress();
     const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer) as unknown as ZakatContract;
+    const ownerAddress = await contract.owner();
+    if (ownerAddress.toLowerCase() !== signerAddress.toLowerCase()) {
+      console.error(
+        `[SYNC LOCAL CHAIN] Ditolak: signer (${signerAddress}) bukan owner kontrak ZakatVerify (${ownerAddress}).`
+      );
+      process.exit(1);
+    }
 
     const db = await initDb();
     try {

@@ -1,11 +1,35 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, Ban, Check, CheckCircle2, Copy, ExternalLink, Filter, RefreshCw, Search } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import {
+  AlertCircle,
+  Ban,
+  Check,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
+  Eye,
+  Filter,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+} from 'lucide-react';
 import apiClient from '../utils/api';
 import { getStoredSessionUser } from '../components/layout/navConfig';
 import { formatDateTime, formatIDR, shortHash } from '../utils/format';
-import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, SectionHeader, Skeleton, proofBadge } from '../components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  ON_CHAIN_NOTE,
+  PaginationBar,
+  SectionHeader,
+  Skeleton,
+  statusBadge,
+} from '../components/ui';
 import { EthereumLogo, NetworkBadge, explorerBaseForChain, useNetworkInfo } from '../components/ethereum';
+import { TransactionDetailDrawer } from '../components/admin/TransactionDetailDrawer';
 
 interface RegionAllocation {
   region: string;
@@ -13,7 +37,7 @@ interface RegionAllocation {
   notes?: string | null;
 }
 
-interface Transaction {
+interface ExplorerTransaction {
   id: number;
   amount: number;
   category: string | null;
@@ -27,6 +51,13 @@ interface Transaction {
   revoke_tx_hash?: string | null;
   revoke_reason?: string | null;
   allocations?: RegionAllocation[];
+}
+
+interface PaginatedExplorerResponse {
+  items: ExplorerTransaction[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 interface VerificationDetail {
@@ -58,33 +89,65 @@ const OnChainExplorer = () => {
   const network = useNetworkInfo();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [limit, setLimit] = useState(20);
+  const [offset, setOffset] = useState(0);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<VerificationDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [reconcilingId, setReconcilingId] = useState<number | null>(null);
   const [reconcileMsg, setReconcileMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-  const [revokeTarget, setRevokeTarget] = useState<Transaction | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<ExplorerTransaction | null>(null);
   const [revokeReason, setRevokeReason] = useState('');
   const [revokingId, setRevokingId] = useState<number | null>(null);
+  const [drawerTxId, setDrawerTxId] = useState<number | null>(null);
 
   const isAdmin = getStoredSessionUser()?.role === 'ADMIN';
 
-  const { data: transactions, isLoading, isError, refetch } = useQuery<Transaction[]>({
-    queryKey: ['explorer-transactions'],
+  const { data, isLoading, isError, refetch } = useQuery<PaginatedExplorerResponse>({
+    queryKey: ['explorer-transactions', searchTerm, statusFilter, limit, offset],
     queryFn: async () => {
-      const { data } = await apiClient.get<Transaction[]>('/transactions');
-      return Array.isArray(data) ? data : [];
+      const { data: resp } = await apiClient.get<PaginatedExplorerResponse>('/transactions', {
+        params: {
+          meta: '1',
+          limit,
+          offset,
+          ...(statusFilter ? { status: statusFilter } : {}),
+          ...(searchTerm.trim() ? { search: searchTerm.trim() } : {}),
+        },
+      });
+      return resp;
+    },
+  });
+
+  const batchReconcileMutation = useMutation({
+    mutationFn: async () => {
+      const { data: resp } = await apiClient.post<{ attempted: number; confirmed: number; failed: number }>(
+        '/transactions/reconcile-batch',
+        { limit: 10 }
+      );
+      return resp;
+    },
+    onSuccess: (res) => {
+      setReconcileMsg({
+        type: res.failed > 0 ? 'err' : 'ok',
+        text: `Rekonsiliasi massal: ${res.confirmed} dari ${res.attempted} transaksi berhasil dicatat ke Ethereum${res.failed > 0 ? `, ${res.failed} gagal` : ''}.`,
+      });
+      void refetch();
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setReconcileMsg({ type: 'err', text: e.response?.data?.error || 'Rekonsiliasi massal gagal.' });
     },
   });
 
   const handleCopy = (hash: string) => {
     navigator.clipboard.writeText(hash);
     setCopiedHash(hash);
-    setTimeout(() => setCopiedHash(null), 2000);
+    window.setTimeout(() => setCopiedHash(null), 2000);
   };
 
-  const verifyItem = async (tx: Transaction) => {
+  const verifyItem = async (tx: ExplorerTransaction) => {
     setDetailLoading(true);
     setDetailError('');
     setSelectedDetail(null);
@@ -92,8 +155,8 @@ const OnChainExplorer = () => {
       const endpoint = tx.audit_hash
         ? `/explorer/verify/hash/${encodeURIComponent(tx.audit_hash)}`
         : `/explorer/verify/${encodeURIComponent(String(tx.id))}`;
-      const { data } = await apiClient.get<VerificationDetail>(endpoint);
-      setSelectedDetail(data);
+      const { data: resp } = await apiClient.get<VerificationDetail>(endpoint);
+      setSelectedDetail(resp);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
       setDetailError(e.response?.data?.error || 'Gagal memverifikasi catatan on-chain.');
@@ -106,12 +169,12 @@ const OnChainExplorer = () => {
     setReconcilingId(id);
     setReconcileMsg(null);
     try {
-      const { data } = await apiClient.patch<{ message?: string; tx_hash?: string }>(
-        `/transactions/${id}/reconcile`,
+      const { data: resp } = await apiClient.patch<{ message?: string; tx_hash?: string }>(
+        `/transactions/${id}/reconcile`
       );
       setReconcileMsg({
         type: 'ok',
-        text: `Transaksi #${id} berhasil direkonsiliasi ke Ethereum (${shortHash(data.tx_hash, 8, 6)}).`,
+        text: `Transaksi #${id} berhasil direkonsiliasi ke Ethereum (${shortHash(resp.tx_hash, 8, 6)}).`,
       });
       void refetch();
     } catch (err: unknown) {
@@ -135,13 +198,13 @@ const OnChainExplorer = () => {
     setRevokingId(revokeTarget.id);
     setReconcileMsg(null);
     try {
-      const { data } = await apiClient.patch<{ message?: string; revoke_tx_hash?: string }>(
+      const { data: resp } = await apiClient.patch<{ message?: string; revoke_tx_hash?: string }>(
         `/transactions/${revokeTarget.id}/revoke`,
-        { reason: revokeReason.trim() },
+        { reason: revokeReason.trim() }
       );
       setReconcileMsg({
         type: 'ok',
-        text: `Laporan #${revokeTarget.id} berhasil dicabut on-chain${data.revoke_tx_hash ? ` (${shortHash(data.revoke_tx_hash, 8, 6)})` : ''}.`,
+        text: `Laporan #${revokeTarget.id} berhasil dicabut on-chain${resp.revoke_tx_hash ? ` (${shortHash(resp.revoke_tx_hash, 8, 6)})` : ''}.`,
       });
       setRevokeTarget(null);
       setRevokeReason('');
@@ -157,22 +220,6 @@ const OnChainExplorer = () => {
     }
   };
 
-  const list = transactions ?? [];
-  const statusOptions = Array.from(new Set(list.map((t) => t.blockchain_status).filter(Boolean))) as string[];
-
-  const filtered = list.filter((t) => {
-    const matchStatus = statusFilter ? t.blockchain_status === statusFilter : true;
-    const term = searchTerm.toLowerCase().trim();
-    const matchSearch = term
-      ? String(t.id).includes(term) ||
-        (t.tx_hash && t.tx_hash.toLowerCase().includes(term)) ||
-        (t.audit_hash && t.audit_hash.toLowerCase().includes(term)) ||
-        (t.category && t.category.toLowerCase().includes(term)) ||
-        (t.region && t.region.toLowerCase().includes(term))
-      : true;
-    return matchStatus && matchSearch;
-  });
-
   if (isError) {
     return (
       <ErrorState
@@ -182,6 +229,8 @@ const OnChainExplorer = () => {
     );
   }
 
+  const list = data?.items ?? [];
+  const totalCount = data?.total ?? 0;
   const detailData = selectedDetail?.data ?? null;
   const detailNetName = selectedDetail?.network?.networkName || network.label;
   const detailChainId = selectedDetail?.network?.chainId ?? network.chainId;
@@ -197,33 +246,50 @@ const OnChainExplorer = () => {
             </span>
           }
           title="On-Chain Proof Explorer"
-          subtitle="Penjelajah catatan hash audit penyaluran dan status pencatatannya pada smart contract Ethereum."
+          subtitle="Penjelajah hash audit penyaluran terpaginasi penuh dengan rekonsiliasi massal dan inspeksi lintas modul."
         />
 
         <div className="flex flex-wrap items-center gap-2.5">
           <NetworkBadge compact />
+          {isAdmin && (
+            <Button
+              type="button"
+              size="sm"
+              variant="gold"
+              loading={batchReconcileMutation.isPending}
+              onClick={() => batchReconcileMutation.mutate()}
+            >
+              <ShieldCheck size={13} /> Rekonsiliasi Massal
+            </Button>
+          )}
           <div className="inline-flex items-center gap-2 bg-white px-3 py-2 rounded-[10px] border border-slate-300">
             <Filter size={14} className="text-slate-500" />
             <select
               aria-label="Filter status on-chain"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setOffset(0);
+              }}
               className="bg-transparent text-xs sm:text-sm text-forest-dark font-medium outline-none cursor-pointer"
             >
               <option value="">Semua Status</option>
-              {statusOptions.map((st) => (
-                <option key={st} value={st}>{proofBadge(st).label}</option>
-              ))}
+              <option value="CONFIRMED">{statusBadge('CONFIRMED').label}</option>
+              <option value="PENDING_BLOCKCHAIN">{statusBadge('PENDING_BLOCKCHAIN').label}</option>
+              <option value="REVOKED">{statusBadge('REVOKED').label}</option>
             </select>
           </div>
 
-          <div className="relative min-w-[210px]">
+          <div className="relative min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             <input
               type="text"
-              placeholder="Cari ID, hash, wilayah…"
+              placeholder="Cari nama atau hash audit…"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setOffset(0);
+              }}
               className="w-full min-h-[40px] bg-white rounded-[10px] border border-slate-300 pl-8 pr-3 text-xs sm:text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25"
             />
           </div>
@@ -255,7 +321,10 @@ const OnChainExplorer = () => {
       )}
 
       {detailError && (
-        <div role="alert" className="p-4 rounded-2xl border border-red-200 bg-red-50 text-red-800 text-xs sm:text-sm flex items-center gap-2 font-medium">
+        <div
+          role="alert"
+          className="p-4 rounded-2xl border border-red-200 bg-red-50 text-red-800 text-xs sm:text-sm flex items-center gap-2 font-medium"
+        >
           <AlertCircle size={16} className="text-danger shrink-0" />
           <span>{detailError}</span>
         </div>
@@ -286,8 +355,8 @@ const OnChainExplorer = () => {
             </div>
             <div>
               <span className="text-slate-500 block">Status Database</span>
-              <Badge tone={proofBadge(detailData.blockchain_status ?? detailData.status ?? '').tone}>
-                {proofBadge(detailData.blockchain_status ?? detailData.status ?? '').label}
+              <Badge tone={statusBadge(detailData.blockchain_status ?? detailData.status ?? '').tone}>
+                {statusBadge(detailData.blockchain_status ?? detailData.status ?? '').label}
               </Badge>
             </div>
             <div>
@@ -383,8 +452,10 @@ const OnChainExplorer = () => {
 
       <Card className="p-0 sm:p-0 overflow-hidden">
         {isLoading ? (
-          <div className="p-6"><Skeleton lines={8} /></div>
-        ) : filtered.length === 0 ? (
+          <div className="p-6">
+            <Skeleton lines={8} />
+          </div>
+        ) : list.length === 0 ? (
           <EmptyState
             title="Tidak ada catatan transaksi"
             description={
@@ -394,129 +465,146 @@ const OnChainExplorer = () => {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-                <tr>
-                  <th className="py-3.5 px-4">ID</th>
-                  <th className="py-3.5 px-4">Tx Hash Ethereum</th>
-                  <th className="py-3.5 px-4">Audit Hash</th>
-                  <th className="py-3.5 px-4">Kategori & Wilayah</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4">Blok</th>
-                  <th className="py-3.5 px-4 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((t) => {
-                  const isCopiedTx = copiedHash === t.tx_hash;
-                  const isCopiedAudit = copiedHash === t.audit_hash;
-                  const isRevoked = t.blockchain_status === 'REVOKED';
-                  const isRejected = t.proof_status === 'REJECTED';
-                  const isConfirmed = t.blockchain_status === 'CONFIRMED';
-                  const isPendingChain = !isRevoked && !isRejected && (!t.tx_hash || !isConfirmed);
-                  return (
-                    <tr key={t.id} className="hover:bg-cream/60">
-                      <td className="py-3.5 px-4 font-mono font-bold text-forest-dark">#{t.id}</td>
-                      <td className="py-3.5 px-4 font-mono text-xs">
-                        {t.tx_hash ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-forest-dark">{shortHash(t.tx_hash, 6, 4)}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(t.tx_hash!)}
-                              aria-label="Salin tx hash"
-                              className="p-1 rounded text-slate-400 hover:text-primary hover:bg-slate-100"
-                            >
-                              {isCopiedTx ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs">
-                        {t.audit_hash ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-slate-600">{shortHash(t.audit_hash, 6, 4)}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(t.audit_hash!)}
-                              aria-label="Salin audit hash"
-                              className="p-1 rounded text-slate-400 hover:text-primary hover:bg-slate-100"
-                            >
-                              {isCopiedAudit ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="font-semibold text-forest-dark block text-xs">{t.category || 'Umum'}</span>
-                        <span className="text-[11px] text-slate-500 block truncate max-w-[160px]">
-                          {t.region || 'Nasional'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge tone={proofBadge(t.blockchain_status ?? '').tone}>
-                            {proofBadge(t.blockchain_status ?? '').label}
-                          </Badge>
-                          {isRejected && !isRevoked && (
-                            <Badge tone="danger">Ditolak</Badge>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                  <tr>
+                    <th className="py-3.5 px-4">ID</th>
+                    <th className="py-3.5 px-4">Tx Hash Ethereum</th>
+                    <th className="py-3.5 px-4">Audit Hash</th>
+                    <th className="py-3.5 px-4">Kategori & Wilayah</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4">Blok</th>
+                    <th className="py-3.5 px-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {list.map((t) => {
+                    const isCopiedTx = copiedHash === t.tx_hash;
+                    const isCopiedAudit = copiedHash === t.audit_hash;
+                    const isRevoked = t.blockchain_status === 'REVOKED';
+                    const isRejected = t.proof_status === 'REJECTED';
+                    const isConfirmed = t.blockchain_status === 'CONFIRMED';
+                    const isPendingChain = !isRevoked && !isRejected && (!t.tx_hash || !isConfirmed);
+                    const st = statusBadge(t.blockchain_status ?? 'PENDING_BLOCKCHAIN');
+                    return (
+                      <tr key={t.id} className="hover:bg-cream/60">
+                        <td className="py-3.5 px-4 font-mono font-bold text-forest-dark">#{t.id}</td>
+                        <td className="py-3.5 px-4 font-mono text-xs">
+                          {t.tx_hash ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-forest-dark">{shortHash(t.tx_hash, 6, 4)}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(t.tx_hash!)}
+                                aria-label="Salin tx hash"
+                                className="p-1 rounded text-slate-400 hover:text-primary hover:bg-slate-100"
+                              >
+                                {isCopiedTx ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
                           )}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-600">
-                        {t.block_number ? `#${t.block_number}` : '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-2">
-                        {isAdmin && isPendingChain && (
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-xs">
+                          {t.audit_hash ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-600">{shortHash(t.audit_hash, 6, 4)}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(t.audit_hash!)}
+                                aria-label="Salin audit hash"
+                                className="p-1 rounded text-slate-400 hover:text-primary hover:bg-slate-100"
+                              >
+                                {isCopiedAudit ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="font-semibold text-forest-dark block text-xs">{t.category || 'Umum'}</span>
+                          <span className="text-[11px] text-slate-500 block truncate max-w-[160px]">
+                            {t.region || 'Nasional'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge tone={st.tone}>{st.label}</Badge>
+                            {isRejected && !isRevoked && <Badge tone="danger">Ditolak</Badge>}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-xs text-slate-600">
+                          {t.block_number ? `#${t.block_number}` : '-'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
                           <Button
+                            type="button"
                             size="sm"
-                            variant="gold"
-                            loading={reconcilingId === t.id}
-                            disabled={reconcilingId !== null || revokingId !== null}
-                            onClick={() => void retryOnChain(t.id)}
+                            variant="secondary"
+                            onClick={() => setDrawerTxId(t.id)}
                           >
-                            <RefreshCw size={11} /> Catat ke Ethereum
+                            <Eye size={11} /> Detail
                           </Button>
-                        )}
-                        {isAdmin && isConfirmed && (
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            disabled={reconcilingId !== null || revokingId !== null}
-                            onClick={() => {
-                              setRevokeTarget(t);
-                              setRevokeReason('');
-                            }}
+                          {isAdmin && isPendingChain && (
+                            <Button
+                              size="sm"
+                              variant="gold"
+                              loading={reconcilingId === t.id}
+                              disabled={reconcilingId !== null || revokingId !== null}
+                              onClick={() => void retryOnChain(t.id)}
+                            >
+                              <RefreshCw size={11} /> Catat ke Ethereum
+                            </Button>
+                          )}
+                          {isAdmin && isConfirmed && (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              disabled={reconcilingId !== null || revokingId !== null}
+                              onClick={() => {
+                                setRevokeTarget(t);
+                                setRevokeReason('');
+                              }}
+                            >
+                              <Ban size={11} /> Cabut On-Chain
+                            </Button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void verifyItem(t)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[10px] border border-slate-300 text-xs font-semibold text-forest-dark hover:bg-mint hover:border-primary/40 transition-colors"
                           >
-                            <Ban size={11} /> Cabut On-Chain
-                          </Button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => void verifyItem(t)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[10px] border border-slate-300 text-xs font-semibold text-forest-dark hover:bg-mint hover:border-primary/40 transition-colors"
-                        >
-                          Periksa <ExternalLink size={11} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            Periksa <ExternalLink size={11} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <PaginationBar
+              total={totalCount}
+              limit={limit}
+              offset={offset}
+              onOffsetChange={setOffset}
+              onLimitChange={setLimit}
+            />
+          </>
         )}
 
-        <div className="p-4 bg-cream border-t border-slate-100 text-xs text-slate-600 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <p>{ON_CHAIN_NOTE}</p>
-          <span className="font-semibold text-slate-500 shrink-0">Total {filtered.length} rekaman</span>
-        </div>
+        <div className="p-4 bg-cream border-t border-slate-100 text-xs text-slate-600">{ON_CHAIN_NOTE}</div>
       </Card>
+
+      <TransactionDetailDrawer
+        transactionId={drawerTxId}
+        onClose={() => setDrawerTxId(null)}
+        onUpdated={() => void refetch()}
+      />
     </div>
   );
 };

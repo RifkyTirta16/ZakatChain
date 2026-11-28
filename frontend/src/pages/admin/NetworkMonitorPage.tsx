@@ -1,8 +1,30 @@
 import { useState } from 'react';
-import { Check, Copy, Cpu, RefreshCw, ShieldCheck } from 'lucide-react';
-import { Badge, Button, Card, ON_CHAIN_NOTE, SectionHeader } from '../../components/ui';
+import { useQuery } from '@tanstack/react-query';
+import { Activity, Boxes, Check, Copy, Cpu, RefreshCw, ShieldCheck, Wallet } from 'lucide-react';
+import apiClient from '../../utils/api';
+import { formatDateTime } from '../../utils/format';
+import { Badge, Button, Card, ErrorState, ON_CHAIN_NOTE, SectionHeader, Skeleton, StatCard } from '../../components/ui';
 import { EthereumLogo, NetworkBadge, useNetworkInfo } from '../../components/ethereum';
 import { publicClient, RPC_URL, ZAKAT_CONTRACT_ADDRESS } from '../../web3';
+
+interface BlockchainTelemetryResponse {
+  rpc: 'Connected' | 'Unreachable' | 'Unknown';
+  contract: 'Active' | 'No contract code' | 'Unknown';
+  status: 'Healthy' | 'Degraded' | 'Unknown';
+  chainId: number | null;
+  networkName: string;
+  contractAddress: string;
+  blockNumber: number | null;
+  latestBlockTimestamp: string | null;
+  rpcLatencyMs: number | null;
+  contractOwner: string | null;
+  signerAddress: string | null;
+  signerBalanceEth: string | null;
+  signerMatchesOwner: boolean | null;
+  pendingQueueCount: number;
+  confirmedCount: number;
+  revokedCount: number;
+}
 
 const NetworkMonitorPage = () => {
   const network = useNetworkInfo();
@@ -14,6 +36,15 @@ const NetworkMonitorPage = () => {
   } | null>(null);
   const [probing, setProbing] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const telemetryQuery = useQuery<BlockchainTelemetryResponse>({
+    queryKey: ['admin-blockchain-telemetry'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<BlockchainTelemetryResponse>('/admin/blockchain/telemetry');
+      return data;
+    },
+    refetchInterval: 15_000,
+  });
 
   const probeBrowserRpc = async () => {
     setProbing(true);
@@ -39,144 +70,211 @@ const NetworkMonitorPage = () => {
     }
   };
 
-  const copyAddress = () => {
-    navigator.clipboard.writeText(network.contractAddress);
+  const copyAddress = (addr: string) => {
+    navigator.clipboard.writeText(addr);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    window.setTimeout(() => setCopied(false), 1800);
   };
+
+  const t = telemetryQuery.data;
+  const activeContractAddress = t?.contractAddress || network.contractAddress;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <SectionHeader
-          title="Monitoring Jaringan & Smart Contract Ethereum"
-          subtitle="Memantau kondisi aktual RPC node, Chain ID, dan bytecode kontrak ZakatVerify tanpa hardcoding Mainnet."
+          title="Monitoring Jaringan, Signer & Smart Contract"
+          subtitle="Telemetri real-time node JSON-RPC, kepemilikan ZakatVerify.owner(), saldo gas signer, latensi RPC, dan antrean on-chain."
         />
         <div className="flex items-center gap-2">
-          <NetworkBadge />
-          <Button variant="secondary" size="sm" onClick={() => void network.refetch()}>
-            <RefreshCw size={14} /> Segarkan Backend
+          <NetworkBadge compact />
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={telemetryQuery.isFetching}
+            onClick={() => {
+              void network.refetch();
+              void telemetryQuery.refetch();
+            }}
+          >
+            <RefreshCw size={14} /> Segarkan Telemetri
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <EthereumLogo size={14} />
-              <h2 className="text-base font-bold text-forest-dark">Status Node Backend</h2>
-            </div>
-            <Badge
-              tone={
-                network.status === 'Healthy'
-                  ? 'success'
-                  : network.status === 'Degraded'
-                    ? 'warning'
-                    : 'danger'
+      {telemetryQuery.isPending ? (
+        <Skeleton lines={6} />
+      ) : telemetryQuery.isError ? (
+        <ErrorState
+          message="Gagal memuat telemetri blockchain dari server."
+          retry={() => void telemetryQuery.refetch()}
+        />
+      ) : t ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Latensi & RPC Node"
+              value={t.rpcLatencyMs !== null ? `${t.rpcLatencyMs} ms` : 'Terputus'}
+              sublabel={`${t.networkName} · RPC ${t.rpc}`}
+              icon={<Activity size={18} />}
+              tone={t.status === 'Healthy' ? 'emerald' : 'danger'}
+            />
+            <StatCard
+              label="Blok Terbaru"
+              value={t.blockNumber !== null ? `#${t.blockNumber}` : '-'}
+              sublabel={t.latestBlockTimestamp ? formatDateTime(t.latestBlockTimestamp) : 'Waktu blok tidak tersedia'}
+              icon={<Cpu size={18} />}
+              tone="forest"
+            />
+            <StatCard
+              label="Saldo Signer Backend"
+              value={t.signerBalanceEth ? `${Number(t.signerBalanceEth).toFixed(4)} ETH` : '-'}
+              sublabel={
+                t.signerMatchesOwner === true
+                  ? 'Cocok dengan owner() kontrak'
+                  : t.signerMatchesOwner === false
+                    ? 'PERHATIAN: Signer bukan owner()!'
+                    : 'Status owner() belum terdeteksi'
               }
-            >
-              {network.status}
-            </Badge>
+              icon={<Wallet size={18} />}
+              tone={t.signerMatchesOwner === false ? 'danger' : 'gold'}
+            />
+            <StatCard
+              label="Antrean Sinkronisasi"
+              value={`${t.pendingQueueCount} Tertunda`}
+              sublabel={`${t.confirmedCount} tercatat · ${t.revokedCount} dicabut`}
+              icon={<Boxes size={18} />}
+              tone={t.pendingQueueCount > 0 ? 'gold' : 'emerald'}
+            />
           </div>
 
-          <div className="space-y-2.5 text-sm">
-            <div className="flex justify-between py-2 border-b border-slate-100">
-              <span className="text-slate-500">Nama Jaringan Terdeteksi</span>
-              <span className="font-bold text-forest-dark">{network.label}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-slate-100">
-              <span className="text-slate-500">Chain ID Aktif</span>
-              <span className="font-mono font-bold text-forest-dark">{network.chainId ?? '-'}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-slate-100">
-              <span className="text-slate-500">Status RPC</span>
-              <span className="font-semibold text-forest-dark">{network.rpc}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-slate-100">
-              <span className="text-slate-500">Bytecode Kontrak</span>
-              <span className="font-semibold text-forest-dark">{network.contract}</span>
-            </div>
-            <div className="flex justify-between py-2">
-              <span className="text-slate-500">Tinggi Blok</span>
-              <span className="font-mono font-semibold text-forest-dark">
-                {network.blockNumber !== null ? `#${network.blockNumber}` : '-'}
-              </span>
-            </div>
-          </div>
-        </Card>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <EthereumLogo size={14} />
+                  <h2 className="text-base font-bold text-forest-dark">Status Node & Kepemilikan Kontrak</h2>
+                </div>
+                <Badge tone={t.status === 'Healthy' ? 'success' : t.status === 'Degraded' ? 'warning' : 'danger'}>
+                  {t.status}
+                </Badge>
+              </div>
 
-        <Card className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={18} className="text-primary" />
-              <h2 className="text-base font-bold text-forest-dark">Konfigurasi Smart Contract & Klien</h2>
-            </div>
-            <Button variant="primary" size="sm" loading={probing} onClick={() => void probeBrowserRpc()}>
-              <Cpu size={14} /> Uji Koneksi RPC Browser
-            </Button>
-          </div>
+              <div className="space-y-2.5 text-xs sm:text-sm">
+                <div className="flex justify-between py-2 border-b border-slate-100">
+                  <span className="text-slate-500">Jaringan & Chain ID</span>
+                  <span className="font-mono font-bold text-forest-dark">
+                    {t.networkName} ({t.chainId ?? '-'})
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-slate-100">
+                  <span className="text-slate-500">Bytecode Kontrak</span>
+                  <span className="font-semibold text-forest-dark">{t.contract}</span>
+                </div>
+                <div className="flex justify-between gap-4 py-2 border-b border-slate-100">
+                  <span className="text-slate-500 shrink-0">Owner Kontrak (owner())</span>
+                  <span className="font-mono text-xs font-semibold text-forest-dark break-all text-right">
+                    {t.contractOwner || '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4 py-2 border-b border-slate-100">
+                  <span className="text-slate-500 shrink-0">Alamat Signer Backend</span>
+                  <span className="font-mono text-xs font-semibold text-forest-dark break-all text-right">
+                    {t.signerAddress || '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-slate-500">Verifikasi Kepemilikan</span>
+                  {t.signerMatchesOwner === true ? (
+                    <Badge tone="success">Cocok dengan Owner</Badge>
+                  ) : t.signerMatchesOwner === false ? (
+                    <Badge tone="danger">Tidak Cocok — Cek BLOCKCHAIN_PRIVATE_KEY</Badge>
+                  ) : (
+                    <Badge tone="warning">Belum Terverifikasi</Badge>
+                  )}
+                </div>
+              </div>
+            </Card>
 
-          <div className="rounded-xl bg-cream border border-slate-200 p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">
-                Alamat Kontrak ZakatVerify
-              </span>
-              <button
-                type="button"
-                onClick={copyAddress}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
-              >
-                {copied ? <><Check size={12} /> Tersalin</> : <><Copy size={12} /> Salin</>}
-              </button>
-            </div>
-            <p className="font-mono text-xs font-bold text-forest-dark break-all">
-              {network.contractAddress}
-            </p>
-          </div>
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={18} className="text-primary" />
+                  <h2 className="text-base font-bold text-forest-dark">Konfigurasi Kontrak & Uji Browser</h2>
+                </div>
+                <Button variant="primary" size="sm" loading={probing} onClick={() => void probeBrowserRpc()}>
+                  <Cpu size={14} /> Uji RPC Browser
+                </Button>
+              </div>
 
-          <div className="space-y-2 text-xs font-mono bg-slate-50 rounded-xl p-4 border border-slate-200">
-            <div className="flex justify-between gap-2">
-              <span className="text-slate-500">Frontend Target Chain</span>
-              <span className="font-semibold text-forest-dark">
-                {network.configuredLabel} ({network.configuredChainId})
-              </span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-slate-500">Frontend RPC URL</span>
-              <span className="font-semibold text-forest-dark truncate max-w-[220px]">{RPC_URL}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-slate-500">Env Contract Address</span>
-              <span className="font-semibold text-forest-dark truncate max-w-[220px]">
-                {ZAKAT_CONTRACT_ADDRESS}
-              </span>
-            </div>
-          </div>
+              <div className="rounded-xl bg-cream border border-slate-200 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">
+                    Alamat Kontrak ZakatVerify
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copyAddress(activeContractAddress)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={12} /> Tersalin
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} /> Salin
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="font-mono text-xs font-bold text-forest-dark break-all">{activeContractAddress}</p>
+              </div>
 
-          {clientProbe && (
-            <div
-              className={`rounded-xl p-3.5 text-xs border ${
-                clientProbe.error
-                  ? 'bg-red-50 border-red-200 text-red-800'
-                  : 'bg-mint border-primary/25 text-forest'
-              }`}
-            >
-              {clientProbe.error ? (
-                <p>{clientProbe.error}</p>
-              ) : (
-                <p>
-                  Pemeriksaan browser ({clientProbe.checkedAt}): terhubung ke Chain ID{' '}
-                  <strong>{clientProbe.chainId}</strong> pada blok{' '}
-                  <strong>#{clientProbe.blockNumber}</strong>.
-                </p>
+              <div className="space-y-2 text-xs font-mono bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">Frontend Target Chain</span>
+                  <span className="font-semibold text-forest-dark">
+                    {network.configuredLabel} ({network.configuredChainId})
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">Frontend RPC URL</span>
+                  <span className="font-semibold text-forest-dark truncate max-w-[220px]">{RPC_URL}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">Env Contract Address</span>
+                  <span className="font-semibold text-forest-dark truncate max-w-[220px]">
+                    {ZAKAT_CONTRACT_ADDRESS}
+                  </span>
+                </div>
+              </div>
+
+              {clientProbe && (
+                <div
+                  className={`rounded-xl p-3.5 text-xs border ${
+                    clientProbe.error
+                      ? 'bg-red-50 border-red-200 text-red-800'
+                      : 'bg-mint border-primary/25 text-forest'
+                  }`}
+                >
+                  {clientProbe.error ? (
+                    <p>{clientProbe.error}</p>
+                  ) : (
+                    <p>
+                      Pemeriksaan browser ({clientProbe.checkedAt}): terhubung ke Chain ID{' '}
+                      <strong>{clientProbe.chainId}</strong> pada blok{' '}
+                      <strong>#{clientProbe.blockNumber}</strong>.
+                    </p>
+                  )}
+                </div>
               )}
-            </div>
-          )}
 
-          <p className="text-[11px] text-slate-500">{ON_CHAIN_NOTE}</p>
-        </Card>
-      </div>
+              <p className="text-[11px] text-slate-500">{ON_CHAIN_NOTE}</p>
+            </Card>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 };

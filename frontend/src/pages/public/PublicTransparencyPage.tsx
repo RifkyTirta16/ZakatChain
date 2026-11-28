@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../utils/api';
 import { getStoredSessionUser } from '../../components/layout/navConfig';
-import { formatDateTime, formatIDR, formatNumber, shortHash } from '../../utils/format';
+import { formatDateTime, formatIDR, formatNumber, formatPercent, shortHash } from '../../utils/format';
 import {
   Badge,
   Card,
@@ -209,8 +209,8 @@ const PublicTransparencyPage = () => {
 
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-semibold tabular-nums">
-              <span className="text-forest-dark">Minimal {netPct}% Hak Mustahik</span>
-              <span className="text-amber-800">Maks. {amilPct}% Hak Kelola Amil</span>
+              <span className="text-forest-dark">Minimal {formatPercent(netPct, 1)} Hak Mustahik</span>
+              <span className="text-amber-800">Maks. {formatPercent(amilPct, 1)} Hak Kelola Amil</span>
             </div>
             <div className="h-3 rounded-full bg-slate-100 overflow-hidden flex">
               <div className="h-full bg-primary" style={{ width: `${netPct}%` }} />

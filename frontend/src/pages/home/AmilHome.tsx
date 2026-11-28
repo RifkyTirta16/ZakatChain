@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ClipboardList, FilePlus, HeartHandshake, Map, Megaphone, Users } from 'lucide-react';
@@ -12,9 +13,10 @@ import {
   SectionHeader,
   Skeleton,
   StatCard,
-  proofBadge,
+  statusBadge,
 } from '../../components/ui';
 import type { Transaction } from '../Dashboard';
+import { TransactionDetailDrawer } from '../../components/admin/TransactionDetailDrawer';
 
 interface AmilDonation {
   id: number;
@@ -26,64 +28,82 @@ interface AmilDonation {
   timestamp: string;
 }
 
-interface MustahikLite {
-  id: number;
-  verification_status: string;
+interface PaginatedEnvelope<T> {
+  items: T[];
+  total: number;
 }
 
-const isOpen = (t: Transaction): boolean =>
-  t.proof_status === null || ['DRAFT', 'PENDING', 'PENDING_BLOCKCHAIN'].includes(t.proof_status);
-
-const isRejected = (t: Transaction): boolean =>
-  ['REJECTED', 'ANOMALY'].includes(t.proof_status ?? '') || t.anomaly_flag === 1;
+interface DashboardStatsPayload {
+  kpis: {
+    totalDonations: number;
+    totalDistributed: number;
+    totalReports: number;
+    verifiedReports: number;
+    pendingReports: number;
+    openAnomalies: number;
+  };
+}
 
 const AmilHome = () => {
-  const txQuery = useQuery<Transaction[]>({
+  const [drawerTxId, setDrawerTxId] = useState<number | null>(null);
+
+  const statsQuery = useQuery<DashboardStatsPayload>({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<DashboardStatsPayload>('/dashboard/stats');
+      return data;
+    },
+    refetchInterval: 30_000,
+  });
+
+  const txQuery = useQuery<PaginatedEnvelope<Transaction>>({
     queryKey: ['amil-transactions'],
     queryFn: async () => {
-      const { data } = await apiClient.get<Transaction[]>('/transactions');
-      return Array.isArray(data) ? data : [];
+      const { data } = await apiClient.get<PaginatedEnvelope<Transaction>>('/transactions', {
+        params: { meta: '1', limit: 6, offset: 0 },
+      });
+      return data;
     },
     refetchInterval: 30_000,
   });
 
-  const donationsQuery = useQuery<AmilDonation[]>({
+  const donationsQuery = useQuery<PaginatedEnvelope<AmilDonation>>({
     queryKey: ['amil-donations'],
     queryFn: async () => {
-      const { data } = await apiClient.get<AmilDonation[]>('/donations');
-      return Array.isArray(data) ? data : [];
+      const { data } = await apiClient.get<PaginatedEnvelope<AmilDonation>>('/donations', {
+        params: { meta: '1', limit: 6, offset: 0 },
+      });
+      return data;
     },
     refetchInterval: 30_000,
   });
 
-  const mustahikQuery = useQuery<MustahikLite[]>({
-    queryKey: ['amil-mustahik'],
+  const verifiedMustahikQuery = useQuery<PaginatedEnvelope<{ id: number }>>({
+    queryKey: ['amil-mustahik-verified-count'],
     queryFn: async () => {
-      const { data } = await apiClient.get<MustahikLite[]>('/mustahik');
-      return Array.isArray(data) ? data : [];
+      const { data } = await apiClient.get<PaginatedEnvelope<{ id: number }>>('/mustahik', {
+        params: { meta: '1', status: 'VERIFIED', limit: 1, offset: 0 },
+      });
+      return data;
     },
   });
 
-  const transactions = txQuery.data ?? [];
-  const donations = donationsQuery.data ?? [];
-  const mustahik = mustahikQuery.data ?? [];
+  const allMustahikQuery = useQuery<PaginatedEnvelope<{ id: number }>>({
+    queryKey: ['amil-mustahik-all-count'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<PaginatedEnvelope<{ id: number }>>('/mustahik', {
+        params: { meta: '1', limit: 1, offset: 0 },
+      });
+      return data;
+    },
+  });
 
-  const open = transactions.filter(isOpen);
-  const rejected = transactions.filter(isRejected);
-  const validDistributions = transactions.filter(
-    (t) => t.proof_status !== 'REJECTED' && t.blockchain_status !== 'REVOKED',
-  );
-  const totalDistributed = validDistributions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-  const confirmedDonations = donations.filter((d) => d.status === 'CONFIRMED');
-  const confirmedIncomingTotal = confirmedDonations.reduce((sum, d) => sum + Number(d.amount || 0), 0);
-  const verifiedMustahikCount = mustahik.filter((m) => m.verification_status === 'VERIFIED').length;
-  const recent = transactions.slice(0, 6);
-
-  if (txQuery.isError) {
+  if (txQuery.isError || statsQuery.isError) {
     return (
       <ErrorState
         message="Gagal memuat catatan distribusi Amil. Periksa koneksi ke server."
         retry={() => {
+          void statsQuery.refetch();
           void txQuery.refetch();
           void donationsQuery.refetch();
         }}
@@ -91,7 +111,12 @@ const AmilHome = () => {
     );
   }
 
-  const loading = txQuery.isPending || donationsQuery.isPending;
+  const loading = txQuery.isPending || donationsQuery.isPending || statsQuery.isPending;
+  const recent = txQuery.data?.items ?? [];
+  const donations = donationsQuery.data?.items ?? [];
+  const stats = statsQuery.data?.kpis;
+  const verifiedCount = verifiedMustahikQuery.data?.total ?? 0;
+  const totalMustahik = allMustahikQuery.data?.total ?? 0;
 
   return (
     <div className="space-y-6">
@@ -115,31 +140,31 @@ const AmilHome = () => {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Total Dana Masuk"
-              value={formatIDR(confirmedIncomingTotal)}
-              sublabel={`${confirmedDonations.length} setoran terkonfirmasi`}
+              value={formatIDR(stats?.totalDonations ?? 0)}
+              sublabel={`${donationsQuery.data?.total ?? donations.length} catatan setoran`}
               icon={<HeartHandshake size={18} />}
               tone="emerald"
             />
             <StatCard
-              label="Total Tersalurkan"
-              value={formatIDR(totalDistributed)}
-              sublabel={`${validDistributions.length} laporan valid`}
+              label="Total Tersalurkan Valid"
+              value={formatIDR(stats?.totalDistributed ?? 0)}
+              sublabel={`${stats?.verifiedReports ?? 0} dari ${stats?.totalReports ?? 0} laporan valid`}
               icon={<ClipboardList size={18} />}
               tone="forest"
             />
             <StatCard
               label="Mustahik Terverifikasi"
-              value={`${verifiedMustahikCount} penerima`}
-              sublabel={`Dari ${mustahik.length} terdaftar`}
+              value={`${verifiedCount} penerima`}
+              sublabel={`Dari ${totalMustahik} terdaftar`}
               icon={<Users size={18} />}
               tone="gold"
             />
             <StatCard
-              label="Antrean / Ditolak"
-              value={`${open.length} / ${rejected.length}`}
-              sublabel="Menunggu tinjauan vs ditolak"
+              label="Antrean / Anomali"
+              value={`${stats?.pendingReports ?? 0} / ${stats?.openAnomalies ?? 0}`}
+              sublabel="Tertunda on-chain vs anomali terbuka"
               icon={<AlertTriangle size={18} />}
-              tone={rejected.length > 0 ? 'danger' : 'neutral'}
+              tone={(stats?.openAnomalies ?? 0) > 0 ? 'danger' : 'neutral'}
             />
           </div>
 
@@ -215,9 +240,18 @@ const AmilHome = () => {
               ) : (
                 <div className="divide-y divide-slate-100">
                   {recent.map((t) => {
-                    const badge = proofBadge(t.proof_status ?? t.blockchain_status ?? 'PENDING');
+                    const badge = statusBadge(
+                      t.blockchain_status === 'REVOKED'
+                        ? 'REVOKED'
+                        : (t.proof_status ?? t.blockchain_status ?? 'PENDING')
+                    );
                     return (
-                      <div key={t.id} className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 text-sm">
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setDrawerTxId(t.id)}
+                        className="w-full text-left px-5 py-3.5 hover:bg-cream/80 flex flex-wrap items-center justify-between gap-3 text-sm transition-colors"
+                      >
                         <div>
                           <p className="font-semibold text-forest-dark">
                             #{t.id} {t.recipient_name || 'Mustahik'} · {t.category || 'Umum'}
@@ -232,7 +266,7 @@ const AmilHome = () => {
                           </span>
                           <Badge tone={badge.tone}>{badge.label}</Badge>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -255,30 +289,40 @@ const AmilHome = () => {
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {donations.slice(0, 6).map((d) => (
-                    <div key={d.id} className="px-5 py-3.5 flex items-center justify-between gap-3 text-xs sm:text-sm">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-forest-dark truncate">
-                          {d.campaign_title || 'Zakat Umum'}
-                        </p>
-                        <p className="text-[11px] font-mono text-slate-500 truncate">
-                          #{d.id} · {d.payment_reference || '-'} · {formatDateTime(d.timestamp)}
-                        </p>
+                  {donations.map((d) => {
+                    const st = statusBadge(d.status === 'CONFIRMED' ? 'PAID' : d.status);
+                    return (
+                      <div key={d.id} className="px-5 py-3.5 flex items-center justify-between gap-3 text-xs sm:text-sm">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-forest-dark truncate">
+                            {d.campaign_title || 'Zakat Umum'}
+                          </p>
+                          <p className="text-[11px] font-mono text-slate-500 truncate">
+                            #{d.id} · {d.payment_reference || '-'} · {formatDateTime(d.timestamp)}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold text-forest-dark tabular-nums">{formatIDR(Number(d.amount))}</p>
+                          <Badge tone={st.tone}>{st.label}</Badge>
+                        </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-bold text-forest-dark tabular-nums">{formatIDR(Number(d.amount))}</p>
-                        <Badge tone={d.status === 'CONFIRMED' ? 'success' : 'warning'}>
-                          {d.status === 'CONFIRMED' ? 'Terkonfirmasi' : d.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </Card>
           </div>
         </>
       )}
+
+      <TransactionDetailDrawer
+        transactionId={drawerTxId}
+        onClose={() => setDrawerTxId(null)}
+        onUpdated={() => {
+          void statsQuery.refetch();
+          void txQuery.refetch();
+        }}
+      />
     </div>
   );
 };

@@ -162,7 +162,7 @@ const MyDonationsPage = ({ user }: { user: SessionUser | null }) => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {visible.map((d) => {
-                  const st = statusBadge(d.status);
+                  const st = statusBadge(d.status === 'CONFIRMED' ? 'PAID' : d.status);
                   const ref = d.payment_reference ?? `DON-${d.id}`;
                   return (
                     <tr key={d.id} className="hover:bg-cream/60">

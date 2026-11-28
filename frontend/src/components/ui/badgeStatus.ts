@@ -25,7 +25,9 @@ export type ProofStatus =
   | 'COMPLETED'
   | 'CLOSED'
   | 'VERIFIED'
-  | 'INACTIVE';
+  | 'INACTIVE'
+  | 'WARNING'
+  | 'STABLE';
 
 export interface ProofBadge {
   tone: BadgeTone;
@@ -61,6 +63,8 @@ const PROOF_BADGES: Record<ProofStatus, ProofBadge> = {
   CLOSED: { tone: 'neutral', label: 'Ditutup' },
   VERIFIED: { tone: 'success', label: 'Terverifikasi' },
   INACTIVE: { tone: 'neutral', label: 'Nonaktif' },
+  WARNING: { tone: 'gold', label: 'Perhatian' },
+  STABLE: { tone: 'success', label: 'Tercukupi' },
 };
 
 const DEFAULT_BADGE: ProofBadge = { tone: 'sky', label: 'Diproses' };
