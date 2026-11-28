@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Check, CheckCircle2, Clock, Copy, Heart, Info, LogIn, QrCode, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Clock, Heart, LogIn, ShieldCheck } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatDateTime, formatIDR } from '../utils/format';
-import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, QrCodeBox, Skeleton } from '../components/ui';
-import { invalidateDonationQueries } from '../components/dashboard/hooks/useDashboardData';
+import { Badge, Button, Card, EmptyState, ErrorState, ON_CHAIN_NOTE, Skeleton, statusBadge } from '../components/ui';
+import { UnifiedPaymentFlow } from '../components/payment/UnifiedPaymentFlow';
 import { getStoredSessionUser } from '../components/layout/navConfig';
 
 interface Donation {
@@ -27,113 +27,33 @@ interface CampaignDetailData {
   donations: Donation[];
 }
 
-interface PaymentSession {
-  paymentData: {
-    session_id: string;
-    qris_url: string;
-    lan_qris_url?: string;
-  };
-}
-
-const PRESET_AMOUNTS = [50_000, 100_000, 250_000, 500_000];
-
-const fetchCampaignDetail = async (id: string): Promise<CampaignDetailData> => {
-  const { data } = await apiClient.get(`/campaigns/${id}`);
-  return data;
-};
-
-const generatePayment = async (id: string, amount: string): Promise<PaymentSession> => {
-  const { data } = await apiClient.post('/payments/session', {
-    campaign_id: Number(id),
-    program_id: id,
-    amount: parseFloat(amount),
-  });
-  return data;
-};
-
-const DONATION_TONE: Record<string, 'success' | 'sky' | 'warning'> = {
-  CONFIRMED: 'success',
-  PENDING: 'warning',
-};
-
-const DONATION_LABEL: Record<string, string> = {
-  CONFIRMED: 'Terkonfirmasi',
-  PENDING: 'Menunggu',
-};
-
 const CampaignDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [amount, setAmount] = useState('');
-  const [paymentResult, setPaymentResult] = useState<PaymentSession | null>(null);
-  const [paymentError, setPaymentError] = useState('');
-  const [copiedSession, setCopiedSession] = useState(false);
+  const queryClient = useQueryClient();
+
   const [manageStatus, setManageStatus] = useState<'ACTIVE' | 'COMPLETED' | 'CLOSED' | ''>('');
   const [manageTarget, setManageTarget] = useState('');
   const [manageFeedback, setManageFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
-  const queryClient = useQueryClient();
   const sessionUser = getStoredSessionUser();
   const isAuthenticated = Boolean(sessionUser);
   const userRole = sessionUser?.role ?? '';
   const canManage = userRole === 'AMIL' || userRole === 'ADMIN';
+  const canDonate = !isAuthenticated || userRole === 'USER';
 
-  const query = useQuery({
+  const query = useQuery<CampaignDetailData>({
     queryKey: ['campaign', id],
-    queryFn: () => fetchCampaignDetail(id as string),
+    queryFn: async () => {
+      const { data } = await apiClient.get<CampaignDetailData>(`/campaigns/${id}`);
+      return data;
+    },
     enabled: Boolean(id),
   });
 
-  const paymentMutation = useMutation({
-    mutationFn: () => generatePayment(id as string, amount),
-    onSuccess: (data) => {
-      setPaymentResult(data);
-      setPaymentError('');
-      invalidateDonationQueries(queryClient);
-    },
-    onError: (error: unknown) => {
-      const e = error as { response?: { status?: number } };
-      setPaymentError(
-        e.response?.status === 401
-          ? 'Silakan masuk terlebih dahulu untuk menunaikan zakat.'
-          : 'Gagal membuat sesi pembayaran. Periksa koneksi dan coba lagi.',
-      );
-    },
-  });
-
-  const sessionId = paymentResult?.paymentData.session_id ?? '';
-  const statusQuery = useQuery<{ status: 'PAID' | 'PENDING' | 'FAILED' | 'EXPIRED' }>({
-    queryKey: ['campaign-payment-status', sessionId],
-    enabled: Boolean(sessionId),
-    queryFn: async () => {
-      const { data } = await apiClient.get<{ status: 'PAID' | 'PENDING' | 'FAILED' | 'EXPIRED' }>(
-        `/payments/status/${sessionId}`,
-      );
-      return data;
-    },
-    refetchInterval: (q) => {
-      const s = q.state.data?.status;
-      return s === 'PAID' || s === 'FAILED' || s === 'EXPIRED' ? false : 4000;
-    },
-  });
-
-  useEffect(() => {
-    if (statusQuery.data?.status === 'PAID') {
-      void query.refetch();
-      invalidateDonationQueries(queryClient, { settled: true, ...(id ? { campaignId: id } : {}) });
-    }
-  }, [statusQuery.data?.status, query, queryClient, id]);
-
-  const sandboxConfirmMutation = useMutation({
-    mutationFn: async (sid: string) => {
-      await apiClient.post(`/payments/sandbox/confirm/${sid}`, {});
-    },
-    onSuccess: () => {
-      void statusQuery.refetch();
-      void query.refetch();
-      invalidateDonationQueries(queryClient, { settled: true, ...(id ? { campaignId: id } : {}) });
-    },
-  });
+  const handlePaymentSuccess = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['campaign', String(id)] });
+  }, [queryClient, id]);
 
   const updateCampaignMutation = useMutation({
     mutationFn: async (payload: { status?: string; target_amount?: number }) => {
@@ -143,7 +63,7 @@ const CampaignDetail = () => {
     onSuccess: () => {
       setManageFeedback({ type: 'ok', text: 'Perubahan program berhasil disimpan.' });
       setManageTarget('');
-      void query.refetch();
+      void queryClient.invalidateQueries({ queryKey: ['campaign', String(id)] });
       void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
     },
     onError: (err: unknown) => {
@@ -151,12 +71,6 @@ const CampaignDetail = () => {
       setManageFeedback({ type: 'err', text: apiMsg || 'Gagal memperbarui program.' });
     },
   });
-
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedSession(true);
-    setTimeout(() => setCopiedSession(false), 2000);
-  };
 
   if (query.isError) {
     return (
@@ -205,6 +119,7 @@ const CampaignDetail = () => {
   const target = Number(campaign.target_amount) || 0;
   const confirmed = Number(campaign.total_confirmed) || 0;
   const progress = target > 0 ? Math.min(100, (confirmed / target) * 100) : 0;
+  const campBadge = statusBadge(campaign.status);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -225,9 +140,7 @@ const CampaignDetail = () => {
               <div className="w-10 h-10 rounded-xl bg-mint text-primary flex items-center justify-center">
                 <Heart size={18} />
               </div>
-              <Badge tone={campaign.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                {campaign.status === 'ACTIVE' ? 'Aktif' : campaign.status}
-              </Badge>
+              <Badge tone={campBadge.tone}>{campBadge.label}</Badge>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-forest-dark leading-tight">
@@ -261,19 +174,20 @@ const CampaignDetail = () => {
               />
             ) : (
               <div className="divide-y divide-slate-100">
-                {campaign.donations.map((d) => (
-                  <div key={d.id} className="py-3.5 flex flex-wrap justify-between items-center gap-3 text-sm">
-                    <div className="flex items-center gap-3">
-                      <Badge tone={DONATION_TONE[d.status] ?? 'neutral'}>
-                        {DONATION_LABEL[d.status] ?? d.status}
-                      </Badge>
-                      <span className="text-xs text-slate-500">{formatDateTime(d.timestamp)}</span>
+                {campaign.donations.map((d) => {
+                  const st = statusBadge(d.status);
+                  return (
+                    <div key={d.id} className="py-3.5 flex flex-wrap justify-between items-center gap-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <Badge tone={st.tone}>{st.label}</Badge>
+                        <span className="text-xs text-slate-500">{formatDateTime(d.timestamp)}</span>
+                      </div>
+                      <span className="font-bold text-forest-dark tabular-nums">
+                        {formatIDR(Number(d.amount))}
+                      </span>
                     </div>
-                    <span className="font-bold text-forest-dark tabular-nums">
-                      {formatIDR(Number(d.amount))}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>
@@ -284,9 +198,7 @@ const CampaignDetail = () => {
             <Card className="space-y-4 border border-primary/25 bg-white">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-base font-bold text-forest-dark">Kelola Program (Amil / Admin)</h2>
-                <Badge tone={campaign.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                  {campaign.status}
-                </Badge>
+                <Badge tone={campBadge.tone}>{campBadge.label}</Badge>
               </div>
               <form
                 onSubmit={(e) => {
@@ -313,9 +225,9 @@ const CampaignDetail = () => {
                     onChange={(e) => setManageStatus(e.target.value as 'ACTIVE' | 'COMPLETED' | 'CLOSED')}
                     className="w-full min-h-[40px] rounded-[10px] border border-slate-300 bg-white px-3 text-forest-dark font-medium"
                   >
-                    <option value="ACTIVE">ACTIVE (Menerima Donasi)</option>
-                    <option value="COMPLETED">COMPLETED (Target Terpenuhi)</option>
-                    <option value="CLOSED">CLOSED (Ditutup)</option>
+                    <option value="ACTIVE">Aktif (Menerima Donasi)</option>
+                    <option value="COMPLETED">Selesai (Target Terpenuhi)</option>
+                    <option value="CLOSED">Ditutup</option>
                   </select>
                 </div>
                 <div>
@@ -371,7 +283,7 @@ const CampaignDetail = () => {
 
             {campaign.status !== 'ACTIVE' ? (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 leading-relaxed">
-                Program ini berstatus <strong>{campaign.status}</strong> sehingga saat ini tidak menerima donasi baru.
+                Program ini berstatus <strong>{campBadge.label}</strong> sehingga saat ini tidak menerima donasi baru.
               </div>
             ) : !isAuthenticated ? (
               <div className="rounded-xl border border-slate-200 bg-cream p-4 space-y-3">
@@ -386,148 +298,20 @@ const CampaignDetail = () => {
                   <LogIn size={16} /> Masuk untuk Berdonasi
                 </Link>
               </div>
-            ) : !paymentResult ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setPaymentError('');
-                  paymentMutation.mutate();
-                }}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-slateText font-bold mb-2">
-                    Pilih Nominal Cepat (IDR)
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {PRESET_AMOUNTS.map((val) => (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => setAmount(String(val))}
-                        className={`min-h-[40px] px-3 py-2 rounded-[10px] text-xs font-semibold border transition-colors ${
-                          amount === String(val)
-                            ? 'bg-primary text-white border-primary'
-                            : 'bg-cream border-slate-200 text-forest-dark hover:bg-mint'
-                        }`}
-                      >
-                        {formatIDR(val)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="campaign-amount"
-                    className="block text-xs uppercase tracking-wider text-slateText font-bold mb-1.5"
-                  >
-                    Nominal Zakat Lainnya (IDR)
-                  </label>
-                  <input
-                    id="campaign-amount"
-                    type="number"
-                    min="1000"
-                    step="1000"
-                    required
-                    className="w-full min-h-[44px] rounded-[10px] bg-white border border-slate-300 px-3.5 py-2.5 text-sm text-forest-dark font-medium outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary"
-                    placeholder="Masukkan nominal dalam Rupiah"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
-                </div>
-
-                {paymentError && (
-                  <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs sm:text-sm text-red-800 font-medium">
-                    {paymentError}
-                  </p>
-                )}
-
-                <Button
-                  type="submit"
-                  variant="gold"
-                  loading={paymentMutation.isPending}
-                  disabled={!amount || Number(amount) <= 0}
-                  className="w-full"
-                >
-                  <QrCode size={16} /> Buat Sesi Pembayaran QRIS
-                </Button>
-              </form>
-            ) : (
-              <div className="space-y-4 text-center">
-                <QrCodeBox
-                  value={paymentResult.paymentData.qris_url}
-                  lanValue={paymentResult.paymentData.lan_qris_url}
-                  size={176}
-                />
-
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-left">
-                  <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">
-                    ID Sesi Pembayaran
-                  </p>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-mono font-bold text-forest-dark truncate">
-                      {paymentResult.paymentData.session_id}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(paymentResult.paymentData.session_id)}
-                      className="p-1 rounded text-slate-600 hover:bg-white text-xs inline-flex items-center gap-1 shrink-0"
-                    >
-                      {copiedSession ? (
-                        <span className="text-xs font-semibold text-primary inline-flex items-center gap-1">
-                          <Check size={12} /> Tersalin
-                        </span>
-                      ) : (
-                        <Copy size={13} />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-3.5 bg-mint rounded-xl flex items-start gap-2.5 text-left text-xs text-forest border border-primary/20">
-                  <Info size={16} className="text-primary shrink-0 mt-0.5" />
-                  <p className="leading-relaxed">
-                    {statusQuery.data?.status === 'PAID'
-                      ? 'Pembayaran telah terkonfirmasi dan masuk ke riwayat donasi Anda.'
-                      : 'Pindai kode QRIS di atas. Status donasi diperbarui otomatis setelah konfirmasi sistem.'}
-                  </p>
-                </div>
-
-                {statusQuery.data?.status !== 'PAID' && (
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      variant="secondary"
-                      loading={statusQuery.isFetching}
-                      onClick={() => void statusQuery.refetch()}
-                      className="w-full"
-                    >
-                      <RefreshCw size={15} /> Cek Status Pembayaran
-                    </Button>
-                    {import.meta.env.DEV && (
-                      <Button
-                        variant="gold"
-                        loading={sandboxConfirmMutation.isPending}
-                        onClick={() => sandboxConfirmMutation.mutate(paymentResult.paymentData.session_id)}
-                        className="w-full"
-                      >
-                        <CheckCircle2 size={15} /> Simulasikan Bayar (Sandbox)
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setPaymentResult(null);
-                    setAmount('');
-                  }}
-                  className="w-full"
-                >
-                  Buat Pembayaran Baru
-                </Button>
+            ) : !canDonate ? (
+              <div className="rounded-xl border border-primary/20 bg-mint/50 p-4 text-xs text-forest flex items-start gap-2 leading-relaxed">
+                <ShieldCheck size={16} className="text-primary shrink-0 mt-0.5" />
+                <span>
+                  Anda masuk sebagai akun operasional staf. Transaksi donasi Muzakki hanya dibuka melalui akun peran Muzakki.
+                </span>
               </div>
+            ) : (
+              <UnifiedPaymentFlow
+                initialCampaignId={String(campaign.id)}
+                lockCampaign
+                compact
+                onSuccess={handlePaymentSuccess}
+              />
             )}
           </Card>
         </div>

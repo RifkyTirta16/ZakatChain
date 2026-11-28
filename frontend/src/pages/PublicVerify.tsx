@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
+  Clock,
   Copy,
   Database,
   ExternalLink,
   Search,
+  ShieldAlert,
   ShieldCheck,
 } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatDateTime, formatIDR, shortHash } from '../utils/format';
-import { Badge, Button, Card, ON_CHAIN_NOTE, Skeleton, proofBadge } from '../components/ui';
+import { Badge, Button, Card, ON_CHAIN_NOTE, Skeleton, statusBadge } from '../components/ui';
 import { EthereumLogo, NetworkBadge, explorerBaseForChain, useNetworkInfo } from '../components/ethereum';
 
 interface VerificationData {
@@ -32,10 +36,24 @@ interface VerificationData {
   allocations?: Array<{ region: string; amount: number }>;
 }
 
+interface TimelineStep {
+  step: string;
+  state: 'completed' | 'pending' | 'warning' | 'danger';
+  timestamp: string | null;
+  detail: string;
+}
+
 interface VerificationResponse {
   verified?: boolean;
   status: string;
   match?: boolean;
+  donation_reference?: string;
+  verdict?: {
+    label: string;
+    tone: 'success' | 'danger' | 'warning' | 'info' | 'neutral';
+    summary: string;
+  };
+  timeline?: TimelineStep[];
   network?: {
     chainId: number | null;
     networkName: string;
@@ -45,66 +63,72 @@ interface VerificationResponse {
     exists: boolean;
     timestamp: string;
     revoked: boolean;
-    formattedHash: string;
+    formattedHash: string | null;
     unavailable: boolean;
   };
   data: VerificationData | null;
 }
 
-const getInitialQuery = () => {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('query') || params.get('hash') || params.get('id') || '';
+const VERDICT_BOX_STYLES: Record<string, string> = {
+  success: 'border-emerald-200 bg-mint/70 text-forest-dark',
+  danger: 'border-red-200 bg-red-50 text-red-950',
+  warning: 'border-amber-200 bg-amber-50 text-amber-950',
+  info: 'border-sky/30 bg-sky/10 text-forest-dark',
+  neutral: 'border-slate-200 bg-slate-50 text-slate-800',
 };
 
 const PublicVerify = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const network = useNetworkInfo();
-  const [reportId, setReportId] = useState(getInitialQuery);
-  const [activeQuery, setActiveQuery] = useState(getInitialQuery);
+  const urlQuery = searchParams.get('query') || searchParams.get('hash') || searchParams.get('id') || '';
+  const [draftInput, setDraftInput] = useState<{ base: string; value: string } | null>(null);
+  const inputValue = draftInput?.base === urlQuery ? draftInput.value : urlQuery;
+  const activeQuery = urlQuery;
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const verifyQuery = useQuery<VerificationResponse>({
     queryKey: ['public-verify', activeQuery],
     queryFn: async () => {
-      const cleaned = activeQuery.trim();
-      const isHexHash = /^(0x)?[a-f0-9]{64}$/i.test(cleaned);
-      const endpoint = isHexHash
-        ? `/explorer/verify/hash/${encodeURIComponent(cleaned)}`
-        : `/explorer/verify/${encodeURIComponent(cleaned)}`;
-      const response = await apiClient.get<VerificationResponse>(endpoint);
-      return response.data;
+      const { data } = await apiClient.get<VerificationResponse>(
+        `/explorer/verify/lookup/${encodeURIComponent(activeQuery.trim())}`
+      );
+      return data;
     },
     enabled: Boolean(activeQuery.trim()),
     retry: false,
   });
 
-  const handleVerify = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleaned = reportId.trim();
+  const runSearch = (target: string) => {
+    const cleaned = target.trim();
     if (!cleaned) return;
+    setDraftInput({ base: cleaned, value: cleaned });
     if (cleaned === activeQuery.trim()) {
       void verifyQuery.refetch();
     } else {
-      setActiveQuery(cleaned);
+      setSearchParams({ query: cleaned }, { replace: true });
     }
   };
 
-  const result = verifyQuery.data ?? null;
-  const loading = verifyQuery.isFetching;
-  const errObj = verifyQuery.error as { response?: { data?: { error?: string } } } | null;
-  const error = verifyQuery.isError
-    ? errObj?.response?.data?.error || 'Laporan tidak ditemukan atau belum tercatat dalam sistem.'
-    : null;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runSearch(inputValue);
+  };
 
   const copyText = (key: string, value: string) => {
     navigator.clipboard.writeText(value);
     setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1800);
+    window.setTimeout(() => setCopiedKey(null), 1800);
   };
 
+  const result = verifyQuery.data ?? null;
   const record = result?.data ?? null;
+  const errObj = verifyQuery.error as { response?: { data?: { error?: string } } } | null;
+  const error = verifyQuery.isError
+    ? errObj?.response?.data?.error || 'Laporan tidak ditemukan atau format pencarian belum sesuai.'
+    : null;
+
+  const verdict = result?.verdict;
   const auditHash = record?.audit_hash ?? record?.auditHash ?? '';
-  const chainStatus = record?.blockchain_status ?? record?.status ?? 'PENDING';
-  const badge = proofBadge(chainStatus);
   const activeChainId = result?.network?.chainId ?? network.chainId;
   const activeNetName = result?.network?.networkName || network.label;
   const explorerBase = explorerBaseForChain(activeChainId);
@@ -114,252 +138,244 @@ const PublicVerify = () => {
       <header className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 rounded-full bg-mint border border-primary/25 px-3 py-1 text-xs font-semibold text-forest">
           <EthereumLogo size={11} />
-          <span>Verifikasi Kriptografi Publik</span>
+          <span>Verifikasi Laporan Terbuka</span>
         </div>
         <h1 className="text-2xl sm:text-4xl font-extrabold text-forest-dark">
-          Portal Verifikasi On-Chain
+          Cek Keabsahan Penyaluran Zakat
         </h1>
         <p className="text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
-          Periksa keabsahan hash audit laporan penyaluran zakat di basis data dan smart contract{' '}
-          <code className="font-mono text-forest">ZakatVerify</code>.
+          Periksa apakah laporan penyaluran atau Bukti Setor Zakat Anda sudah tercatat utuh dan terverifikasi pada sistem.
         </p>
         <div className="flex justify-center pt-1">
           <NetworkBadge />
         </div>
       </header>
 
-      {/* ENS / Etherscan-style Cryptographic Lookup Command Bar */}
       <Card variant="highlight" className="p-6 sm:p-7">
-        <form onSubmit={handleVerify} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <label
-              htmlFor="verify-input"
-              className="block text-xs uppercase tracking-[0.1em] text-forest-dark font-bold"
-            >
-              Masukkan ID Laporan atau Hash Audit (64-hex / 0x…)
+            <label htmlFor="verify-input" className="block text-xs uppercase tracking-[0.08em] text-forest-dark font-bold">
+              Masukkan Nomor Laporan, Nomor BSZ, atau Kode Hash
             </label>
-            <button
-              type="button"
-              onClick={() => {
-                setReportId('1');
-                setActiveQuery('1');
-              }}
-              className="text-xs font-mono font-semibold text-primary hover:underline"
-            >
-              Contoh: Uji Laporan #1 →
-            </button>
+            <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
+              <button type="button" onClick={() => runSearch('1')} className="text-primary hover:underline">
+                Contoh: Laporan #1
+              </button>
+              <button type="button" onClick={() => runSearch('2')} className="text-primary hover:underline">
+                Laporan #2
+              </button>
+              <button type="button" onClick={() => runSearch('BSZ-2026-1')} className="text-primary hover:underline">
+                BSZ-2026-1
+              </button>
+            </div>
           </div>
+
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
                 id="verify-input"
                 type="text"
-                placeholder="Contoh: 1 atau hash audit 64 karakter hex"
-                className="w-full min-h-[48px] bg-white rounded-[10px] border border-slate-300 pl-10 pr-4 text-sm text-forest-dark font-mono outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary shadow-xs"
-                value={reportId}
-                onChange={(e) => setReportId(e.target.value)}
+                placeholder="Contoh: 1, BSZ-2026-1, atau kode sidik jari laporan"
+                className="w-full min-h-[48px] bg-white rounded-[10px] border border-slate-300 pl-10 pr-4 text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary shadow-xs"
+                value={inputValue}
+                onChange={(e) => setDraftInput({ base: urlQuery, value: e.target.value })}
               />
             </div>
-            <Button type="submit" variant="primary" size="lg" loading={loading} disabled={!reportId.trim()}>
+            <Button type="submit" variant="primary" size="lg" loading={verifyQuery.isFetching} disabled={!inputValue.trim()}>
               Cek Keabsahan
             </Button>
           </div>
           <p className="text-xs text-slate-500">
-            Menampilkan status di basis data serta hasil pemanggilan <code className="font-mono">verifyReport()</code> pada jaringan {network.label}.
+            Menampilkan putusan verifikasi berbahasa sederhana terlebih dahulu, diikuti rincian teknis opsional.
           </p>
         </form>
       </Card>
 
-      {loading && (
+      {verifyQuery.isFetching && (
         <Card>
           <Skeleton lines={8} />
         </Card>
       )}
 
       {error && (
-        <div
-          role="alert"
-          className="p-5 rounded-2xl border border-red-200 bg-red-50 text-red-800 flex items-start gap-3 text-sm"
-        >
+        <div role="alert" className="p-5 rounded-2xl border border-red-200 bg-red-50 text-red-800 flex items-start gap-3 text-sm">
           <AlertCircle size={20} className="shrink-0 mt-0.5 text-danger" />
           <div>
-            <p className="font-bold">Pemeriksaan Tidak Menemukan Data</p>
+            <p className="font-bold">Laporan Tidak Ditemukan</p>
             <p className="mt-0.5">{error}</p>
           </div>
         </div>
       )}
 
-      {result && record && (
+      {result && verdict && (
         <Card className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-mint text-primary flex items-center justify-center">
-                {result.status === 'VERIFIED' ? <CheckCircle2 size={20} /> : <ShieldCheck size={20} />}
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-forest-dark">
-                  Laporan Penyaluran #{record.id}
-                </h2>
-                <p className="text-xs text-slate-500">Jaringan Ethereum: {activeNetName}</p>
-              </div>
+          {/* Putusan Bahasa Manusiawi Terlebih Dahulu */}
+          <div className={`rounded-2xl border p-5 flex items-start gap-3.5 ${VERDICT_BOX_STYLES[verdict.tone] ?? VERDICT_BOX_STYLES.neutral}`}>
+            <div className="mt-0.5 shrink-0">
+              {verdict.tone === 'success' ? (
+                <CheckCircle2 size={24} className="text-primary" />
+              ) : verdict.tone === 'danger' ? (
+                <ShieldAlert size={24} className="text-danger" />
+              ) : (
+                <ShieldCheck size={24} className="text-amber-700" />
+              )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={badge.tone}>{badge.label}</Badge>
-              <Badge
-                tone={
-                  result.status === 'VERIFIED'
-                    ? 'success'
-                    : result.status === 'CHAIN_UNAVAILABLE'
-                      ? 'warning'
-                      : 'danger'
-                }
-              >
-                Kontrak: {result.status}
-              </Badge>
+            <div className="space-y-1 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={verdict.tone === 'info' ? 'sky' : verdict.tone}>{verdict.label}</Badge>
+                {result.donation_reference && (
+                  <Badge tone="neutral">{result.donation_reference}</Badge>
+                )}
+              </div>
+              <p className="text-sm font-medium leading-relaxed">{verdict.summary}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            <div className="bg-cream p-3.5 rounded-xl border border-slate-200/70">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Nominal Tercatat</p>
-              <p className="mt-1 text-lg font-bold text-forest-dark tabular-nums">{formatIDR(record.amount)}</p>
+          {record && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              <div className="bg-cream p-3.5 rounded-xl border border-slate-200/70">
+                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Nominal Tercatat</p>
+                <p className="mt-1 text-lg font-bold text-forest-dark tabular-nums">{formatIDR(record.amount)}</p>
+              </div>
+              <div className="bg-cream p-3.5 rounded-xl border border-slate-200/70">
+                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Kategori</p>
+                <p className="mt-1 text-sm font-bold text-forest-dark">{record.category || 'Umum'}</p>
+              </div>
+              <div className="bg-cream p-3.5 rounded-xl border border-slate-200/70">
+                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Wilayah Sasaran</p>
+                <p className="mt-1 text-sm font-bold text-forest-dark">{record.region || 'Nasional'}</p>
+              </div>
+              <div className="bg-cream p-3.5 rounded-xl border border-slate-200/70">
+                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Waktu Pencatatan</p>
+                <p className="mt-1 text-xs font-semibold text-forest-dark">{formatDateTime(record.timestamp)}</p>
+              </div>
             </div>
-            <div className="bg-cream p-3.5 rounded-xl border border-slate-200/70">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Kategori</p>
-              <p className="mt-1 text-sm font-bold text-forest-dark">{record.category || 'Umum'}</p>
-            </div>
-            <div className="bg-cream p-3.5 rounded-xl border border-slate-200/70">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Wilayah</p>
-              <p className="mt-1 text-sm font-bold text-forest-dark">{record.region || 'Nasional'}</p>
-            </div>
-            <div className="bg-cream p-3.5 rounded-xl border border-slate-200/70">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Waktu Pencatatan</p>
-              <p className="mt-1 text-xs font-mono font-semibold text-forest-dark">
-                {formatDateTime(record.timestamp)}
-              </p>
-            </div>
-          </div>
+          )}
 
-          {record.allocations && record.allocations.length > 0 && (
-            <div className="p-4 rounded-xl bg-cream border border-slate-200/70 space-y-2">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-                Distribusi Multi-Wilayah (Non-PII)
+          {record?.allocations && record.allocations.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2.5">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Rincian Alokasi Multi-Wilayah
               </p>
-              <div className="flex flex-wrap gap-2">
-                {record.allocations.map((alloc, idx) => (
-                  <span
-                    key={`${alloc.region}-${idx}`}
-                    className="rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-forest-dark tabular-nums"
-                  >
-                    {alloc.region}: {formatIDR(alloc.amount)}
-                  </span>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {record.allocations.map((al) => (
+                  <div key={`${al.region}-${al.amount}`} className="flex items-center justify-between rounded-lg bg-cream px-3 py-2 text-xs">
+                    <span className="font-semibold text-forest-dark">{al.region}</span>
+                    <span className="font-bold text-primary tabular-nums">{formatIDR(al.amount)}</span>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
-          {(result.status === 'REVOKED' || result.blockchain?.revoked || record.revoke_reason) && (
-            <div role="alert" className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-900 space-y-1 text-xs">
-              <p className="font-bold">Laporan Ini Telah Dicabut (Revoked) di Smart Contract</p>
-              {record.revoke_reason && <p>Alasan: {record.revoke_reason}</p>}
-              {record.revoke_tx_hash && (
-                <p className="font-mono break-all">Tx Pencabutan: {record.revoke_tx_hash}</p>
-              )}
+          {result.timeline && result.timeline.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Alur Pemeriksaan Laporan
+              </p>
+              <ol className="grid sm:grid-cols-2 gap-3">
+                {result.timeline.map((item) => (
+                  <li key={item.step} className="rounded-xl border border-slate-200 bg-white p-3.5 flex items-start gap-2.5">
+                    <span
+                      className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                        item.state === 'completed'
+                          ? 'bg-mint text-primary'
+                          : item.state === 'danger'
+                            ? 'bg-red-100 text-danger'
+                            : item.state === 'warning'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-slate-100 text-slate-400'
+                      }`}
+                    >
+                      {item.state === 'completed' ? (
+                        <CheckCircle2 size={14} />
+                      ) : item.state === 'danger' ? (
+                        <ShieldAlert size={14} />
+                      ) : (
+                        <Clock size={14} />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-forest-dark">{item.step}</p>
+                      <p className="text-[11px] text-slate-600 leading-relaxed mt-0.5">{item.detail}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
           )}
 
-          <div className="space-y-3">
-            <h3 className="text-xs uppercase tracking-wider text-slate-600 font-bold flex items-center gap-1.5">
-              <Database size={15} className="text-primary" /> Rincian Kriptografi & Blockchain
-            </h3>
+          <p className="rounded-xl bg-cream border border-slate-200 p-3.5 text-xs text-slate-600">
+            {ON_CHAIN_NOTE}
+          </p>
 
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-                  Audit Hash (SHA-256)
-                </p>
+          {/* Detail Kriptografi Opsional */}
+          {record && (
+            <details className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-xs">
+              <summary className="cursor-pointer font-bold text-forest-dark flex items-center justify-between select-none">
+                <span className="inline-flex items-center gap-2">
+                  <Database size={14} className="text-primary" /> Detail Teknis Kriptografi (Opsional untuk Auditor &amp; Pengembang)
+                </span>
+                <ChevronDown size={15} className="text-slate-500" />
+              </summary>
+
+              <div className="mt-4 pt-3 border-t border-slate-200 grid sm:grid-cols-2 gap-3.5">
+                <div>
+                  <span className="text-slate-500 block mb-1">Status Basis Data &amp; Kontrak</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge tone={statusBadge(record.blockchain_status || record.status).tone}>
+                      {statusBadge(record.blockchain_status || record.status).label}
+                    </Badge>
+                    <Badge tone="neutral">Jaringan: {activeNetName}</Badge>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-500 block mb-1">Alamat Smart Contract Target</span>
+                  <span className="font-mono text-forest-dark break-all">
+                    {shortHash(result.network?.contractAddress || network.contractAddress, 10, 6)}
+                  </span>
+                </div>
+
                 {auditHash && (
-                  <button
-                    type="button"
-                    onClick={() => copyText('audit', auditHash)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-forest"
-                  >
-                    <Copy size={13} /> {copiedKey === 'audit' ? 'Tersalin' : 'Salin'}
-                  </button>
+                  <div className="sm:col-span-2">
+                    <span className="text-slate-500 block mb-1">Audit Hash (SHA-256)</span>
+                    <div className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                      <code className="font-mono text-forest-dark break-all">{auditHash}</code>
+                      <button
+                        type="button"
+                        onClick={() => copyText('audit', auditHash)}
+                        className="text-primary font-semibold inline-flex items-center gap-1 shrink-0"
+                      >
+                        <Copy size={12} /> {copiedKey === 'audit' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {record.tx_hash && (
+                  <div className="sm:col-span-2">
+                    <span className="text-slate-500 block mb-1">
+                      Transaction Hash Ethereum {record.block_number ? `· Blok #${record.block_number}` : ''}
+                    </span>
+                    <div className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                      <code className="font-mono text-forest-dark break-all">{record.tx_hash}</code>
+                      {explorerBase && (
+                        <a
+                          href={`${explorerBase}/tx/${record.tx_hash}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary font-semibold inline-flex items-center gap-1 shrink-0 hover:underline"
+                        >
+                          Explorer <ExternalLink size={12} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-              <p className="text-xs font-mono font-semibold text-forest-dark break-all">
-                {auditHash || '-'}
-              </p>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-                  Transaction Hash Ethereum {record.block_number ? `· Blok #${record.block_number}` : ''}
-                </p>
-                <div className="flex items-center gap-3">
-                  {record.tx_hash && (
-                    <button
-                      type="button"
-                      onClick={() => copyText('tx', record.tx_hash!)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-forest"
-                    >
-                      <Copy size={13} /> {copiedKey === 'tx' ? 'Tersalin' : 'Salin'}
-                    </button>
-                  )}
-                  {record.tx_hash && explorerBase && (
-                    <a
-                      href={`${explorerBase}/tx/${record.tx_hash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-forest"
-                    >
-                      Etherscan <ExternalLink size={12} />
-                    </a>
-                  )}
-                </div>
-              </div>
-              <p className="text-xs font-mono font-semibold text-forest-dark break-all">
-                {record.tx_hash || 'Belum tercatat on-chain (menunggu pengiriman ke node blockchain)'}
-              </p>
-            </div>
-
-            {result.blockchain && (
-              <div className="grid sm:grid-cols-3 gap-3 text-xs bg-mint/60 border border-primary/20 rounded-xl p-3.5">
-                <div>
-                  <span className="text-slate-500 block">Terdaftar di Kontrak</span>
-                  <span className="font-bold text-forest-dark">
-                    {result.blockchain.unavailable
-                      ? 'Node tidak terjangkau'
-                      : result.blockchain.exists
-                        ? 'Ya (Valid On-Chain)'
-                        : 'Belum Terdaftar'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Status Pencabutan</span>
-                  <span className="font-bold text-forest-dark">
-                    {result.blockchain.revoked ? 'Dicabut (Revoked)' : 'Aktif'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Kontrak Target</span>
-                  <span className="font-mono font-semibold text-forest-dark">
-                    {shortHash(result.network?.contractAddress || network.contractAddress, 8, 6)}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-xl bg-cream border border-slate-200 p-3.5 text-xs text-slate-600 space-y-1.5">
-            <p className="font-semibold text-forest-dark">{ON_CHAIN_NOTE}</p>
-            <p>
-              Identitas mustahik dilindungi demi menjaga kehormatan penerima manfaat sesuai prinsip syariah.
-            </p>
-          </div>
+            </details>
+          )}
         </Card>
       )}
     </div>

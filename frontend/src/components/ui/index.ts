@@ -12,3 +12,6 @@ export * from './ActionPanel';
 export * from './StatCard';
 export * from './SectionHeader';
 export * from './QrCodeBox';
+export * from './SlideOverDrawer';
+export * from './PaginationBar';
+export * from './ErrorBoundary';

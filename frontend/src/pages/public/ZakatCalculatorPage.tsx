@@ -60,7 +60,16 @@ const ZakatCalculatorPage = () => {
     ]
   );
 
-  const payHref = result.zakatAmount > 0 ? `/donate?amount=${result.zakatAmount}` : '/donate';
+  const ZAKAT_TYPE_QUERY_MAP: Record<ZakatType, string> = {
+    penghasilan: 'zakat-penghasilan',
+    maal: 'zakat-maal',
+    emas: 'zakat-emas',
+  };
+  const mappedType = ZAKAT_TYPE_QUERY_MAP[zakatType];
+  const payHref =
+    result.zakatAmount > 0
+      ? `/donate?amount=${result.zakatAmount}&type=${mappedType}`
+      : `/donate?type=${mappedType}`;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">

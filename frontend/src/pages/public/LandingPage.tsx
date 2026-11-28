@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
@@ -80,6 +80,8 @@ const FAQ_ITEMS = [
 
 const LandingPage = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [quickVerify, setQuickVerify] = useState('');
+  const navigate = useNavigate();
   const transparencyQuery = usePublicTransparency();
   const campaignsQuery = useQuery<Campaign[]>({
     queryKey: ['public-campaigns'],
@@ -120,8 +122,36 @@ const LandingPage = () => {
               </h1>
 
               <p className="text-base sm:text-lg text-white/80 leading-relaxed max-w-2xl">
-                Tunaikan zakat secara praktis dalam Rupiah melalui QRIS, dapatkan Bukti Setor Zakat resmi, dan pantau penyaluran dana secara terbuka tanpa membuka data pribadi mustahik.
+                Tunaikan zakat secara praktis dalam Rupiah melalui QRIS, dapatkan Bukti Setor Zakat resmi, dan pantau penyaluran dana (minimal 87,5% hak mustahik) secara terbuka tanpa membuka data pribadi penerima.
               </p>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const cleaned = quickVerify.trim();
+                  if (!cleaned) return;
+                  navigate(`/verify?query=${encodeURIComponent(cleaned)}`);
+                }}
+                className="flex flex-col sm:flex-row gap-2 max-w-xl rounded-xl border border-white/15 bg-black/25 p-1.5 backdrop-blur"
+              >
+                <div className="relative flex-1">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
+                  <input
+                    type="text"
+                    aria-label="Cek nomor BSZ atau ID laporan"
+                    placeholder="Punya nomor BSZ atau ID laporan? Cek keabsahan langsung…"
+                    value={quickVerify}
+                    onChange={(e) => setQuickVerify(e.target.value)}
+                    className="w-full h-10 bg-transparent pl-9 pr-3 text-xs sm:text-sm text-white placeholder:text-white/55 outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="h-10 px-4 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-bold text-gold-light transition-colors shrink-0"
+                >
+                  Cek Laporan
+                </button>
+              </form>
 
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <Link

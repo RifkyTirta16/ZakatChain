@@ -10,7 +10,7 @@ import {
 import zakatChainLogo from '../../../assets/zakatchain-logo.png';
 import { Badge } from '../../ui';
 import { PoweredByEthereum } from '../../ethereum';
-import { toRole, type SessionUser } from '../navConfig';
+import { ROLE_LABELS, toRole, type SessionUser } from '../navConfig';
 
 interface PublicShellProps {
   user: SessionUser | null;
@@ -80,7 +80,7 @@ const PublicShell = ({ user, onLogout, children }: PublicShellProps) => {
             {user ? (
               <>
                 <span className="hidden xl:inline-flex shrink-0">
-                  <Badge tone={role ? 'primary' : 'neutral'}>{user.role}</Badge>
+                  <Badge tone={role ? 'primary' : 'neutral'}>{role ? ROLE_LABELS[role] : user.role}</Badge>
                 </span>
                 <Link
                   to="/dashboard"

@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Filter, Heart, Megaphone, Plus, X } from 'lucide-react';
 import apiClient from '../utils/api';
 import { formatDateKey, formatIDR } from '../utils/format';
-import { Badge, Button, Card, EmptyState, ErrorState, SectionHeader, Skeleton } from '../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, SectionHeader, Skeleton, statusBadge } from '../components/ui';
 import DonationDrawer from '../components/dashboard/DonationDrawer';
 import { getStoredSessionUser } from '../components/layout/navConfig';
 
@@ -19,12 +19,9 @@ interface Campaign {
   created_at: string;
 }
 
-const TODAY = new Date().toISOString().slice(0, 10);
-const NOW_MS = Date.now();
-
-const daysLeft = (deadline: string | null): number | null => {
+const daysLeft = (deadline: string | null, nowMs: number): number | null => {
   if (!deadline) return null;
-  const diff = Date.parse(deadline) - NOW_MS;
+  const diff = Date.parse(deadline) - nowMs;
   if (Number.isNaN(diff)) return null;
   return Math.ceil(diff / 86400000);
 };
@@ -53,6 +50,10 @@ const Campaigns = () => {
   const user = getStoredSessionUser();
   const canCreateCampaign = ['ADMIN', 'AMIL'].includes(user?.role ?? '');
   const canDonateAsMuzakki = !user || user.role === 'USER';
+  const [{ todayStr, nowMs }] = useState(() => ({
+    todayStr: new Date().toISOString().slice(0, 10),
+    nowMs: Date.now(),
+  }));
 
   const query = useQuery({
     queryKey: ['campaigns'],
@@ -125,7 +126,7 @@ const Campaigns = () => {
               <option value="">Semua Status</option>
               {statusOptions.map((st) => (
                 <option key={st} value={st}>
-                  {st === 'ACTIVE' ? 'Aktif' : st}
+                  {statusBadge(st).label}
                 </option>
               ))}
             </select>
@@ -173,8 +174,10 @@ const Campaigns = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {visibleCampaigns.map((campaign) => {
-            const remaining = daysLeft(campaign.deadline);
+            const remaining = daysLeft(campaign.deadline, nowMs);
             const percent = progressPercent(campaign);
+            const stBadge = statusBadge(campaign.status);
+            const isActiveCampaign = campaign.status === 'ACTIVE';
 
             return (
               <Card
@@ -186,9 +189,7 @@ const Campaigns = () => {
                     <div className="w-10 h-10 rounded-xl bg-mint text-primary flex items-center justify-center">
                       <Heart size={18} />
                     </div>
-                    <Badge tone={campaign.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                      {campaign.status === 'ACTIVE' ? 'Aktif' : campaign.status}
-                    </Badge>
+                    <Badge tone={stBadge.tone}>{stBadge.label}</Badge>
                   </div>
 
                   <button
@@ -228,7 +229,7 @@ const Campaigns = () => {
                   </div>
 
                   <div className="space-y-2">
-                    {canDonateAsMuzakki ? (
+                    {canDonateAsMuzakki && isActiveCampaign ? (
                       <>
                         <Button
                           variant="primary"
@@ -340,7 +341,7 @@ const Campaigns = () => {
                 Batas Waktu
                 <input
                   type="date"
-                  min={TODAY}
+                  min={todayStr}
                   value={form.deadline}
                   onChange={(event) => setForm({ ...form, deadline: event.target.value })}
                   className="mt-1.5 w-full min-h-[44px] rounded-[10px] bg-white border border-slate-300 px-3.5 py-2.5 text-sm text-forest-dark outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary font-normal"
