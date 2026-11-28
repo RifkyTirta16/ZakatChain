@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PovertyImportSchema, formatIssues, type NormalizedPovertyRow } from '../utils/validation.js';
 import { runInTransaction, type Database } from '../models/db.js';
+import { logActivity } from '../utils/auditLogger.js';
 import type { AuthRequest } from '../middleware/auth.js';
 
 interface EffectiveDistributionRow {
@@ -301,6 +302,7 @@ export const importPovertyData = async (req: Request, res: Response) => {
   try {
     // All-or-nothing: a bad row no longer leaves a partially imported dataset.
     const imported = await upsertPovertyRows(db, parsed.data.data);
+    await logActivity(req, 'IMPORT_POVERTY_DATA', 'POVERTY_STATS', null, null, `records:${imported}`);
     res.json({ message: `Successfully imported ${imported} records.` });
   } catch (error: any) {
     console.error('[POVERTY IMPORT ERROR]', error?.message);

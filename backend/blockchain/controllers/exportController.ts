@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import { logActivity } from '../utils/auditLogger.js';
+import { buildCsvContent } from '../utils/csv.js';
 
 const COLUMNS = [
   'id', 'amount', 'donor_name', 'recipient_name', 'category', 'region',
@@ -6,22 +8,6 @@ const COLUMNS = [
   'anomaly_flag', 'anomaly_reason', 'tx_hash', 'blockchain_status', 'block_number',
   'proof_status', 'proof_rejection_reason',
 ] as const;
-
-/**
- * Escapes a value for CSV.
- *
- * Two issues are handled: embedded quotes/newlines (which previously produced
- * malformed CSV) and spreadsheet formula injection — a value beginning with
- * = + - @ is prefixed with a single quote so Excel/Sheets treats it as text.
- */
-const escapeCsvValue = (value: unknown): string => {
-  if (value === null || value === undefined) return '""';
-  let text = String(value);
-  if (/^[=+\-@\t\r]/.test(text)) {
-    text = `'${text}`;
-  }
-  return `"${text.replace(/"/g, '""')}"`;
-};
 
 export const exportTransactionsCSV = async (req: Request, res: Response) => {
   const { db } = req;
@@ -32,13 +18,8 @@ export const exportTransactionsCSV = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'No data to export' });
     }
 
-    const header = COLUMNS.join(',');
-    const rows = transactions
-      .map((tx: any) => COLUMNS.map((column) => escapeCsvValue(tx[column])).join(','))
-      .join('\n');
-
-    // A UTF-8 BOM keeps Indonesian characters readable when opened in Excel.
-    const csvContent = `﻿${header}\n${rows}`;
+    const csvContent = buildCsvContent(COLUMNS, transactions);
+    await logActivity(req, 'EXPORT_CSV', 'TRANSACTION', null, null, `rows:${transactions.length}`);
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=zakat_distribution_report.csv');

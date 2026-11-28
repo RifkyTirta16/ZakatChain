@@ -22,6 +22,7 @@ import campaignRoutes from './routes/campaignRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import mustahikRoutes from './routes/mustahikRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import { createPaymentSession } from './controllers/paymentController.js';
 import { authenticate, authorize, readSessionCookie } from './middleware/auth.js';
 import { rateLimit, AUTH_LIMIT } from './middleware/rateLimit.js';
@@ -113,6 +114,8 @@ app.use((req, res, next) => {
     if (!isAllowedOrigin(candidateOrigin) && candidateOrigin !== sameServerOrigin) {
       return res.status(403).json({ error: 'Cross-site request blocked' });
     }
+  } else if (process.env.NODE_ENV === 'production' && !req.headers.authorization?.startsWith('Bearer ')) {
+    return res.status(403).json({ error: 'Origin header required' });
   }
   next();
 });
@@ -191,6 +194,7 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/mustahik', mustahikRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });

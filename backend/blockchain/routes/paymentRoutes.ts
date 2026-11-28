@@ -7,10 +7,16 @@ import {
   sandboxConfirmPayment,
   getSandboxSessionInfo,
   scanConfirmSandboxPayment,
+  listPayments,
+  getPaymentEvents,
 } from '../controllers/paymentController.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = Router();
+
+// Admin/Auditor payment monitoring & webhook audit logs
+router.get('/', authenticate, authorize(['ADMIN', 'AUDITOR']), listPayments);
+router.get('/:sessionId/events', authenticate, authorize(['ADMIN', 'AUDITOR']), getPaymentEvents);
 
 // User-facing payment session creation.
 // `generate` is the pre-existing path; `session` and `create` are aliases the

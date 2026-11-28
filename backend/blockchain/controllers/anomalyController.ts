@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { getBlockchainProvider, getZakatContract } from '../utils/web3.js';
-import { AnomalyResolutionSchema, formatIssues } from '../utils/validation.js';
+import { AnomalyResolutionSchema, formatIssues, parsePagination } from '../utils/validation.js';
 import { logActivity } from '../utils/auditLogger.js';
 import { ethers } from 'ethers';
 
@@ -26,6 +26,17 @@ export const scanForAnomalies = async (req: Request, res: Response) => {
       contract = getZakatContract(provider);
     } catch (providerError: any) {
       console.error('[ANOMALY SCAN] Blockchain provider unavailable; skipping on-chain checks.');
+    }
+
+    // Precompute active duplicate groups in memory to avoid an extra SELECT per row.
+    const activeByCompositeKey = new Map<string, number[]>();
+    for (const tx of transactions) {
+      if (tx.proof_status === 'REJECTED' || tx.blockchain_status === 'REVOKED') continue;
+      const day = typeof tx.timestamp === 'string' ? tx.timestamp.slice(0, 10) : '';
+      const key = `${Number(tx.amount)}|${String(tx.recipient_name ?? '')}|${String(tx.category ?? '')}|${day}`;
+      const list = activeByCompositeKey.get(key) ?? [];
+      list.push(Number(tx.id));
+      activeByCompositeKey.set(key, list);
     }
 
     for (const tx of transactions) {
@@ -65,19 +76,13 @@ export const scanForAnomalies = async (req: Request, res: Response) => {
 
       // Rule 5: Transaction Duplication among active records on the same day.
       if (!isClosedOut) {
-        const duplicates = await (db as any).all(
-          `SELECT id FROM transactions
-           WHERE amount = ? AND recipient_name = ? AND category = ?
-             AND id != ? AND date(timestamp) = date(?)
-             AND COALESCE(proof_status, 'PENDING') != 'REJECTED'
-             AND COALESCE(blockchain_status, '') != 'REVOKED'
-           LIMIT 1`,
-          [tx.amount, tx.recipient_name, tx.category, tx.id, tx.timestamp]
-        );
-        if (duplicates.length > 0) {
+        const day = typeof tx.timestamp === 'string' ? tx.timestamp.slice(0, 10) : '';
+        const key = `${Number(tx.amount)}|${String(tx.recipient_name ?? '')}|${String(tx.category ?? '')}|${day}`;
+        const siblingIds = (activeByCompositeKey.get(key) ?? []).filter((otherId) => otherId !== Number(tx.id));
+        if (siblingIds.length > 0) {
           issues.push({
             type: 'POTENTIAL_DUPLICATE',
-            reason: `Possible duplicate of transaction ID: ${duplicates[0].id} on the same day`,
+            reason: `Possible duplicate of transaction ID: ${siblingIds[0]} on the same day`,
             priority: 'MEDIUM',
           });
         }
@@ -99,6 +104,7 @@ export const scanForAnomalies = async (req: Request, res: Response) => {
       }
     }
 
+    await logActivity(req, 'SCAN_ANOMALIES', 'ANOMALY', null, null, `found:${detected.length}`);
     // `detected` was previously never populated, so anomaliesFound was always 0.
     res.json({ message: 'Anomaly scan completed successfully', anomaliesFound: detected.length, anomalies: detected });
   } catch (error: any) {
@@ -112,13 +118,39 @@ export const scanForAnomalies = async (req: Request, res: Response) => {
 export const getAnomalies = async (req: Request, res: Response) => {
   const { db } = req;
   try {
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    const statusFilter = typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : null;
+    const priorityFilter = typeof req.query.priority === 'string' && req.query.priority.trim() ? req.query.priority.trim() : null;
+    const conditions: string[] = [];
+    const params: (string | number)[] = [];
+    if (statusFilter) {
+      conditions.push('a.status = ?');
+      params.push(statusFilter);
+    }
+    if (priorityFilter) {
+      conditions.push('a.priority = ?');
+      params.push(priorityFilter);
+    }
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
     // LEFT JOIN so an anomaly is never hidden by a missing transaction row.
-    const anomalies = await (db as any).all(`
-      SELECT a.*, t.recipient_name, t.amount
-      FROM anomalies a
-      LEFT JOIN transactions t ON a.transaction_id = t.id
-      ORDER BY a.detected_at DESC, a.id DESC
-    `);
+    const anomalies = await (db as any).all(
+      `SELECT a.*, t.recipient_name, t.amount, t.proof_status, t.blockchain_status
+       FROM anomalies a
+       LEFT JOIN transactions t ON a.transaction_id = t.id
+       ${whereClause}
+       ORDER BY a.detected_at DESC, a.id DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    if (req.query.meta === '1') {
+      const countRow = await (db as any).get(
+        `SELECT COUNT(*) AS total FROM anomalies a ${whereClause}`,
+        params
+      );
+      return res.json({ items: anomalies, total: Number(countRow?.total ?? 0), limit, offset });
+    }
     res.json(anomalies);
   } catch (error: any) {
     console.error('[GET ANOMALIES ERROR]', error?.message);

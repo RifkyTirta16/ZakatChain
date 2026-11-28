@@ -10,12 +10,65 @@ export const listUsers = async (req: Request, res: Response) => {
   const { db } = req;
   try {
     const users = await (db as any).all(
-      'SELECT id, username, role FROM users ORDER BY id ASC'
+      `SELECT id, username, role,
+              COALESCE(failed_login_attempts, 0) AS failed_login_attempts,
+              locked_until
+       FROM users
+       ORDER BY id ASC`
     );
-    res.json(users);
+    const enriched = users.map((row: any) => ({
+      id: row.id,
+      username: row.username,
+      role: row.role,
+      failed_login_attempts: Number(row.failed_login_attempts ?? 0),
+      locked_until: row.locked_until ?? null,
+      is_locked: Boolean(row.locked_until && Date.parse(row.locked_until) > Date.now()),
+    }));
+    res.json(enriched);
   } catch (error: any) {
     console.error('[LIST USERS ERROR]', error?.message);
     res.status(500).json({ error: 'Failed to load users' });
+  }
+};
+
+export const unlockUser = async (req: Request, res: Response) => {
+  const { db } = req;
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id) || !/^\d+$/.test(id) || Number(id) < 1) {
+    return res.status(400).json({ error: 'A valid user ID is required' });
+  }
+  const numericId = Number(id);
+
+  try {
+    const target = await (db as any).get(
+      'SELECT id, username, role, locked_until FROM users WHERE id = ?',
+      [numericId]
+    );
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await (db as any).run(
+      'UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?',
+      [numericId]
+    );
+    await logActivity(req, 'UNLOCK_USER', 'USER', numericId, target.locked_until ?? 'UNLOCKED', 'UNLOCKED');
+
+    res.json({
+      message: 'Akun berhasil dibuka kembali',
+      user: {
+        id: target.id,
+        username: target.username,
+        role: target.role,
+        failed_login_attempts: 0,
+        locked_until: null,
+        is_locked: false,
+      },
+    });
+  } catch (error: any) {
+    console.error('[UNLOCK USER ERROR]', error?.message);
+    res.status(500).json({ error: 'Failed to unlock user' });
   }
 };
 

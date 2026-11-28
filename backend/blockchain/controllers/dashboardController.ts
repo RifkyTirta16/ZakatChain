@@ -1,7 +1,12 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../middleware/auth.js';
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   const { db } = req;
+  const requester = (req as AuthRequest).user;
+  const isStaff =
+    requester?.role === 'ADMIN' || requester?.role === 'AMIL' || requester?.role === 'AUDITOR';
+
   try {
     const donationRes = await (db as any).get(
       `SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE status = 'CONFIRMED'`
@@ -25,7 +30,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     const verifiedReportsRes = await (db as any).get(
       `SELECT COUNT(*) as count FROM transactions
        WHERE blockchain_status = 'CONFIRMED'
-         AND COALESCE(proof_status, 'PENDING') != 'REJECTED'`
+         AND proof_status = 'APPROVED'`
     );
     const verifiedReports = verifiedReportsRes?.count || 0;
 
@@ -37,15 +42,25 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     );
     const pendingReports = pendingReportsRes?.count || 0;
 
-    const anomalyRes = await (db as any).get(
-      `SELECT COUNT(*) as count FROM anomalies WHERE status = 'OPEN'`
-    );
-    const openAnomalies = anomalyRes?.count || 0;
+    const openAnomalies = isStaff
+      ? Number(
+          (await (db as any).get(`SELECT COUNT(*) as count FROM anomalies WHERE status = 'OPEN'`))?.count ?? 0
+        )
+      : 0;
 
-    const recentTxs = await (db as any).all(
-      `SELECT id, recipient_name, amount, blockchain_status, proof_status, timestamp
-       FROM transactions ORDER BY timestamp DESC, id DESC LIMIT 5`
-    );
+    // Never expose beneficiary PII (`recipient_name`) or internal anomaly counts to non-staff roles (`USER`).
+    const recentTxs = isStaff
+      ? await (db as any).all(
+          `SELECT id, recipient_name, category, region, amount, blockchain_status, proof_status, timestamp
+           FROM transactions ORDER BY timestamp DESC, id DESC LIMIT 5`
+        )
+      : await (db as any).all(
+          `SELECT id, category, region, amount, blockchain_status, proof_status, timestamp
+           FROM transactions
+           WHERE COALESCE(proof_status, 'PENDING') != 'REJECTED'
+             AND COALESCE(blockchain_status, '') != 'REVOKED'
+           ORDER BY timestamp DESC, id DESC LIMIT 5`
+        );
 
     const categoryRes = await (db as any).all(
       `SELECT category, SUM(amount) as total FROM transactions

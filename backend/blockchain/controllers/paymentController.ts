@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import crypto from 'node:crypto';
 import os from 'node:os';
-import { PaymentIntentSchema, formatIssues } from '../utils/validation.js';
+import { PaymentIntentSchema, formatIssues, parsePagination } from '../utils/validation.js';
 import { runInTransaction } from '../models/db.js';
 import {
   createDokuQrisCheckout,
@@ -40,6 +40,24 @@ const verifySandboxSessionToken = (sessionId: string, token: string | undefined)
 };
 
 const DOKU_MAX_TIMESTAMP_SKEW_MS = 15 * 60_000;
+const DOKU_POLL_COOLDOWN_MS = 3000;
+const dokuPollCooldown = new Map<string, number>();
+
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, (match) => `\\${match}`);
+
+const markExpiredStatements = async (db: any, sessionId: string) => {
+  await db.run(
+    "UPDATE payments SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ? AND status = 'PENDING'",
+    [sessionId]
+  );
+  await db.run(
+    "UPDATE donations SET status = 'EXPIRED' WHERE payment_reference = ? AND status = 'PENDING'",
+    [sessionId]
+  );
+};
+
+const expirePaymentAndDonation = (db: any, sessionId: string) =>
+  runInTransaction(db, async () => markExpiredStatements(db, sessionId));
 
 const resolveFrontendOrigin = (req: Request): string => {
   const configured = process.env.PUBLIC_FRONTEND_URL?.trim();
@@ -147,6 +165,10 @@ const generateSessionId = () =>
 export const createPaymentSession = async (req: Request, res: Response) => {
   const { db } = req;
 
+  if (process.env.NODE_ENV === 'production' && !isDokuConfigured()) {
+    return res.status(503).json({ error: 'Gateway pembayaran produksi belum dikonfigurasi' });
+  }
+
   const parsed = PaymentIntentSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     return res.status(400).json({ error: 'Validation failed', details: formatIssues(parsed.error) });
@@ -206,9 +228,18 @@ export const createPaymentSession = async (req: Request, res: Response) => {
         );
         await (db as any).run(
           'INSERT INTO payment_events (donation_id, event_type, payload) VALUES (?, ?, ?)',
-          [result.donationId, 'DOKU_CHECKOUT_CREATED', JSON.stringify({ sessionId, tokenId: dokuRes.tokenId })]
+          [
+            result.donationId,
+            'DOKU_CHECKOUT_CREATED',
+            JSON.stringify({ sessionId, tokenId: dokuRes.tokenId, checkoutUrl: dokuCheckoutUrl }),
+          ]
         );
       } catch (dokuErr: any) {
+        if (process.env.NODE_ENV === 'production') {
+          await expirePaymentAndDonation(db as any, sessionId);
+          console.error('[DOKU CHECKOUT PRODUCTION ERROR]', dokuErr?.message || 'DOKU unreachable');
+          return res.status(502).json({ error: 'Gateway pembayaran DOKU sedang tidak tersedia' });
+        }
         console.warn('[DOKU CHECKOUT FALLBACK]', dokuErr?.message || 'DOKU sandbox unreachable');
       }
     }
@@ -261,25 +292,24 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
 
     const requester = (req as AuthRequest).user;
     const isPrivileged = requester?.role === 'ADMIN' || requester?.role === 'AUDITOR';
-    if (!isPrivileged && payment.donor_id !== null && payment.donor_id !== requester?.id) {
+    if (!isPrivileged && (payment.donor_id === null || payment.donor_id !== requester?.id)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
     let status = payment.status;
     if (status === 'PENDING' && payment.expires_at && Date.parse(payment.expires_at) < Date.now()) {
-      // Persist the expiry so a later webhook cannot revive a dead session.
-      await (db as any).run(
-        "UPDATE payments SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ? AND status = 'PENDING'",
-        [sessionId]
-      );
+      // Persist the expiry atomically to both payments and donations so stale pending rows never linger.
+      await expirePaymentAndDonation(db as any, sessionId);
       status = 'EXPIRED';
     } else if (
       status === 'PENDING' &&
       isDokuConfigured() &&
       process.env.NODE_ENV !== 'test' &&
       typeof payment.provider_tx_id === 'string' &&
-      payment.provider_tx_id.startsWith('DOKU-SESSION:')
+      payment.provider_tx_id.startsWith('DOKU-SESSION:') &&
+      Date.now() - (dokuPollCooldown.get(sessionId) ?? 0) >= DOKU_POLL_COOLDOWN_MS
     ) {
+      dokuPollCooldown.set(sessionId, Date.now());
       try {
         const dokuStatus = await fetchDokuOrderStatus(sessionId);
         if (dokuStatus.status === 'PAID') {
@@ -288,6 +318,7 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
             status: 'SUCCESS',
             providerTxId: `DOKU-${dokuStatus.originalRequestId || sessionId}`,
             eventType: 'DOKU_STATUS_PAID',
+            expectedAmount: dokuStatus.amount,
           });
           if (settled.code === 200) status = 'CONFIRMED';
         } else if (dokuStatus.status === 'FAILED') {
@@ -299,15 +330,52 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
           });
           if (settled.code === 200) status = 'FAILED';
         } else if (dokuStatus.status === 'EXPIRED') {
-          await (db as any).run(
-            "UPDATE payments SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ? AND status = 'PENDING'",
-            [sessionId]
-          );
+          await expirePaymentAndDonation(db as any, sessionId);
           status = 'EXPIRED';
         }
       } catch (syncErr: any) {
         console.warn('[DOKU STATUS SYNC]', syncErr?.message || 'Status lookup skipped');
       }
+    }
+
+    let resumeFields: Record<string, unknown> = {};
+    const clientStatus = toClientStatus(status, payment.expires_at);
+    if (clientStatus === 'PENDING') {
+      let dokuUrl: string | undefined;
+      if (typeof payment.provider_tx_id === 'string' && payment.provider_tx_id.startsWith('DOKU-SESSION:')) {
+        const dokuEvent = await (db as any).get(
+          `SELECT payload FROM payment_events
+           WHERE event_type = 'DOKU_CHECKOUT_CREATED'
+             AND payload LIKE ? ESCAPE '\\'
+           ORDER BY id DESC LIMIT 1`,
+          [`%${escapeLike(sessionId)}%`]
+        );
+        if (dokuEvent?.payload) {
+          try {
+            const parsedPayload = JSON.parse(dokuEvent.payload);
+            if (typeof parsedPayload?.checkoutUrl === 'string') {
+              dokuUrl = parsedPayload.checkoutUrl;
+            }
+          } catch {
+            // Ignore malformed payload.
+          }
+        }
+      }
+      const built = buildSessionPayload({
+        sessionId: payment.payment_session_id,
+        amount: Number(payment.amount) || 0,
+        expiresAt: payment.expires_at || isoFromNow(QRIS_SANDBOX_CONFIG.sessionTtlMinutes),
+        frontendOrigin: resolveFrontendOrigin(req),
+        dokuCheckoutUrl: dokuUrl,
+      });
+      resumeFields = {
+        qris_url: built.qris_url,
+        qrCodeUrl: built.qrCodeUrl,
+        qris_payload: built.qris_payload,
+        ...(built.doku_checkout_url ? { doku_checkout_url: built.doku_checkout_url } : {}),
+        ...(built.lan_qris_url ? { lan_qris_url: built.lan_qris_url } : {}),
+        provider: built.provider,
+      };
     }
 
     res.json({
@@ -316,8 +384,9 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
       amount: payment.amount,
       program_id: payment.program_id,
       expires_at: payment.expires_at,
-      status: toClientStatus(status, payment.expires_at),
+      status: clientStatus,
       raw_status: status,
+      ...resumeFields,
     });
   } catch (error: any) {
     console.error('[PAYMENT STATUS ERROR]', error?.message);
@@ -349,17 +418,11 @@ const applyProviderSettlement = async (db: any, opts: ProviderSettlementInput) =
         [opts.donationId]
       );
       if (!donation) return { code: 404, body: { error: 'Donation not found' } };
-      if (donation.status !== 'PENDING') {
-        return { code: 409, body: { error: 'Donation has already reached a terminal status' } };
-      }
     } else if (opts.sessionId) {
       donation = await db.get(
         'SELECT id, campaign_id, amount, status FROM donations WHERE payment_reference = ?',
         [opts.sessionId]
       );
-      if (donation && donation.status !== 'PENDING') {
-        return { code: 409, body: { error: 'Donation has already reached a terminal status' } };
-      }
     }
 
     let payment: any = null;
@@ -369,22 +432,35 @@ const applyProviderSettlement = async (db: any, opts: ProviderSettlementInput) =
         [opts.sessionId]
       );
       if (!payment) return { code: 404, body: { error: 'Payment session not found' } };
-      // A late webhook must not resurrect an expired session.
+    }
+
+    const referenceAmount = payment?.amount ?? donation?.amount;
+    if (
+      opts.expectedAmount !== undefined &&
+      referenceAmount !== undefined &&
+      Math.abs(Number(referenceAmount) - opts.expectedAmount) >= 0.01
+    ) {
+      return { code: 409, body: { error: 'Payment amount mismatch' } };
+    }
+
+    if (
+      opts.status === 'SUCCESS' &&
+      (payment?.status === 'CONFIRMED' || payment?.status === 'PAID' || donation?.status === 'CONFIRMED')
+    ) {
+      return { code: 200, body: { status: 'ALREADY_CONFIRMED' } };
+    }
+
+    if (donation && donation.status !== 'PENDING') {
+      return { code: 409, body: { error: 'Donation has already reached a terminal status' } };
+    }
+
+    if (payment && opts.sessionId) {
       if (payment.status !== 'PENDING') {
         return { code: 409, body: { error: 'Payment session has already reached a terminal status' } };
       }
       if (payment.expires_at && Date.parse(payment.expires_at) < Date.now()) {
-        await db.run(
-          "UPDATE payments SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ?",
-          [opts.sessionId]
-        );
+        await markExpiredStatements(db, opts.sessionId);
         return { code: 409, body: { error: 'Payment session has expired' } };
-      }
-      if (
-        opts.expectedAmount !== undefined &&
-        Math.abs(Number(payment.amount) - opts.expectedAmount) >= 0.01
-      ) {
-        return { code: 409, body: { error: 'Payment amount mismatch' } };
       }
     }
 
@@ -534,6 +610,37 @@ export const handleDokuNotification = async (req: Request, res: Response) => {
   }
 
   try {
+    if (txStatus === 'EXPIRED') {
+      const outcome = await runInTransaction(db as any, async () => {
+        const existingEvent = await (db as any).get(
+          'SELECT id FROM payment_events WHERE provider_tx_id = ?',
+          [providerTxId]
+        );
+        if (existingEvent) return { code: 200, body: { status: 'ALREADY_PROCESSED' } };
+        const payment = await (db as any).get(
+          'SELECT payment_session_id FROM payments WHERE payment_session_id = ?',
+          [invoiceNumber]
+        );
+        if (!payment) return { code: 404, body: { error: 'Payment session not found' } };
+        const donation = await (db as any).get(
+          'SELECT id FROM donations WHERE payment_reference = ?',
+          [invoiceNumber]
+        );
+        await markExpiredStatements(db, invoiceNumber);
+        await (db as any).run(
+          'INSERT INTO payment_events (donation_id, provider_tx_id, event_type, payload) VALUES (?, ?, ?, ?)',
+          [
+            donation?.id ?? null,
+            providerTxId,
+            'DOKU_NOTIFY_EXPIRED',
+            JSON.stringify({ session_id: invoiceNumber, status: 'EXPIRED' }),
+          ]
+        );
+        return { code: 200, body: { status: 'EXPIRED_RECORDED' } };
+      });
+      return res.status(outcome.code).json(outcome.body);
+    }
+
     const mappedStatus: 'SUCCESS' | 'FAILED' = txStatus === 'SUCCESS' || txStatus === 'PAID' ? 'SUCCESS' : 'FAILED';
     const outcome = await applyProviderSettlement(db, {
       sessionId: invoiceNumber,
@@ -571,10 +678,7 @@ const confirmSandboxSession = async (db: any, opts: SandboxConfirmOptions) =>
       return { code: 409, body: { error: 'Payment session is no longer pending' } };
     }
     if (payment.expires_at && Date.parse(payment.expires_at) < Date.now()) {
-      await db.run(
-        "UPDATE payments SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE payment_session_id = ?",
-        [opts.sessionId]
-      );
+      await markExpiredStatements(db, opts.sessionId);
       return { code: 409, body: { error: 'Payment session has expired' } };
     }
 
@@ -584,10 +688,8 @@ const confirmSandboxSession = async (db: any, opts: SandboxConfirmOptions) =>
     );
     if (
       opts.requester &&
-      donation &&
-      donation.donor_id !== null &&
       opts.requester.role !== 'ADMIN' &&
-      donation.donor_id !== opts.requester.id
+      (!donation || donation.donor_id === null || donation.donor_id !== opts.requester.id)
     ) {
       return { code: 403, body: { error: 'Insufficient permissions' } };
     }
@@ -722,5 +824,125 @@ export const scanConfirmSandboxPayment = async (req: Request, res: Response) => 
   } catch (error: any) {
     console.error('[SANDBOX QR CONFIRM ERROR]', error?.message);
     res.status(500).json({ error: 'Konfirmasi QR sandbox gagal' });
+  }
+};
+
+export const listPayments = async (req: Request, res: Response) => {
+  const { db } = req;
+  try {
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>, 50, 500);
+    const conditions: string[] = [];
+    const params: (string | number)[] = [];
+
+    if (typeof req.query.status === 'string' && req.query.status.trim()) {
+      conditions.push('UPPER(p.status) = ?');
+      params.push(req.query.status.trim().toUpperCase());
+    }
+    if (typeof req.query.search === 'string' && req.query.search.trim()) {
+      const term = `%${escapeLike(req.query.search.trim())}%`;
+      conditions.push(
+        "(p.payment_session_id LIKE ? ESCAPE '\\' OR COALESCE(p.donor_name, '') LIKE ? ESCAPE '\\' OR COALESCE(u.username, '') LIKE ? ESCAPE '\\' OR COALESCE(p.provider_tx_id, '') LIKE ? ESCAPE '\\')"
+      );
+      params.push(term, term, term, term);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const [rawRows, countRow, summaryRow] = await Promise.all([
+      (db as any).all(
+        `SELECT p.id, p.payment_session_id, p.donor_name, u.username AS donor_username,
+                p.amount, p.program_id, c.title AS campaign_title, p.status,
+                p.provider_tx_id, p.created_at, p.updated_at, p.expires_at
+         FROM payments p
+         LEFT JOIN donations d ON d.payment_reference = p.payment_session_id
+         LEFT JOIN campaigns c ON c.id = d.campaign_id
+         LEFT JOIN users u ON u.id = d.donor_id
+         ${whereClause}
+         ORDER BY p.created_at DESC, p.id DESC
+         LIMIT ? OFFSET ?`,
+        [...params, limit, offset]
+      ),
+      (db as any).get(
+        `SELECT COUNT(*) AS total
+         FROM payments p
+         LEFT JOIN donations d ON d.payment_reference = p.payment_session_id
+         LEFT JOIN users u ON u.id = d.donor_id
+         ${whereClause}`,
+        params
+      ),
+      (db as any).get(
+        `SELECT COUNT(*) AS totalCount,
+                SUM(CASE WHEN UPPER(status) IN ('CONFIRMED', 'PAID', 'SUCCESS') THEN 1 ELSE 0 END) AS confirmedCount,
+                SUM(CASE WHEN UPPER(status) = 'PENDING' THEN 1 ELSE 0 END) AS pendingCount,
+                SUM(CASE WHEN UPPER(status) = 'EXPIRED' THEN 1 ELSE 0 END) AS expiredCount,
+                SUM(CASE WHEN UPPER(status) = 'FAILED' THEN 1 ELSE 0 END) AS failedCount,
+                COALESCE(SUM(CASE WHEN UPPER(status) IN ('CONFIRMED', 'PAID', 'SUCCESS') THEN amount ELSE 0 END), 0) AS confirmedVolume,
+                SUM(CASE WHEN COALESCE(provider_tx_id, '') LIKE 'DOKU%' THEN 1 ELSE 0 END) AS dokuCount,
+                SUM(CASE WHEN COALESCE(provider_tx_id, '') NOT LIKE 'DOKU%' THEN 1 ELSE 0 END) AS sandboxCount
+         FROM payments`
+      ),
+    ]);
+
+    const items = rawRows.map((row: any) => ({
+      id: row.id,
+      payment_session_id: row.payment_session_id,
+      donor_name: row.donor_name ?? null,
+      donor_username: row.donor_username ?? null,
+      amount: Number(row.amount) || 0,
+      program_id: row.program_id ?? null,
+      campaign_title: row.campaign_title ?? null,
+      status: toClientStatus(row.status, row.expires_at),
+      raw_status: row.status,
+      channel: typeof row.provider_tx_id === 'string' && row.provider_tx_id.startsWith('DOKU') ? 'DOKU' : 'SANDBOX',
+      provider_tx_id: row.provider_tx_id ?? null,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      expires_at: row.expires_at ?? null,
+    }));
+
+    res.json({
+      items,
+      total: Number(countRow?.total ?? 0),
+      limit,
+      offset,
+      summary: {
+        totalCount: Number(summaryRow?.totalCount ?? 0),
+        confirmedCount: Number(summaryRow?.confirmedCount ?? 0),
+        pendingCount: Number(summaryRow?.pendingCount ?? 0),
+        expiredCount: Number(summaryRow?.expiredCount ?? 0),
+        failedCount: Number(summaryRow?.failedCount ?? 0),
+        confirmedVolume: Number(summaryRow?.confirmedVolume ?? 0),
+        dokuCount: Number(summaryRow?.dokuCount ?? 0),
+        sandboxCount: Number(summaryRow?.sandboxCount ?? 0),
+      },
+    });
+  } catch (error: any) {
+    console.error('[LIST PAYMENTS ERROR]', error?.message);
+    res.status(500).json({ error: 'Failed to load payment sessions' });
+  }
+};
+
+export const getPaymentEvents = async (req: Request, res: Response) => {
+  const { db } = req;
+  const sessionId = typeof req.params.sessionId === 'string' ? req.params.sessionId.trim() : '';
+  if (!sessionId || sessionId.length > 120) {
+    return res.status(400).json({ error: 'A valid payment session ID is required' });
+  }
+
+  try {
+    const escapedTerm = `%${escapeLike(sessionId)}%`;
+    const events = await (db as any).all(
+      `SELECT pe.id, pe.donation_id, pe.provider_tx_id, pe.event_type, pe.payload, pe.timestamp
+       FROM payment_events pe
+       LEFT JOIN donations d ON d.id = pe.donation_id
+       WHERE d.payment_reference = ?
+          OR COALESCE(pe.payload, '') LIKE ? ESCAPE '\\'
+       ORDER BY pe.timestamp DESC, pe.id DESC
+       LIMIT 100`,
+      [sessionId, escapedTerm]
+    );
+    res.json({ session_id: sessionId, events });
+  } catch (error: any) {
+    console.error('[PAYMENT EVENTS ERROR]', error?.message);
+    res.status(500).json({ error: 'Failed to load payment events' });
   }
 };
