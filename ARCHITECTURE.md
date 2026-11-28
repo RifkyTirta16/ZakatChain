@@ -1,6 +1,6 @@
 # ZakatChain — Architecture Reference
 
-**Updated:** 2026-11-23 · Synchronized with [agent-memory/ARCHITECTURE.md](agent-memory/ARCHITECTURE.md).
+**Updated:** 2026-11-28 · Synchronized with [agent-memory/ARCHITECTURE.md](agent-memory/ARCHITECTURE.md).
 
 ## Monorepo Layout
 
@@ -17,26 +17,28 @@ ZakatChain/
 
 ## Backend (`backend/blockchain/`)
 
-- **Entry:** `index.ts` — Express 5 (`port 5000`), `trust proxy` (`loopback` default), strict security headers (`nosniff`, `DENY`, `no-referrer`), explicit CORS allowlist in production with loopback port flexibility in non-production, global + scoped auth rate limiters, and lazy SQLite initialization.
-- **Database:** SQLite (`models/db.ts`, WAL mode, `PRAGMA foreign_keys = ON`, `busy_timeout = 5000`). Additive schema migrations across `users`, `transactions`, `transaction_allocations`, `mustahik`, `campaigns`, `donations`, `payments`, `payment_events`, `anomalies`, `audit_logs`, `reconciliation_logs`, and `poverty_stats` (38 provinces + 114 cities/regencies).
-- **Auth & RBAC:** JWT Bearer tokens (24h), `bcrypt` (cost 10), `middleware/auth.ts` (`authenticate`, `authorize`, `authorizeSelfOr`). Roles: `USER | AMIL | AUDITOR | ADMIN`. Self-registration (`POST /api/auth/register`) always assigns `USER` and respects `ALLOW_PUBLIC_REGISTRATION`. Self-service password change at `PATCH /api/auth/password`.
-- **Audit Hashing (`DEC-003`):** `generateRecordAuditHash` computes a unique record SHA-256 hash over transaction fields + row ID, transformed via `ethers.id(hex)` to `bytes32` for `ZakatVerify.registerReport`.
-- **Payments:** Supports campaign and campaign-less donations via DOKU Checkout Sandbox QRIS + local fallback simulator, polling order status sync, and HMAC-SHA256 verified webhooks (`paymentController.ts`, `utils/doku.ts`). Legacy `payments` / `donations` schema consolidation remains tracked in `DEC-002`.
-- **Uploads & Privacy:** Proof uploads validated by magic bytes and stored with random names under `backend/uploads/`. `/uploads/*` is protected by `authenticate` + `authorize(['AMIL', 'AUDITOR', 'ADMIN'])`.
+- **Entry:** `index.ts` — Express 5 (`port 5000`), `trust proxy` (`loopback` default), strict security headers (`nosniff`, `DENY`, `no-referrer`, `Permissions-Policy`), explicit CORS allowlist in production (fail-closed `Origin` CSRF guard for cookie mutations) with loopback flexibility in non-production, scoped auth/global rate limiters, and lazy SQLite initialization.
+- **Database:** SQLite (`models/db.ts`, WAL mode, `PRAGMA foreign_keys = ON`, `busy_timeout = 5000`). Additive schema migrations and performance indexes across `users`, `transactions`, `transaction_allocations`, `mustahik`, `campaigns`, `donations`, `payments`, `payment_events`, `anomalies`, `audit_logs`, `reconciliation_logs`, and `poverty_stats` (38 provinces + 114 cities/regencies).
+- **Auth & RBAC:** `HttpOnly; SameSite=Lax` JWT cookie sessions (24h) with `token_version` revocation (including `POST /api/auth/logout?all=true`), `bcrypt` (cost 10), lockout tracking + `PATCH /api/users/:id/unlock`, `middleware/auth.ts` (`optionalAuthenticate`, `authenticate`, `authorize`, `authorizeSelfOr`). Roles: `USER | AMIL | AUDITOR | ADMIN`.
+- **Audit Hashing & Web3 Reliability (`DEC-003`):** `generateRecordAuditHash` computes a unique record SHA-256 hash over transaction fields + row ID, transformed via `ethers.id(hex)` to `bytes32` for `ZakatVerify.registerReport`. Backend writes serialize through `enqueueChainWrite` using explicit `pending` nonces and explicit timeouts (`utils/web3.ts`), with `GET /api/admin/blockchain/telemetry` exposing signer balance, `owner()` match, latency, and queue depth.
+- **Payments, Operational & Public APIs:** Supports campaign and campaign-less donations (`UnifiedPaymentFlow`) via DOKU Checkout Sandbox QRIS + local fallback simulator, polling cooldown + `EXPIRED` sync + amount validation (`utils/doku.ts`), and HMAC-SHA256 webhooks. Exposes `/api/admin/overview`, `/api/reconciliation/three-way` (SQL `period` filter), `/api/payments` + `/api/payments/:sessionId/events`, `/api/transactions/:id` cross-module detail, `/api/transactions/reconcile-batch`, `/api/donations/me/overview`, `/api/public/distributions` (JSON + CSV via `utils/csv.ts`), `/api/explorer/verify/lookup/:query`, and `?meta=1` paginated envelopes.
+- **Uploads & Privacy:** Proof uploads validated by magic bytes and stored with random names under `backend/uploads/`. `/uploads/*` is protected by `authenticate` + `authorize(['AMIL', 'AUDITOR', 'ADMIN'])` with attachment + sandbox CSP headers.
 
 ## On-Chain (`blockchain/`)
 
-- **Contract:** `ZakatVerify.sol` — owner-only `registerReport(bytes32, uint256)` and `revokeReport(bytes32, string)` with sticky revocation, zero-hash protection, and original timestamp preservation; public read view `verifyReport(bytes32)`.
-- **Local Startup Recovery:** `hardhat.config.cjs` hooks `TASK_NODE_SERVER_READY` to deploy `ZakatVerify` and invoke `backend/blockchain/sync_local_chain.ts` to replay SQLite `CONFIRMED`/`REVOKED` hashes onto restarted local Hardhat nodes.
+- **Contract:** `ZakatVerify.sol` — owner-only `registerReport(bytes32, uint256)` and `revokeReport(bytes32, string)` with sticky revocation, zero-hash protection, original timestamp preservation, and `owner()` / `verifyReport(bytes32)` views.
+- **Local Startup Recovery:** `hardhat.config.cjs` hooks `TASK_NODE_SERVER_READY` to deploy `ZakatVerify` and invoke `backend/blockchain/sync_local_chain.ts` (verifying `contract.owner() === signerAddress` before replaying `CONFIRMED`/`REVOKED` hashes onto restarted local Hardhat nodes).
 
 ## Frontend (`frontend/src/`)
 
-- **Entry & Routing:** `main.tsx` mounts `QueryClientProvider` (`src/queryClient.ts`, 60s staleTime) around `MainApp.tsx` (React Router 7 lazy-loaded pages, `RequireRole` route guard with cross-role cache clearing & `canAccessPath` redirect validation).
-- **Environment Config:** API base via `VITE_API_URL` (falls back to `http://localhost:5000/api` or `/api` over LAN dev); chain config via `VITE_CHAIN_ID`, `VITE_RPC_URL`, and `VITE_ZAKAT_CONTRACT_ADDRESS` using `viem` directly (`src/web3.ts`). Unused `wagmi` removed.
-- **Mapping & Verification:** Leaflet interactive map (`PovertyMapping.tsx`) supports national 38-province stats and 114-city/kabupaten drilldown (`src/utils/cityCoords.ts`, `src/utils/regions.ts`); `PublicVerify` & `OnChainExplorer` verify hashes against `/api/explorer/verify/*` and reinforce that blockchain proofs anchor audit hashes rather than physical delivery truth.
+- **Entry & Routing:** `main.tsx` mounts `QueryClientProvider` (`src/queryClient.ts`, 60s staleTime) around `MainApp.tsx` inside `<ErrorBoundary>` with lazy-loaded pages & role shells, `RequireRole` (`authHydrating` guard + `canAccessPath` redirect validation), and Vite chunking without eager `vendor-web3` or `recharts` preloads on `/`.
+- **Dual-Altitude UX (`DESIGN.md`):**
+  - *Muzakki & Public:* Concise Indonesian UX centered on `LandingPage`, `ZakatCalculatorPage`, `UnifiedPaymentFlow`, `PaymentSuccessCard`, `DonorHome`, `MyDonationsPage` (`DonationReceiptDrawer` for BSZ & proportional trace), `PublicTransparencyPage` (`87,5%` / `12,5%` amil policy, integrity scorecard, paginated non-PII CSV export), and progressive `PublicVerify` (*Verdict First, Hash Second*).
+  - *Admin & Staff:* Consolidated Command Center (`AdminHome` 4-tab view, `PaymentWebhookMonitor`, `TransactionDetailDrawer` across transactions/proofs/anomalies/audit), `ReconciliationPage` (clickable 3-way view), `RolesPermissionsPage` (lockout & unlock), `NetworkMonitorPage`, `MustahikPage` (8-Asnaf summary), `PovertyMapping` (38 provinces + 114 cities, `PovertyImportModal`), and paginated operational ledgers.
+- **Environment Config:** Dev requests route via Vite `/api` and `/uploads` proxies; production builds use `VITE_API_URL`. Chain config uses `VITE_CHAIN_ID`, `VITE_RPC_URL`, and `VITE_ZAKAT_CONTRACT_ADDRESS` via `viem` (`src/web3.ts`).
 
 ## Verification Gates
 
-- `cd blockchain && npm test` (Hardhat Mocha/Chai contract suite)
-- `cd backend && npx tsc --noEmit && npm test` (Typecheck + `node:test` API/integration suite)
-- `cd frontend && npm test && npx tsc -b && npm run lint && npm run build` (`node:test` utils/RBAC suite + `tsc` + `oxlint` + Vite build)
+- `cd blockchain && npx hardhat compile`
+- `cd backend && npx tsc --noEmit`
+- `cd frontend && npx tsc -b && npm run lint && npm run build` (`"strict": true`, `oxlint` `0 warnings / 0 errors`, Vite chunked build)

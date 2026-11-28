@@ -1,11 +1,32 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle2, ClipboardList, Plus, Search, ShieldCheck, X } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ClipboardList,
+  Eye,
+  Plus,
+  Search,
+  ShieldCheck,
+  Users,
+  X,
+} from 'lucide-react';
 import apiClient from '../../utils/api';
 import { getStoredSessionUser } from '../../components/layout/navConfig';
 import { INDONESIA_REGIONS } from '../../utils/regions';
 import { formatDateTime, formatIDR } from '../../utils/format';
-import { Badge, Button, Card, EmptyState, ErrorState, SectionHeader, Skeleton } from '../../components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  PaginationBar,
+  SectionHeader,
+  Skeleton,
+  statusBadge,
+} from '../../components/ui';
+import { TransactionDetailDrawer } from '../../components/admin/TransactionDetailDrawer';
 
 const ASNAF_LIST = [
   'Fakir',
@@ -31,6 +52,13 @@ interface MustahikRow {
   total_received: number;
 }
 
+interface PaginatedMustahikResponse {
+  items: MustahikRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 interface MustahikDetail {
   mustahik: MustahikRow;
   distributions: Array<{
@@ -44,17 +72,14 @@ interface MustahikDetail {
   }>;
 }
 
-const STATUS_BADGE: Record<string, { tone: 'success' | 'warning' | 'danger'; label: string }> = {
-  VERIFIED: { tone: 'success', label: 'Terverifikasi' },
-  PENDING: { tone: 'warning', label: 'Menunggu Verifikasi' },
-  INACTIVE: { tone: 'danger', label: 'Nonaktif' },
-};
-
 const MustahikPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [limit, setLimit] = useState(20);
+  const [offset, setOffset] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [drawerTxId, setDrawerTxId] = useState<number | null>(null);
   const [banner, setBanner] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const [fullName, setFullName] = useState('');
@@ -67,16 +92,19 @@ const MustahikPage = () => {
   const role = getStoredSessionUser()?.role ?? '';
   const canEdit = role === 'AMIL' || role === 'ADMIN';
 
-  const listQuery = useQuery<MustahikRow[]>({
-    queryKey: ['mustahik-list', search, statusFilter],
+  const listQuery = useQuery<PaginatedMustahikResponse>({
+    queryKey: ['mustahik-list', search, statusFilter, limit, offset],
     queryFn: async () => {
-      const { data } = await apiClient.get<MustahikRow[]>('/mustahik', {
+      const { data } = await apiClient.get<PaginatedMustahikResponse>('/mustahik', {
         params: {
+          meta: '1',
+          limit,
+          offset,
           ...(search.trim() ? { search: search.trim() } : {}),
           ...(statusFilter ? { status: statusFilter } : {}),
         },
       });
-      return Array.isArray(data) ? data : [];
+      return data;
     },
   });
 
@@ -140,7 +168,25 @@ const MustahikPage = () => {
     createMutation.mutate();
   };
 
-  const rows = listQuery.data ?? [];
+  const rows = useMemo(() => listQuery.data?.items ?? [], [listQuery.data?.items]);
+  const totalCount = listQuery.data?.total ?? 0;
+
+  const asnafBreakdown = useMemo(() => {
+    const totalAmount = rows.reduce((s, r) => s + Number(r.total_received || 0), 0);
+    return ASNAF_LIST.map((name) => {
+      const matching = rows.filter((r) => r.category_asnaf === name);
+      const amount = matching.reduce((s, r) => s + Number(r.total_received || 0), 0);
+      const sharePct = totalAmount > 0 ? Math.round((amount / totalAmount) * 100) : 0;
+      return { name, count: matching.length, amount, sharePct };
+    });
+  }, [rows]);
+
+  const topConcentration = useMemo(() => {
+    return asnafBreakdown.reduce<{ name: string; sharePct: number } | null>(
+      (best, item) => (!best || item.sharePct > best.sharePct ? item : best),
+      null
+    );
+  }, [asnafBreakdown]);
 
   if (listQuery.isError) {
     return <ErrorState message="Gagal memuat daftar mustahik." retry={() => void listQuery.refetch()} />;
@@ -150,7 +196,7 @@ const MustahikPage = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <SectionHeader
-          title="Master Data Mustahik"
+          title="Master Data Mustahik & Sebaran 8 Asnaf"
           subtitle="Registri penerima manfaat terverifikasi (khusus Amil, Auditor, & Admin — tidak dipublikasikan)."
         />
         {canEdit && (
@@ -159,6 +205,34 @@ const MustahikPage = () => {
           </Button>
         )}
       </div>
+
+      {/* 8 Asnaf Recap Grid */}
+      <Card className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-bold text-forest-dark flex items-center gap-2">
+            <Users size={16} className="text-primary" /> Rekap Cakupan 8 Asnaf (Halaman Aktif · {totalCount} Terdaftar)
+          </h2>
+          {topConcentration && topConcentration.sharePct > 0 && (
+            <Badge tone={topConcentration.sharePct >= 75 ? 'warning' : 'success'}>
+              Konsentrasi tertinggi: {topConcentration.name} ({topConcentration.sharePct}%)
+            </Badge>
+          )}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+          {asnafBreakdown.map((item) => (
+            <div
+              key={item.name}
+              className={`rounded-xl border p-2.5 text-center ${
+                item.count > 0 ? 'bg-mint/50 border-primary/25' : 'bg-slate-50 border-slate-200/80'
+              }`}
+            >
+              <p className="text-[11px] font-bold text-forest-dark truncate">{item.name}</p>
+              <p className="font-display text-base font-extrabold text-primary tabular-nums">{item.count}</p>
+              <p className="text-[10px] text-slate-500 tabular-nums truncate">{formatIDR(item.amount)}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       {banner && (
         <div
@@ -169,7 +243,11 @@ const MustahikPage = () => {
               : 'bg-red-50 border-red-200 text-red-800'
           }`}
         >
-          {banner.type === 'ok' ? <CheckCircle2 size={16} className="text-primary shrink-0" /> : <AlertCircle size={16} className="text-danger shrink-0" />}
+          {banner.type === 'ok' ? (
+            <CheckCircle2 size={16} className="text-primary shrink-0" />
+          ) : (
+            <AlertCircle size={16} className="text-danger shrink-0" />
+          )}
           <span>{banner.text}</span>
         </div>
       )}
@@ -286,7 +364,10 @@ const MustahikPage = () => {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setOffset(0);
+              }}
               placeholder="Cari nama, asnaf, atau wilayah…"
               className="w-full min-h-[38px] rounded-[10px] border border-slate-300 bg-white pl-8 pr-3 text-xs sm:text-sm text-forest-dark"
             />
@@ -294,18 +375,23 @@ const MustahikPage = () => {
           <select
             aria-label="Filter status mustahik"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setOffset(0);
+            }}
             className="min-h-[38px] rounded-[10px] border border-slate-300 bg-white px-3 text-xs font-semibold text-forest-dark"
           >
             <option value="">Semua Status</option>
             <option value="VERIFIED">Terverifikasi</option>
-            <option value="PENDING">Menunggu Verifikasi</option>
+            <option value="PENDING">Menunggu</option>
             <option value="INACTIVE">Nonaktif</option>
           </select>
         </div>
 
         {listQuery.isPending ? (
-          <div className="p-5"><Skeleton lines={6} /></div>
+          <div className="p-5">
+            <Skeleton lines={6} />
+          </div>
         ) : rows.length === 0 ? (
           <EmptyState
             icon={<ClipboardList size={24} />}
@@ -313,64 +399,73 @@ const MustahikPage = () => {
             description="Tambahkan data penerima manfaat agar proses penyaluran tercatat lebih rapi dan bebas duplikasi."
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">Nama & Asnaf</th>
-                  <th className="px-4 py-3 font-semibold">Wilayah</th>
-                  <th className="px-4 py-3 font-semibold text-right">Bantuan Diterima</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rows.map((m) => {
-                  const badge = STATUS_BADGE[m.verification_status] ?? { tone: 'warning', label: m.verification_status };
-                  return (
-                    <tr key={m.id} className="hover:bg-cream/60">
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-forest-dark">{m.full_name}</p>
-                        <p className="text-xs text-slate-500">
-                          Asnaf {m.category_asnaf} {m.phone_masked ? `· ${m.phone_masked}` : ''}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-700">{m.region}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        <p className="font-bold text-forest-dark">{formatIDR(Number(m.total_received))}</p>
-                        <p className="text-[11px] text-slate-500">{m.distribution_count} penyaluran</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        {canEdit ? (
-                          <select
-                            aria-label={`Status verifikasi ${m.full_name}`}
-                            value={m.verification_status}
-                            onChange={(e) => updateStatus.mutate({ id: m.id, status: e.target.value })}
-                            className="min-h-[34px] rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-forest-dark"
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Nama & Asnaf</th>
+                    <th className="px-4 py-3 font-semibold">Wilayah</th>
+                    <th className="px-4 py-3 font-semibold text-right">Bantuan Diterima</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rows.map((m) => {
+                    const badge = statusBadge(m.verification_status);
+                    return (
+                      <tr key={m.id} className="hover:bg-cream/60">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-forest-dark">{m.full_name}</p>
+                          <p className="text-xs text-slate-500">
+                            Asnaf {m.category_asnaf} {m.phone_masked ? `· ${m.phone_masked}` : ''}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-700">{m.region}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          <p className="font-bold text-forest-dark">{formatIDR(Number(m.total_received))}</p>
+                          <p className="text-[11px] text-slate-500">{m.distribution_count} penyaluran</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          {canEdit ? (
+                            <select
+                              aria-label={`Status verifikasi ${m.full_name}`}
+                              value={m.verification_status}
+                              onChange={(e) => updateStatus.mutate({ id: m.id, status: e.target.value })}
+                              className="min-h-[34px] rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-forest-dark"
+                            >
+                              <option value="VERIFIED">Terverifikasi</option>
+                              <option value="PENDING">Menunggu</option>
+                              <option value="INACTIVE">Nonaktif</option>
+                            </select>
+                          ) : (
+                            <Badge tone={badge.tone}>{badge.label}</Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedId(selectedId === m.id ? null : m.id)}
+                            className="text-xs font-semibold text-primary hover:underline"
                           >
-                            <option value="VERIFIED">Terverifikasi</option>
-                            <option value="PENDING">Menunggu</option>
-                            <option value="INACTIVE">Nonaktif</option>
-                          </select>
-                        ) : (
-                          <Badge tone={badge.tone}>{badge.label}</Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(selectedId === m.id ? null : m.id)}
-                          className="text-xs font-semibold text-primary hover:underline"
-                        >
-                          {selectedId === m.id ? 'Tutup Riwayat' : 'Riwayat Bantuan'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            {selectedId === m.id ? 'Tutup Riwayat' : 'Riwayat Bantuan'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <PaginationBar
+              total={totalCount}
+              limit={limit}
+              offset={offset}
+              onOffsetChange={setOffset}
+              onLimitChange={setLimit}
+            />
+          </>
         )}
       </Card>
 
@@ -401,9 +496,16 @@ const MustahikPage = () => {
                   key={d.id}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-cream border border-slate-200 px-3.5 py-2.5 text-xs"
                 >
-                  <div>
-                    <span className="font-bold text-forest-dark">#{d.id} · {d.category}</span>
-                    <span className="text-slate-500 ml-2">{d.region} · {formatDateTime(d.timestamp)}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDrawerTxId(d.id)}
+                      className="inline-flex items-center gap-1 font-bold text-primary hover:underline"
+                    >
+                      #{d.id} <Eye size={12} />
+                    </button>
+                    <span className="font-semibold text-forest-dark">{d.category}</span>
+                    <span className="text-slate-500">{d.region} · {formatDateTime(d.timestamp)}</span>
                   </div>
                   <span className="font-bold text-forest-dark tabular-nums">{formatIDR(d.amount)}</span>
                 </div>
@@ -412,6 +514,15 @@ const MustahikPage = () => {
           )}
         </Card>
       )}
+
+      <TransactionDetailDrawer
+        transactionId={drawerTxId}
+        onClose={() => setDrawerTxId(null)}
+        onUpdated={() => {
+          void listQuery.refetch();
+          if (selectedId !== null) void detailQuery.refetch();
+        }}
+      />
     </div>
   );
 };

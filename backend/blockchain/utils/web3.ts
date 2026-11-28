@@ -66,18 +66,55 @@ export const CONTRACT_ABI = [
     ],
     "name": "ReportRevoked",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
   }
 ] as const;
 
 
 export type ZakatContract = ethers.Contract & {
+  owner(): Promise<string>;
   registerReport(reportHash: string | Uint8Array, reportId: bigint | number, overrides?: Record<string, unknown>): Promise<ethers.ContractTransactionResponse>;
   revokeReport(reportHash: string | Uint8Array, reason: string, overrides?: Record<string, unknown>): Promise<ethers.ContractTransactionResponse>;
   verifyReport(reportHash: string | Uint8Array): Promise<[boolean, bigint, boolean]>;
 };
 
 export const getBlockchainProvider = () => {
-  return new ethers.JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL || "http://127.0.0.1:8545");
+  return new ethers.JsonRpcProvider(
+    process.env.BLOCKCHAIN_RPC_URL || "http://127.0.0.1:8545",
+    undefined,
+    { cacheTimeout: -1 }
+  );
+};
+
+export const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+};
+
+let chainWriteTail: Promise<void> = Promise.resolve();
+
+/**
+ * Serializes on-chain writes in-process so concurrent API calls never collide
+ * on the same wallet `pending` nonce.
+ */
+export const enqueueChainWrite = <T>(task: () => Promise<T>): Promise<T> => {
+  const run = chainWriteTail.then(task, task);
+  chainWriteTail = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
 };
 
 export const getBlockchainWallet = (provider: ethers.Provider) => {
@@ -179,4 +216,122 @@ export const probeNetworkStatus = async (timeoutMs = 2500): Promise<NetworkProbe
     cachedProbe = { key: cacheKey, expiresAt: Date.now() + 5000, value: result };
   }
   return result;
+};
+
+export interface BlockchainTelemetryResult {
+  rpc: 'Connected' | 'Unreachable' | 'Unknown';
+  contract: 'Active' | 'No contract code' | 'Unknown';
+  status: 'Healthy' | 'Degraded' | 'Unknown';
+  chainId: number | null;
+  networkName: string;
+  contractAddress: string;
+  blockNumber: number | null;
+  latestBlockTimestamp: string | null;
+  rpcLatencyMs: number | null;
+  contractOwner: string | null;
+  signerAddress: string | null;
+  signerBalanceEth: string | null;
+  signerMatchesOwner: boolean | null;
+  pendingQueueCount: number;
+  confirmedCount: number;
+  revokedCount: number;
+}
+
+export const getBlockchainTelemetry = async (db: any): Promise<BlockchainTelemetryResult> => {
+  const contractAddress = getContractAddress();
+  const countsRow = await db.get(
+    `SELECT
+       SUM(CASE WHEN COALESCE(blockchain_status, 'PENDING_BLOCKCHAIN') = 'PENDING_BLOCKCHAIN' AND COALESCE(proof_status, 'PENDING') != 'REJECTED' THEN 1 ELSE 0 END) AS pendingQueueCount,
+       SUM(CASE WHEN blockchain_status = 'CONFIRMED' THEN 1 ELSE 0 END) AS confirmedCount,
+       SUM(CASE WHEN blockchain_status = 'REVOKED' THEN 1 ELSE 0 END) AS revokedCount
+     FROM transactions`
+  );
+
+  let provider: ReturnType<typeof getBlockchainProvider> | null = null;
+  const startedAt = Date.now();
+  try {
+    provider = getBlockchainProvider();
+    const wallet = getBlockchainWallet(provider);
+    const signerAddress = wallet ? await wallet.getAddress() : null;
+
+    const [network, blockNumber, code, signerBalance] = await withTimeout(
+      Promise.all([
+        provider.getNetwork(),
+        provider.getBlockNumber(),
+        contractAddress ? provider.getCode(contractAddress) : Promise.resolve('0x'),
+        signerAddress ? provider.getBalance(signerAddress) : Promise.resolve(null),
+      ]),
+      3500,
+      'telemetry probe'
+    );
+
+    const rpcLatencyMs = Date.now() - startedAt;
+    const chainId = Number(network.chainId);
+    const contractActive = Boolean(contractAddress && code && code !== '0x');
+
+    let latestBlockTimestamp: string | null = null;
+    try {
+      const latestBlock = await withTimeout(provider.getBlock(blockNumber), 2000, 'getBlock');
+      if (latestBlock?.timestamp) {
+        latestBlockTimestamp = new Date(Number(latestBlock.timestamp) * 1000).toISOString();
+      }
+    } catch {
+      // Optional metadata.
+    }
+
+    let contractOwner: string | null = null;
+    if (contractActive) {
+      try {
+        const contract = getZakatContract(provider);
+        contractOwner = await withTimeout(contract.owner(), 2000, 'contract.owner');
+      } catch {
+        // Ignore if contract view fails.
+      }
+    }
+
+    const signerMatchesOwner =
+      contractOwner && signerAddress
+        ? contractOwner.toLowerCase() === signerAddress.toLowerCase()
+        : null;
+
+    return {
+      rpc: 'Connected',
+      contract: contractActive ? 'Active' : 'No contract code',
+      status: contractActive && signerMatchesOwner !== false ? 'Healthy' : 'Degraded',
+      chainId,
+      networkName: resolveNetworkName(chainId),
+      contractAddress,
+      blockNumber,
+      latestBlockTimestamp,
+      rpcLatencyMs,
+      contractOwner,
+      signerAddress,
+      signerBalanceEth: signerBalance !== null ? ethers.formatEther(signerBalance) : null,
+      signerMatchesOwner,
+      pendingQueueCount: Number(countsRow?.pendingQueueCount ?? 0),
+      confirmedCount: Number(countsRow?.confirmedCount ?? 0),
+      revokedCount: Number(countsRow?.revokedCount ?? 0),
+    };
+  } catch {
+    return {
+      rpc: 'Unreachable',
+      contract: 'Unknown',
+      status: 'Degraded',
+      chainId: null,
+      networkName: 'Jaringan Tidak Tersedia',
+      contractAddress,
+      blockNumber: null,
+      latestBlockTimestamp: null,
+      rpcLatencyMs: null,
+      contractOwner: null,
+      signerAddress: null,
+      signerBalanceEth: null,
+      signerMatchesOwner: null,
+      pendingQueueCount: Number(countsRow?.pendingQueueCount ?? 0),
+      confirmedCount: Number(countsRow?.confirmedCount ?? 0),
+      revokedCount: Number(countsRow?.revokedCount ?? 0),
+    };
+  } finally {
+    provider?.destroy();
+  }
 };

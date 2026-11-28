@@ -44,6 +44,13 @@ export const listMustahik = async (req: Request, res: Response) => {
        LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
+    if (req.query.meta === '1') {
+      const countRow = await (db as any).get(
+        `SELECT COUNT(*) AS total FROM mustahik m ${where}`,
+        params
+      );
+      return res.json({ items: rows, total: Number(countRow?.total ?? 0), limit, offset });
+    }
     res.json(rows);
   } catch (error: any) {
     console.error('[LIST MUSTAHIK ERROR]', error?.message);

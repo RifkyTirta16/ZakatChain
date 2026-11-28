@@ -18,6 +18,7 @@ export interface DokuOrderStatusResult {
   status: 'PAID' | 'PENDING' | 'FAILED' | 'EXPIRED';
   rawStatus: string;
   originalRequestId?: string | undefined;
+  amount?: number | undefined;
 }
 
 const DEFAULT_DOKU_SANDBOX_URL = 'https://api-sandbox.doku.com';
@@ -232,6 +233,7 @@ export const fetchDokuOrderStatus = async (invoiceNumber: string): Promise<DokuO
   });
 
   const { statusCode, data } = await dokuHttpsRequest<{
+    order?: { amount?: number | string };
     transaction?: { status?: string; original_request_id?: string };
   }>(`${cfg.baseUrl}${target}`, {
     method: 'GET',
@@ -248,6 +250,11 @@ export const fetchDokuOrderStatus = async (invoiceNumber: string): Promise<DokuO
   }
 
   const rawStatus = String(data?.transaction?.status || 'PENDING').toUpperCase();
+  const rawAmt = data?.order?.amount;
+  const parsedAmt =
+    rawAmt !== undefined && rawAmt !== null && Number.isFinite(Number(rawAmt))
+      ? Number(rawAmt)
+      : undefined;
   const mapped: DokuOrderStatusResult['status'] =
     rawStatus === 'SUCCESS' || rawStatus === 'PAID'
       ? 'PAID'
@@ -261,5 +268,6 @@ export const fetchDokuOrderStatus = async (invoiceNumber: string): Promise<DokuO
     status: mapped,
     rawStatus,
     originalRequestId: data?.transaction?.original_request_id,
+    amount: parsedAmt,
   };
 };

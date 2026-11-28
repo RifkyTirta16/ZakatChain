@@ -54,6 +54,40 @@ export const useDonorDonations = (donorId: number | null) =>
     enabled: typeof donorId === 'number',
   });
 
+export interface MuzakkiOverview {
+  confirmedTotalAmount: number;
+  confirmedCount: number;
+  pendingCount: number;
+  impactedRegionsCount: number;
+  resumablePayments: Array<{
+    donation_id: number;
+    session_id: string;
+    amount: number;
+    campaign_id: number | null;
+    campaign_title: string | null;
+    expires_at: string;
+  }>;
+  recentDonations: Array<
+    Donation & {
+      campaign_title?: string | null;
+      payment_reference?: string | null;
+      payment_expires_at?: string | null;
+      is_resumable?: boolean;
+    }
+  >;
+  activeCampaigns: Array<Campaign & { collected_amount?: number }>;
+}
+
+export const useMuzakkiOverview = (enabled = true) =>
+  useQuery<MuzakkiOverview>({
+    queryKey: ['muzakki-overview'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<MuzakkiOverview>('/donations/me/overview');
+      return data;
+    },
+    enabled,
+  });
+
 export const useDashboardStats = () =>
   useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
@@ -119,8 +153,10 @@ export const invalidateDonationQueries = (
   options: { settled?: boolean; campaignId?: string | number } = {},
 ) => {
   void queryClient.invalidateQueries({ queryKey: ['donor-donations'] });
+  void queryClient.invalidateQueries({ queryKey: ['muzakki-overview'] });
   if (!options.settled) return;
   void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+  void queryClient.invalidateQueries({ queryKey: ['admin-overview'] });
   void queryClient.invalidateQueries({ queryKey: ['donations'] });
   void queryClient.invalidateQueries({ queryKey: ['campaigns'] });
   void queryClient.invalidateQueries({ queryKey: ['public-transparency'] });

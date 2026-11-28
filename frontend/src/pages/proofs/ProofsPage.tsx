@@ -10,21 +10,25 @@ import {
   EmptyState,
   ErrorState,
   ON_CHAIN_NOTE,
+  PaginationBar,
   SectionHeader,
   Skeleton,
-  StatCard,
-  proofBadge,
+  statusBadge,
 } from '../../components/ui';
 import type { Transaction } from '../Dashboard';
+import { TransactionDetailDrawer } from '../../components/admin/TransactionDetailDrawer';
 
 interface ExtendedTransaction extends Transaction {
   proof_rejection_reason?: string | null;
   allocations?: Array<{ region: string; amount: number }>;
 }
 
-const isPendingReview = (t: ExtendedTransaction) =>
-  t.proof_status === null ||
-  ['DRAFT', 'PENDING', 'PENDING_BLOCKCHAIN'].includes(t.proof_status ?? '');
+interface PaginatedProofsResponse {
+  items: ExtendedTransaction[];
+  total: number;
+  limit: number;
+  offset: number;
+}
 
 export const ProofsPage = () => {
   const [verifyId, setVerifyId] = useState<number | null>(null);
@@ -32,6 +36,9 @@ export const ProofsPage = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [actionError, setActionError] = useState('');
   const [statusFilter, setStatusFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'>('PENDING');
+  const [limit, setLimit] = useState(20);
+  const [offset, setOffset] = useState(0);
+  const [drawerTxId, setDrawerTxId] = useState<number | null>(null);
 
   const [previewTx, setPreviewTx] = useState<ExtendedTransaction | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
@@ -45,24 +52,23 @@ export const ProofsPage = () => {
     };
   }, [previewBlobUrl]);
 
-  const { data, isLoading, error, refetch } = useQuery<ExtendedTransaction[]>({
-    queryKey: ['proof-verification'],
+  const { data, isLoading, error, refetch } = useQuery<PaginatedProofsResponse>({
+    queryKey: ['proof-verification', statusFilter, limit, offset],
     queryFn: async () => {
-      const { data } = await apiClient.get<ExtendedTransaction[]>('/transactions');
-      return Array.isArray(data) ? data : [];
+      const { data: resp } = await apiClient.get<PaginatedProofsResponse>('/transactions', {
+        params: {
+          meta: '1',
+          limit,
+          offset,
+          ...(statusFilter !== 'ALL' ? { proof_status: statusFilter } : {}),
+        },
+      });
+      return resp;
     },
   });
 
-  const allTransactions = data ?? [];
-  const pendingCount = allTransactions.filter(isPendingReview).length;
-  const approvedCount = allTransactions.filter((t) => t.proof_status === 'APPROVED').length;
-  const rejectedCount = allTransactions.filter((t) => t.proof_status === 'REJECTED').length;
-
-  const transactions = allTransactions.filter((t) => {
-    if (statusFilter === 'ALL') return true;
-    if (statusFilter === 'PENDING') return isPendingReview(t);
-    return t.proof_status === statusFilter;
-  });
+  const transactions = data?.items ?? [];
+  const totalCount = data?.total ?? 0;
 
   const closePreview = () => {
     if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
@@ -82,8 +88,6 @@ export const ProofsPage = () => {
     setPreviewLoading(true);
 
     try {
-      // Request via apiClient so HttpOnly session cookies & CORS credentials attach cleanly,
-      // overriding baseURL ('/api' or 'https://.../api') so '/uploads/*' hits server root.
       const base = apiClient.defaults.baseURL || '';
       const rootOrigin = base.replace(/\/api\/?$/, '');
       const isRelative = tx.proof_url.startsWith('/');
@@ -141,7 +145,7 @@ export const ProofsPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <SectionHeader
           title="Verifikasi Bukti Penyaluran"
-          subtitle="Periksa berkas bukti penyaluran yang diunggah amil lalu setujui atau tolak laporan."
+          subtitle="Periksa berkas bukti terproteksi, cek keterkaitan transaksi lintas modul, lalu setujui atau tolak laporan."
         />
         <Button variant="secondary" size="sm" onClick={() => void refetch()}>
           <RefreshCw size={14} /> Segarkan
@@ -154,27 +158,6 @@ export const ProofsPage = () => {
           <span>{actionError}</span>
         </div>
       )}
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Menunggu Review"
-          value={`${pendingCount} bukti`}
-          icon={<FileSearch size={18} />}
-          tone={pendingCount > 0 ? 'gold' : 'emerald'}
-        />
-        <StatCard
-          label="Disetujui Auditor"
-          value={`${approvedCount} bukti`}
-          icon={<FileSearch size={18} />}
-          tone="emerald"
-        />
-        <StatCard
-          label="Ditolak / Perbaikan"
-          value={`${rejectedCount} bukti`}
-          icon={<AlertCircle size={18} />}
-          tone={rejectedCount > 0 ? 'danger' : 'neutral'}
-        />
-      </div>
 
       {previewTx && (
         <Card variant="highlight" className="space-y-4">
@@ -232,28 +215,34 @@ export const ProofsPage = () => {
         </Card>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        {(
-          [
-            { key: 'PENDING', label: `Menunggu (${pendingCount})` },
-            { key: 'APPROVED', label: `Disetujui (${approvedCount})` },
-            { key: 'REJECTED', label: `Ditolak (${rejectedCount})` },
-            { key: 'ALL', label: `Semua (${allTransactions.length})` },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setStatusFilter(tab.key)}
-            className={`px-3.5 py-2 rounded-[10px] text-xs font-semibold border transition-colors ${
-              statusFilter === tab.key
-                ? 'bg-primary text-white border-primary'
-                : 'bg-white text-forest-dark border-slate-200 hover:bg-mint/60'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {(
+            [
+              { key: 'PENDING', label: 'Menunggu Review' },
+              { key: 'APPROVED', label: 'Disetujui Auditor' },
+              { key: 'REJECTED', label: 'Ditolak' },
+              { key: 'ALL', label: 'Semua Laporan' },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                setStatusFilter(tab.key);
+                setOffset(0);
+              }}
+              className={`px-3.5 py-2 rounded-[10px] text-xs font-semibold border transition-colors ${
+                statusFilter === tab.key
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-forest-dark border-slate-200 hover:bg-mint/60'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-slate-500 tabular-nums">Total: {totalCount} laporan</span>
       </div>
 
       {transactions.length === 0 ? (
@@ -275,13 +264,15 @@ export const ProofsPage = () => {
                   <th className="px-4 py-3.5 font-semibold text-right">Nilai</th>
                   <th className="px-4 py-3.5 font-semibold">Wilayah</th>
                   <th className="px-4 py-3.5 font-semibold">Berkas Bukti</th>
-                  <th className="px-4 py-3.5 font-semibold">Status Bukti</th>
-                  <th className="px-4 py-3.5 font-semibold">Tindakan</th>
+                  <th className="px-4 py-3.5 font-semibold">Status</th>
+                  <th className="px-4 py-3.5 font-semibold text-right">Tindakan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {transactions.map((t) => {
-                  const badge = proofBadge(t.proof_status ?? 'PENDING');
+                  const isRevoked = t.blockchain_status === 'REVOKED';
+                  const badge = statusBadge(t.proof_status ?? 'PENDING');
+                  const revokedBadge = statusBadge('REVOKED');
                   return (
                     <tr key={t.id} className="hover:bg-cream/60">
                       <td className="px-4 py-3.5 text-slate-500 font-mono">
@@ -294,76 +285,88 @@ export const ProofsPage = () => {
                       <td className="px-4 py-3.5 text-right font-bold text-forest-dark tabular-nums whitespace-nowrap">
                         {formatIDR(t.amount)}
                       </td>
-                      <td className="px-4 py-3.5 text-slate-600 text-xs">
-                        {t.region || '-'}
-                      </td>
+                      <td className="px-4 py-3.5 text-slate-600 text-xs">{t.region || '-'}</td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         {t.proof_url ? (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => void openProofPreview(t)}
-                          >
+                          <Button size="sm" variant="secondary" onClick={() => void openProofPreview(t)}>
                             <Eye size={13} /> Lihat Bukti
                           </Button>
                         ) : (
                           <span className="text-xs text-danger font-medium">Tanpa Berkas</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5">
-                        <Badge tone={badge.tone}>{badge.label}</Badge>
+                      <td className="px-4 py-3.5 space-y-1">
+                        <div className="flex flex-wrap gap-1">
+                          <Badge tone={badge.tone}>{badge.label}</Badge>
+                          {isRevoked && <Badge tone={revokedBadge.tone}>{revokedBadge.label}</Badge>}
+                        </div>
                         {t.proof_rejection_reason && (
-                          <p className="text-[11px] text-danger mt-1 max-w-[160px] truncate" title={t.proof_rejection_reason}>
+                          <p
+                            className="text-[11px] text-danger max-w-[160px] truncate"
+                            title={t.proof_rejection_reason}
+                          >
                             {t.proof_rejection_reason}
                           </p>
                         )}
                       </td>
-                      <td className="px-4 py-3.5">
-                        {verifyId === t.id ? (
-                          <form onSubmit={verify} className="flex flex-col gap-2">
-                            <select
-                              value={verifyStatus}
-                              onChange={(e) => setVerifyStatus(e.target.value as 'APPROVED' | 'REJECTED')}
-                              className="bg-white border border-slate-300 px-2.5 py-1.5 rounded-[10px] text-xs text-forest-dark"
-                            >
-                              <option value="APPROVED">Setujui</option>
-                              <option value="REJECTED">Tolak</option>
-                            </select>
-                            {verifyStatus === 'REJECTED' && (
-                              <input
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                                placeholder="Alasan penolakan wajib diisi"
-                                className="bg-white border border-slate-300 px-2.5 py-1.5 rounded-[10px] text-xs text-forest-dark sm:w-48"
-                              />
-                            )}
-                            <div className="flex gap-2">
-                              <Button
-                                type="submit"
-                                size="sm"
-                                disabled={verifyStatus === 'REJECTED' && !rejectReason.trim()}
-                              >
-                                Simpan
-                              </Button>
-                              <Button type="button" variant="ghost" size="sm" onClick={() => setVerifyId(null)}>
-                                Batal
-                              </Button>
-                            </div>
-                          </form>
-                        ) : (
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5 justify-end">
                           <Button
-                            onClick={() => {
-                              setVerifyId(t.id);
-                              setVerifyStatus('APPROVED');
-                              setRejectReason('');
-                            }}
+                            type="button"
                             size="sm"
                             variant="secondary"
-                            disabled={verifyId !== null}
+                            onClick={() => setDrawerTxId(t.id)}
                           >
-                            Tinjau
+                            <FileSearch size={12} /> Detail
                           </Button>
-                        )}
+                          {isRevoked ? (
+                            <span className="text-xs text-slate-400 px-2">Dicabut On-Chain</span>
+                          ) : verifyId === t.id ? (
+                            <form onSubmit={verify} className="flex flex-col gap-2 text-left">
+                              <select
+                                value={verifyStatus}
+                                onChange={(e) => setVerifyStatus(e.target.value as 'APPROVED' | 'REJECTED')}
+                                className="bg-white border border-slate-300 px-2.5 py-1.5 rounded-[10px] text-xs text-forest-dark"
+                              >
+                                <option value="APPROVED">Setujui</option>
+                                <option value="REJECTED">Tolak</option>
+                              </select>
+                              {verifyStatus === 'REJECTED' && (
+                                <input
+                                  value={rejectReason}
+                                  onChange={(e) => setRejectReason(e.target.value)}
+                                  placeholder="Alasan penolakan wajib diisi"
+                                  className="bg-white border border-slate-300 px-2.5 py-1.5 rounded-[10px] text-xs text-forest-dark sm:w-48"
+                                />
+                              )}
+                              <div className="flex gap-2">
+                                <Button
+                                  type="submit"
+                                  size="sm"
+                                  disabled={verifyStatus === 'REJECTED' && !rejectReason.trim()}
+                                >
+                                  Simpan
+                                </Button>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setVerifyId(null)}>
+                                  Batal
+                                </Button>
+                              </div>
+                            </form>
+                          ) : (
+                            <Button
+                              onClick={() => {
+                                setVerifyId(t.id);
+                                setVerifyStatus('APPROVED');
+                                setRejectReason('');
+                              }}
+                              size="sm"
+                              variant="primary"
+                              disabled={verifyId !== null}
+                            >
+                              Tinjau
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -371,11 +374,25 @@ export const ProofsPage = () => {
               </tbody>
             </table>
           </div>
+          <PaginationBar
+            total={totalCount}
+            limit={limit}
+            offset={offset}
+            onOffsetChange={setOffset}
+            onLimitChange={setLimit}
+          />
           <div className="px-5 py-3 bg-cream border-t border-slate-100 text-xs text-slate-500">
             {ON_CHAIN_NOTE}
           </div>
         </Card>
       )}
+
+      <TransactionDetailDrawer
+        transactionId={drawerTxId}
+        initialTab="proof"
+        onClose={() => setDrawerTxId(null)}
+        onUpdated={() => void refetch()}
+      />
     </div>
   );
 };

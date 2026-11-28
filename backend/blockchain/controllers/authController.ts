@@ -90,6 +90,8 @@ export const login = async (req: Request, res: Response) => {
     const passwordMatches = await bcrypt.compare(parsed.data.password, hashToCompare);
 
     if (isLocked && user) {
+      const retryAfterSec = Math.max(1, Math.ceil((Date.parse(user.locked_until) - Date.now()) / 1000));
+      res.setHeader('Retry-After', String(retryAfterSec));
       await logActivity(req, 'LOGIN_LOCKED', 'USER', user.id, null, user.username);
       return res.status(429).json({
         error: 'Akun dikunci sementara akibat terlalu banyak percobaan login gagal. Coba lagi nanti.',
@@ -158,6 +160,7 @@ export const logout = async (req: Request, res: Response) => {
         'UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?',
         [authUser.id]
       );
+      await logActivity(req, 'LOGOUT_ALL_SESSIONS', 'USER', authUser.id, null, authUser.username);
     } catch {
       // Cookie cleared regardless.
     }

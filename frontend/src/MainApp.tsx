@@ -11,7 +11,7 @@ import RequireRole from './components/layout/RequireRole';
 import { canAccessPath, getStoredSessionUser, rolesForPath, toRole, type SessionUser } from './components/layout/navConfig';
 import apiClient from './utils/api';
 import { queryClient } from './queryClient';
-import { Button, Card, Skeleton } from './components/ui';
+import { Button, Card, ErrorBoundary, Skeleton } from './components/ui';
 
 // Eager Auth & Landing
 import LoginPage from './components/auth/LoginPage';
@@ -93,6 +93,8 @@ const RoleDashboardSwitch = ({ user }: { user: SessionUser | null }) => {
 
 const MainApp = () => {
   const [user, setUser] = useState<SessionUser | null>(() => getStoredSessionUser());
+  const [authHydrating, setAuthHydrating] = useState(true);
+  const [pendingRedirect] = useState<string | null>(() => sessionStorage.getItem('zakat_redirect'));
 
   useEffect(() => {
     let active = true;
@@ -107,11 +109,20 @@ const MainApp = () => {
         if (!active) return;
         setUser(null);
         localStorage.removeItem('zakat_user');
+      })
+      .finally(() => {
+        if (active) setAuthHydrating(false);
       });
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (user && sessionStorage.getItem('zakat_redirect')) {
+      sessionStorage.removeItem('zakat_redirect');
+    }
+  }, [user]);
 
   const handleLoginSuccess = (userData: unknown) => {
     queryClient.clear();
@@ -135,7 +146,7 @@ const MainApp = () => {
 
   const guarded = (path: string, element: ReactNode) => (
     <RoleLayout user={user} onLogout={handleLogout}>
-      <RequireRole user={user} roles={rolesForPath(path)}>
+      <RequireRole user={user} roles={rolesForPath(path)} isHydrating={authHydrating}>
         {withSuspense(element)}
       </RequireRole>
     </RoleLayout>
@@ -154,18 +165,16 @@ const MainApp = () => {
   );
 
   const loginRedirectTarget = () => {
-    const saved = sessionStorage.getItem('zakat_redirect');
-    if (saved) {
-      sessionStorage.removeItem('zakat_redirect');
-      if (canAccessPath(toRole(user?.role), saved)) {
-        return saved;
-      }
+    const saved = sessionStorage.getItem('zakat_redirect') || pendingRedirect;
+    if (saved && canAccessPath(toRole(user?.role), saved)) {
+      return saved;
     }
     return '/dashboard';
   };
 
   return (
-    <Router>
+    <ErrorBoundary>
+      <Router>
       <Routes>
         {/* Public Website Pages (render inside workspace ShellFrame when logged in) */}
         <Route path="/" element={alwaysPublic(<LandingPage />)} />
@@ -233,6 +242,7 @@ const MainApp = () => {
         <Route path="*" element={alwaysPublic(<NotFoundPage isAuthenticated={Boolean(user)} />)} />
       </Routes>
     </Router>
+    </ErrorBoundary>
   );
 };
 

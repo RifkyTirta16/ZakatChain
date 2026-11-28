@@ -12,17 +12,17 @@ import {
   Search,
   TrendingUp,
   Users,
-  X,
 } from 'lucide-react';
 import apiClient from '../utils/api';
 import { getStoredSessionUser } from '../components/layout/navConfig';
-import { Badge, Button, Card, EmptyState, ErrorState, Skeleton, StatCard } from '../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, Skeleton, StatCard, statusBadge } from '../components/ui';
 import { formatIDR, formatNumber, formatPercent } from '../utils/format';
 import { getRegionCoords, INDONESIA_REGIONS } from '../utils/regions';
 import {
   ProvinceDetailCard,
   type RegionStatDetail,
 } from '../components/mapping/ProvinceDetailCard';
+import { PovertyImportModal } from '../components/mapping/PovertyImportModal';
 import 'leaflet/dist/leaflet.css';
 
 type IndicatorMode = 'poverty' | 'priority' | 'depth';
@@ -35,11 +35,11 @@ const INDONESIA_BOUNDS: LatLngBoundsExpression = [
   [6.2, 141.3],
 ];
 
-const MapBoundsHandler = ({ bounds }: { bounds: LatLngBoundsExpression }) => {
+const MapBoundsHandler = ({ bounds, resetKey }: { bounds: LatLngBoundsExpression; resetKey: number }) => {
   const map = useMap();
   useEffect(() => {
     map.fitBounds(bounds, { padding: [24, 24], maxZoom: 10 });
-  }, [map, bounds]);
+  }, [map, bounds, resetKey]);
   return null;
 };
 
@@ -68,9 +68,6 @@ const PovertyMapping = () => {
   const [indicatorMode, setIndicatorMode] = useState<IndicatorMode>('poverty');
   const [mapResetTick, setMapResetTick] = useState(0);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importData, setImportData] = useState('');
-  const [importError, setImportError] = useState('');
-  const [importBusy, setImportBusy] = useState(false);
 
   const activeProvinceParam = viewLevel === 'Kota/Kabupaten' && provinceFilter ? provinceFilter : undefined;
 
@@ -156,8 +153,8 @@ const PovertyMapping = () => {
   });
 
   const activeMapBounds = useMemo<LatLngBoundsExpression>(() => {
-    if (viewLevel === 'Kota/Kabupaten' && activeProvinceParam && filteredStats.length > 0) {
-      const pts = filteredStats
+    if (viewLevel === 'Kota/Kabupaten' && activeProvinceParam && allStats.length > 0) {
+      const pts = allStats
         .map((reg) => getRegionCoords(reg.region_code, reg.region, reg.province, reg.level))
         .filter((c): c is [number, number] => Boolean(c));
       if (pts.length > 0) {
@@ -165,8 +162,7 @@ const PovertyMapping = () => {
       }
     }
     return INDONESIA_BOUNDS;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewLevel, activeProvinceParam, filteredStats.length, mapResetTick]);
+  }, [viewLevel, activeProvinceParam, allStats]);
 
   const unitLabel = viewLevel === 'Provinsi' ? 'provinsi' : 'kota/kab.';
 
@@ -186,36 +182,6 @@ const PovertyMapping = () => {
 
   const currentRole = getStoredSessionUser()?.role;
   const canImport = currentRole === 'ADMIN' || currentRole === 'AMIL';
-
-  const handleImport = async () => {
-    setImportError('');
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(importData);
-    } catch {
-      setImportError('Format JSON tidak valid. Tempelkan array JSON provinsi atau objek {"data": [...]}.');
-      return;
-    }
-    const payload = Array.isArray(parsed) ? { data: parsed } : parsed;
-    setImportBusy(true);
-    try {
-      await apiClient.post('/mapping/import', payload);
-      setIsImportModalOpen(false);
-      setImportData('');
-      retry();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string; details?: unknown } } };
-      const detail = e.response?.data?.details;
-      const detailText = Array.isArray(detail)
-        ? detail.map((d: { message?: string }) => d.message).filter(Boolean).join('; ')
-        : typeof detail === 'string'
-          ? detail
-          : '';
-      setImportError(`${e.response?.data?.error || 'Impor gagal.'} ${detailText}`.trim());
-    } finally {
-      setImportBusy(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -282,10 +248,7 @@ const PovertyMapping = () => {
           {canImport && (
             <Button
               size="sm"
-              onClick={() => {
-                setImportError('');
-                setIsImportModalOpen(true);
-              }}
+              onClick={() => setIsImportModalOpen(true)}
             >
               Impor Data Kemiskinan
             </Button>
@@ -474,7 +437,8 @@ const PovertyMapping = () => {
                           {reg.region} ({reg.region_code})
                         </p>
                         <p>
-                          Kemiskinan: <strong>{reg.poverty_rate}%</strong> · Skor {reg.priority_score} ({reg.status})
+                          Kemiskinan: <strong>{reg.poverty_rate}%</strong> · Skor {reg.priority_score} (
+                          {statusBadge(reg.status).label})
                         </p>
                         {reg.indicators?.poverty_depth_index_p1 != null && (
                           <p className="text-slate-600">
@@ -486,7 +450,7 @@ const PovertyMapping = () => {
                   </CircleMarker>
                 );
               })}
-              <MapBoundsHandler bounds={activeMapBounds} />
+              <MapBoundsHandler bounds={activeMapBounds} resetKey={mapResetTick} />
             </MapContainer>
 
             {/* Legenda Peta Tersinkronisasi */}
@@ -631,10 +595,8 @@ const PovertyMapping = () => {
                         {reg.poverty_rate}% miskin · {reg.total_reports} laporan ({formatIDR(reg.total_distributed)})
                       </span>
                     </div>
-                    <Badge
-                      tone={reg.status === 'CRITICAL' ? 'coral' : reg.status === 'WARNING' ? 'gold' : 'success'}
-                    >
-                      Skor {reg.priority_score}
+                    <Badge tone={statusBadge(reg.status).tone}>
+                      {statusBadge(reg.status).label} · {reg.priority_score}
                     </Badge>
                   </button>
                 ))}
@@ -644,54 +606,11 @@ const PovertyMapping = () => {
         </div>
       </div>
 
-      {/* Modal Impor Data (ADMIN / AMIL) */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-[2000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg rounded-3xl p-6 sm:p-8 bg-white border border-slate-200 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-extrabold text-forest-dark">Impor Data Kemiskinan</h2>
-              <button
-                type="button"
-                onClick={() => setIsImportModalOpen(false)}
-                className="p-1 rounded-lg text-slate-500 hover:text-forest-dark hover:bg-mint"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Tempelkan array JSON data resmi (mendukung format datar maupun struktur bersarang BPS). Setiap objek memuat{' '}
-              <span className="font-mono font-bold">region_code, region_name, poverty_rate</span>.
-            </p>
-
-            <textarea
-              className="w-full h-44 bg-cream border border-slate-200 rounded-2xl p-3 text-xs font-mono text-forest-dark outline-none focus:ring-2 focus:ring-primary/20"
-              placeholder='[{"region_code":"32","region_name":"Jawa Barat","province_name":"Jawa Barat","poverty_rate":7.02,"poverty":{"poor_population_thousand":3654.74,"poverty_line_rp_per_capita_month":547752}}]'
-              value={importData}
-              onChange={(e) => setImportData(e.target.value)}
-            />
-
-            {importError && (
-              <p className="text-xs text-danger font-medium bg-red-50 p-2.5 rounded-xl border border-red-200">
-                {importError}
-              </p>
-            )}
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" onClick={() => setIsImportModalOpen(false)}>
-                Batal
-              </Button>
-              <Button
-                loading={importBusy}
-                disabled={importBusy || !importData.trim()}
-                onClick={() => void handleImport()}
-              >
-                Impor Data
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      <PovertyImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImported={retry}
+      />
     </div>
   );
 };

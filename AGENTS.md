@@ -41,13 +41,13 @@ Root:
 Backend (Express 5 + TS via tsx, port 5000, prefix /api, ESM "type: module"):
 - backend/blockchain/index.ts          entry server
 - backend/blockchain/routes/*.ts       endpoint
-- backend/blockchain/controllers/*.ts  logika (anomaly, audit, auth, campaign, dashboard,
+- backend/blockchain/controllers/*.ts  logika (admin, anomaly, audit, auth, campaign, dashboard,
                                        donation, explorer, export, mapping, mustahik, payment,
                                        proof, public, reconciliation, transaction, user)
 - backend/blockchain/middleware/       auth.ts (authenticate, authorize, authorizeSelfOr),
                                        rateLimit.ts, upload.ts (multer)
 - backend/blockchain/models/db.ts      init SQLite + migrasi aditif (FK on, WAL on)
-- backend/blockchain/utils/            crypto.ts, validation.ts (Zod), web3.ts, auditLogger.ts, doku.ts
+- backend/blockchain/utils/            crypto.ts, validation.ts (Zod), web3.ts, auditLogger.ts, doku.ts, csv.ts
 - backend/blockchain/seed.ts           seed 5 transaksi, TIDAK membuat user
 - backend/blockchain/seed_admin.ts     CLI provisioning akun ADMIN awal (aman untuk produksi)
 - backend/blockchain/seed_demo.ts      CLI data demo fiktif non-PII + PNG bukti (non-production)
@@ -67,7 +67,10 @@ Frontend (React 19 + Vite 8 + Tailwind 3 + React Router 7 + TanStack Query + vie
                              shared/ (ProfilePage), Dashboard, Campaigns, CampaignDetail, DonationPayment,
                              NewDistributionRecord, OnChainExplorer, EvidenceGraph, PovertyMapping,
                              PublicVerify, anomalies/, audit/, export/, proofs/, reconciliation/
-- frontend/src/components/   Analytics, PaymentModal, auth/, dashboard/, ethereum/, layout/, mapping/, ui/
+- frontend/src/components/   Analytics, admin/ (TransactionDetailDrawer, PaymentWebhookMonitor),
+                             payment/ (UnifiedPaymentFlow, PaymentSuccessCard, DonationReceiptDrawer),
+                             auth/, dashboard/, ethereum/, layout/, mapping/,
+                             ui/ (inkl. SlideOverDrawer, PaginationBar, ErrorBoundary, badgeStatus)
 - frontend/src/utils/        api.ts (axios), format.ts, regions.ts, cityCoords.ts, zakat.ts
 - frontend/src/assets/       zakatchain-logo.png (mark logo geometris ETH)
 - frontend/tailwind.config.js  token desain (lihat docs/design/DESIGN_SYSTEM.md & DESIGN.md)
@@ -76,16 +79,21 @@ Blockchain: kanonik di `blockchain/` (ZakatVerify.sol, Hardhat 2.29, Solidity 0.
 
 ## 4. Hak akses (diturunkan dari routes, verifikasi ulang bila route berubah)
 Role: USER, ADMIN, AMIL, AUDITOR. Login memakai USERNAME. Register selalu membuat USER.
-- Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*, POST /auth/login, POST /auth/register, POST /auth/logout,
-          GET /public/transparency (agregat + non-PII), POST /payments/webhook, POST /payments/doku/notify (HMACSHA256),
+- Publik: GET /campaigns, GET /campaigns/:id, GET /explorer/verify/*, GET /explorer/verify/lookup/:query,
+          POST /auth/login, POST /auth/register, POST /auth/logout,
+          GET /public/transparency (agregat + non-PII), GET /public/distributions (paginated JSON + ?format=csv non-PII),
+          GET /public/network, POST /payments/webhook, POST /payments/doku/notify (HMACSHA256),
           GET /payments/sandbox/session/:sessionId & POST /payments/sandbox/scan-confirm/:sessionId (non-production, token HMAC)
-- Login saja: GET /auth/me, PATCH /auth/password (ubah sandi akun sendiri), dashboard/stats, mapping (stats, recommendations, region/:r),
+- Login saja: GET /auth/me, PATCH /auth/password (ubah sandi akun sendiri), GET /donations/me/overview,
+  dashboard/stats (non-PII & tanpa anomaly internal untuk USER), mapping (stats, recommendations, region/:r),
   payments (generate/session/create/status/verify dengan cek pemilik), POST /payments/sandbox/confirm/:sessionId (non-production)
-- AMIL+AUDITOR+ADMIN: GET /transactions, GET /donations, GET /uploads/*, GET /mustahik, GET /mustahik/:id
+- AMIL+AUDITOR+ADMIN: GET /transactions, GET /transactions/:id, GET /donations, GET /uploads/*, GET /mustahik, GET /mustahik/:id
 - ADMIN+AMIL: POST /campaigns, PATCH /campaigns/:id, POST /mapping/import, POST /mustahik, PATCH /mustahik/:id
-- ADMIN+AUDITOR: anomalies (GET, scan, resolve), audit logs, proofs/verify/:id,
-  reconciliation/history, export/csv
-- ADMIN: reconciliation/run, transactions/:id/reconcile, transactions/:id/revoke, GET /users, PATCH /users/:id/role
+- ADMIN+AUDITOR: GET /admin/overview, GET /admin/blockchain/telemetry, GET /reconciliation/three-way,
+  GET /payments, GET /payments/:sessionId/events, anomalies (GET, scan, resolve), audit logs,
+  proofs/verify/:id, reconciliation/history, export/csv
+- ADMIN: reconciliation/run, transactions/:id/reconcile, POST /transactions/reconcile-batch,
+  transactions/:id/revoke, GET /users, PATCH /users/:id/role, PATCH /users/:id/unlock
 - AMIL+ADMIN: POST /transactions (upload bukti)
 - Donasi per donor: authorizeSelfOr(ADMIN, AUDITOR) pada /donations/donor/:donor_id; GET /donations/:id/trace (pemilik/ADMIN/AUDITOR)
 Endpoint baru WAJIB punya authenticate + authorize yang sesuai. Default: paling ketat.

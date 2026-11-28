@@ -1,10 +1,12 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import PublicShell from './shells/PublicShell';
-import MuzakkiShell from './shells/MuzakkiShell';
-import AmilShell from './shells/AmilShell';
-import AuditorShell from './shells/AuditorShell';
-import AdminShell from './shells/AdminShell';
+import { Skeleton } from '../ui';
 import { toRole, type Role, type SessionUser } from './navConfig';
+
+const MuzakkiShell = lazy(() => import('./shells/MuzakkiShell'));
+const AmilShell = lazy(() => import('./shells/AmilShell'));
+const AuditorShell = lazy(() => import('./shells/AuditorShell'));
+const AdminShell = lazy(() => import('./shells/AdminShell'));
 
 interface RoleLayoutProps {
   user: SessionUser | null;
@@ -13,9 +15,15 @@ interface RoleLayoutProps {
   children: ReactNode;
 }
 
+const ShellFallback = () => (
+  <div className="min-h-screen bg-cream max-w-7xl mx-auto px-4 py-8">
+    <Skeleton lines={8} />
+  </div>
+);
+
 /**
- * Picks the PublicShell for public website pages or anonymous users,
- * and the role-specific workspace ShellFrame for authenticated dashboard routes.
+ * Picks eager PublicShell for public pages/guests and lazy-loads authenticated
+ * role shells so initial `/` bundle stays minimal.
  */
 const RoleLayout = ({ user, onLogout, forcePublicShell = false, children }: RoleLayoutProps) => {
   if (!user || forcePublicShell) {
@@ -31,27 +39,35 @@ const RoleLayout = ({ user, onLogout, forcePublicShell = false, children }: Role
   switch (role) {
     case 'USER':
       return (
-        <MuzakkiShell user={user} onLogout={onLogout}>
-          {children}
-        </MuzakkiShell>
+        <Suspense fallback={<ShellFallback />}>
+          <MuzakkiShell user={user} onLogout={onLogout}>
+            {children}
+          </MuzakkiShell>
+        </Suspense>
       );
     case 'AMIL':
       return (
-        <AmilShell user={user} onLogout={onLogout}>
-          {children}
-        </AmilShell>
+        <Suspense fallback={<ShellFallback />}>
+          <AmilShell user={user} onLogout={onLogout}>
+            {children}
+          </AmilShell>
+        </Suspense>
       );
     case 'AUDITOR':
       return (
-        <AuditorShell user={user} onLogout={onLogout}>
-          {children}
-        </AuditorShell>
+        <Suspense fallback={<ShellFallback />}>
+          <AuditorShell user={user} onLogout={onLogout}>
+            {children}
+          </AuditorShell>
+        </Suspense>
       );
     case 'ADMIN':
       return (
-        <AdminShell user={user} onLogout={onLogout}>
-          {children}
-        </AdminShell>
+        <Suspense fallback={<ShellFallback />}>
+          <AdminShell user={user} onLogout={onLogout}>
+            {children}
+          </AdminShell>
+        </Suspense>
       );
     default:
       return (

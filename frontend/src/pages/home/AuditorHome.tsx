@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
+  CreditCard,
   Download,
+  Eye,
   FileSearch,
   RefreshCcw,
   ScrollText,
@@ -14,6 +17,7 @@ import apiClient from '../../utils/api';
 import { formatDateTime, formatIDR } from '../../utils/format';
 import {
   Badge,
+  Button,
   Card,
   EmptyState,
   ErrorState,
@@ -21,163 +25,174 @@ import {
   SectionHeader,
   Skeleton,
   StatCard,
+  statusBadge,
 } from '../../components/ui';
-import type { Transaction } from '../Dashboard';
+import { TransactionDetailDrawer } from '../../components/admin/TransactionDetailDrawer';
+import { PaymentWebhookMonitor } from '../../components/admin/PaymentWebhookMonitor';
 
-interface Anomaly {
-  id: number;
-  transaction_id: number | null;
-  type: string;
-  reason: string | null;
-  priority: string;
-  status: string;
-  detected_at: string;
-  recipient_name: string | null;
-  amount: number | null;
+interface AuditorOverviewPayload {
+  kpis: {
+    totalDonations: number;
+    totalDistributed: number;
+    totalReports: number;
+    verifiedReports: number;
+    pendingProofCount: number;
+    openAnomalyCount: number;
+    criticalAnomalyCount: number;
+  };
+  priorityQueue: {
+    pendingProofs: Array<{
+      id: number;
+      recipient_name: string | null;
+      amount: number;
+      category: string | null;
+      region: string | null;
+      proof_url: string | null;
+      proof_status: string | null;
+      timestamp: string;
+    }>;
+    openAnomalies: Array<{
+      id: number;
+      transaction_id: number | null;
+      type: string;
+      reason: string | null;
+      priority: string;
+      detected_at: string;
+      status: string;
+      recipient_name: string | null;
+      amount: number | null;
+    }>;
+  };
+  recentAuditLogs: Array<{
+    id: number;
+    actor_username: string | null;
+    action: string;
+    entity_type: string;
+    entity_id: number | null;
+    new_value: string | null;
+    timestamp: string;
+  }>;
 }
 
-interface AuditEntry {
-  id: number;
-  actor_username: string | null;
-  action: string;
-  entity_type: string;
-  entity_id: number | null;
-  new_value: string | null;
-  timestamp: string;
-}
-
-interface ReconciliationLog {
-  id: number;
-  reconciliation_date: string;
-  total_donations: number | null;
-  total_distributions: number | null;
-  balance: number | null;
-  status: string | null;
+interface ReconciliationHistoryResponse {
+  items: Array<{
+    id: number;
+    reconciliation_date: string;
+    balance: number | null;
+    status: string | null;
+  }>;
 }
 
 const AuditorHome = () => {
-  const anomalyQuery = useQuery<Anomaly[]>({
-    queryKey: ['anomalies'],
+  const [viewMode, setViewMode] = useState<'overview' | 'payments'>('overview');
+  const [drawerTx, setDrawerTx] = useState<{ id: number; tab: 'summary' | 'proof' | 'audit' } | null>(null);
+
+  const overviewQuery = useQuery<AuditorOverviewPayload>({
+    queryKey: ['admin-overview'],
     queryFn: async () => {
-      const { data } = await apiClient.get<Anomaly[]>('/anomalies');
-      return Array.isArray(data) ? data : [];
+      const { data } = await apiClient.get<AuditorOverviewPayload>('/admin/overview');
+      return data;
     },
     refetchInterval: 30_000,
   });
 
-  const txQuery = useQuery<Transaction[]>({
-    queryKey: ['dashboard-transactions'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<Transaction[]>('/transactions');
-      return Array.isArray(data) ? data : [];
-    },
-    refetchInterval: 30_000,
-  });
-
-  const auditQuery = useQuery<AuditEntry[]>({
-    queryKey: ['auditor-home-audit'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<AuditEntry[]>('/audit');
-      return Array.isArray(data) ? data : [];
-    },
-    refetchInterval: 30_000,
-  });
-
-  const reconQuery = useQuery<ReconciliationLog[]>({
+  const reconQuery = useQuery<ReconciliationHistoryResponse>({
     queryKey: ['auditor-home-recon'],
     queryFn: async () => {
-      const { data } = await apiClient.get<ReconciliationLog[]>('/reconciliation/history');
-      return Array.isArray(data) ? data : [];
+      const { data } = await apiClient.get<ReconciliationHistoryResponse>('/reconciliation/history', {
+        params: { meta: '1', limit: 1, offset: 0 },
+      });
+      return data;
     },
   });
 
-  const anomalies = anomalyQuery.data ?? [];
-  const transactions = txQuery.data ?? [];
-  const auditLogs = auditQuery.data ?? [];
-  const lastRecon = reconQuery.data?.[0];
-
-  const openAnomalies = anomalies.filter((a) => a.status === 'OPEN');
-  const pendingReview = transactions.filter(
-    (t) =>
-      t.proof_status === null ||
-      ['DRAFT', 'PENDING', 'PENDING_BLOCKCHAIN'].includes(t.proof_status ?? ''),
-  );
-  const onChain = transactions.filter((t) => t.blockchain_status === 'CONFIRMED');
-  const loading = anomalyQuery.isPending || txQuery.isPending;
-  const error = anomalyQuery.isError || txQuery.isError;
-
-  if (error) {
+  if (overviewQuery.isError) {
     return (
       <ErrorState
         message="Gagal memuat antrean review Auditor. Periksa koneksi ke server."
         retry={() => {
-          void anomalyQuery.refetch();
-          void txQuery.refetch();
-          void auditQuery.refetch();
+          void overviewQuery.refetch();
+          void reconQuery.refetch();
         }}
       />
     );
   }
+
+  const overview = overviewQuery.data;
+  const lastRecon = reconQuery.data?.items?.[0];
+  const lastReconBadge = lastRecon?.status ? statusBadge(lastRecon.status) : null;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <SectionHeader
           title="Workspace Audit Independen"
-          subtitle="Pemeriksaan berkas bukti terunggah, pemindaian anomali, jejak audit aktivitas, dan ekspor kepatuhan."
+          subtitle="Pemeriksaan bukti terunggah, tindak lanjut anomali, monitor pembayaran QRIS, dan jejak audit."
         />
         <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant={viewMode === 'overview' ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setViewMode('overview')}
+          >
+            <FileSearch size={14} /> Antrean Audit
+          </Button>
+          <Button
+            type="button"
+            variant={viewMode === 'payments' ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setViewMode('payments')}
+          >
+            <CreditCard size={14} /> Monitor Pembayaran
+          </Button>
           <Link
             to="/proofs"
-            className="inline-flex items-center gap-1.5 min-h-[42px] rounded-[10px] bg-gradient-to-b from-primary-light to-primary px-4 text-sm font-semibold text-white hover:to-forest shadow-teal-glow"
+            className="inline-flex items-center gap-1.5 min-h-[38px] rounded-[10px] bg-gradient-to-b from-gold-light to-gold px-4 text-xs sm:text-sm font-semibold text-forest-dark border border-gold-dark/25"
           >
-            <FileSearch size={15} /> Tinjau Bukti ({pendingReview.length})
-          </Link>
-          <Link
-            to="/anomalies"
-            className="inline-flex items-center gap-1.5 min-h-[42px] rounded-[10px] border border-slate-300 bg-white px-4 text-sm font-semibold text-forest-dark hover:bg-mint"
-          >
-            <AlertTriangle size={15} /> Kelola Anomali
+            <FileSearch size={14} /> Verifikasi Bukti ({overview?.kpis.pendingProofCount ?? 0})
           </Link>
         </div>
       </div>
 
-      {loading ? (
+      {viewMode === 'payments' ? (
+        <PaymentWebhookMonitor />
+      ) : overviewQuery.isPending || !overview ? (
         <Skeleton lines={8} />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Anomali Terbuka"
-              value={`${openAnomalies.length} temuan`}
-              sublabel={`Total ${anomalies.length} riwayat`}
+              value={`${overview.kpis.openAnomalyCount} temuan`}
+              sublabel={`${overview.kpis.criticalAnomalyCount} prioritas kritis`}
               icon={<AlertTriangle size={18} />}
-              tone={openAnomalies.length > 0 ? 'danger' : 'emerald'}
+              tone={overview.kpis.openAnomalyCount > 0 ? 'danger' : 'emerald'}
             />
             <StatCard
               label="Bukti Menunggu Tinjauan"
-              value={`${pendingReview.length} laporan`}
-              sublabel="Perlu persetujuan auditor"
+              value={`${overview.kpis.pendingProofCount} laporan`}
+              sublabel="Menunggu verifikasi auditor"
               icon={<FileSearch size={18} />}
               tone="gold"
             />
             <StatCard
-              label="Laporan On-Chain"
-              value={`${onChain.length} laporan`}
-              sublabel={`Dari ${transactions.length} distribusi`}
+              label="Laporan On-Chain Valid"
+              value={`${overview.kpis.verifiedReports} laporan`}
+              sublabel={`Dari ${overview.kpis.totalReports} distribusi tercatat`}
               icon={<ShieldCheck size={18} />}
               tone="forest"
             />
             <StatCard
-              label="Entri Log Audit"
-              value={`${auditLogs.length} catatan`}
+              label="Rekonsiliasi Terakhir"
+              value={lastReconBadge ? lastReconBadge.label : 'Belum Ada'}
               sublabel={
                 lastRecon
-                  ? `Rekonsiliasi: ${lastRecon.status === 'BALANCED' ? 'Seimbang' : lastRecon.status === 'DEFICIT' ? 'Defisit' : lastRecon.status}`
-                  : 'Belum ada rekonsiliasi'
+                  ? `${formatIDR(Number(lastRecon.balance ?? 0))} · ${formatDateTime(lastRecon.reconciliation_date)}`
+                  : 'Menunggu eksekusi Administrator'
               }
-              icon={<ScrollText size={18} />}
-              tone="neutral"
+              icon={<RefreshCcw size={18} />}
+              tone={lastRecon?.status === 'BALANCED' ? 'emerald' : lastRecon ? 'danger' : 'neutral'}
             />
           </div>
 
@@ -189,7 +204,7 @@ const AuditorHome = () => {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-forest-dark">Verifikasi Bukti</p>
-                  <p className="text-xs text-slate-500">Lihat dokumen & setujui</p>
+                  <p className="text-xs text-slate-500">Lihat berkas & putuskan</p>
                 </div>
               </Card>
             </Link>
@@ -210,8 +225,8 @@ const AuditorHome = () => {
                   <RefreshCcw size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-forest-dark">Rekonsiliasi (Pantau)</p>
-                  <p className="text-xs text-slate-500">Saldo masuk vs distribusi</p>
+                  <p className="text-sm font-bold text-forest-dark">Rekonsiliasi 3-Arah</p>
+                  <p className="text-xs text-slate-500">QRIS vs Ledger vs Chain</p>
                 </div>
               </Card>
             </Link>
@@ -229,7 +244,10 @@ const AuditorHome = () => {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-12">
-            <Card variant={openAnomalies.length > 0 ? 'anomaly' : 'default'} className="lg:col-span-7 space-y-4">
+            <Card
+              variant={overview.priorityQueue.openAnomalies.length > 0 ? 'anomaly' : 'default'}
+              className="lg:col-span-7 space-y-4"
+            >
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-base font-bold text-forest-dark">Daftar Anomali Terbuka</h2>
                 <Link to="/anomalies" className="text-xs font-semibold text-primary hover:underline">
@@ -237,7 +255,7 @@ const AuditorHome = () => {
                 </Link>
               </div>
 
-              {openAnomalies.length === 0 ? (
+              {overview.priorityQueue.openAnomalies.length === 0 ? (
                 <EmptyState
                   icon={<CheckCircle2 size={24} />}
                   title="Tidak ada anomali terbuka"
@@ -245,20 +263,35 @@ const AuditorHome = () => {
                 />
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {openAnomalies.slice(0, 6).map((a) => (
-                    <div key={a.id} className="py-3 flex flex-wrap items-center justify-between gap-3 text-sm">
-                      <div>
-                        <p className="font-semibold text-forest-dark">
-                          #{a.transaction_id ?? '-'} {a.recipient_name || 'Tanpa penerima'} ·{' '}
-                          {formatIDR(a.amount === null ? null : Number(a.amount))}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {a.type} · {formatDateTime(a.detected_at)}
-                        </p>
+                  {overview.priorityQueue.openAnomalies.slice(0, 6).map((a) => {
+                    const pr = statusBadge(a.priority);
+                    return (
+                      <div key={a.id} className="py-3 flex flex-wrap items-center justify-between gap-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-forest-dark">
+                            #{a.transaction_id ?? '-'} {a.recipient_name || 'Tanpa penerima'} ·{' '}
+                            {formatIDR(a.amount === null ? null : Number(a.amount))}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {a.reason || a.type} · {formatDateTime(a.detected_at)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge tone={pr.tone}>{pr.label}</Badge>
+                          {a.transaction_id && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setDrawerTx({ id: a.transaction_id as number, tab: 'audit' })}
+                            >
+                              <Eye size={12} /> Inspeksi
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <Badge tone="danger">{a.reason || 'Anomali'}</Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <p className="text-xs text-slate-500 pt-2 border-t border-slate-100">{ON_CHAIN_NOTE}</p>
@@ -270,7 +303,10 @@ const AuditorHome = () => {
                   <ScrollText size={16} className="text-primary" /> Log Audit Terbaru
                 </h2>
                 <div className="flex items-center gap-3">
-                  <Link to="/export" className="text-xs font-semibold text-slate-600 hover:text-primary inline-flex items-center gap-1">
+                  <Link
+                    to="/export"
+                    className="text-xs font-semibold text-slate-600 hover:text-primary inline-flex items-center gap-1"
+                  >
                     <Download size={12} /> CSV
                   </Link>
                   <Link to="/audit" className="text-xs font-semibold text-primary hover:underline">
@@ -279,18 +315,29 @@ const AuditorHome = () => {
                 </div>
               </div>
 
-              {auditLogs.length === 0 ? (
+              {overview.recentAuditLogs.length === 0 ? (
                 <p className="text-xs text-slate-500 py-4 text-center">Belum ada entri log audit tercatat.</p>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {auditLogs.slice(0, 5).map((entry) => (
+                  {overview.recentAuditLogs.slice(0, 6).map((entry) => (
                     <div key={entry.id} className="py-2.5 text-xs space-y-0.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono font-bold text-forest-dark">{entry.action}</span>
                         <span className="text-slate-400">{formatDateTime(entry.timestamp)}</span>
                       </div>
                       <p className="text-slate-600">
-                        Oleh <strong>{entry.actor_username || 'sistem'}</strong> · {entry.entity_type} #{entry.entity_id ?? '-'}
+                        Oleh <strong>{entry.actor_username || 'sistem'}</strong> ·{' '}
+                        {entry.entity_type === 'TRANSACTION' && entry.entity_id ? (
+                          <button
+                            type="button"
+                            onClick={() => setDrawerTx({ id: entry.entity_id as number, tab: 'audit' })}
+                            className="font-semibold text-primary hover:underline"
+                          >
+                            TRANSACTION #{entry.entity_id}
+                          </button>
+                        ) : (
+                          `${entry.entity_type} #${entry.entity_id ?? '-'}`
+                        )}
                       </p>
                     </div>
                   ))}
@@ -300,6 +347,13 @@ const AuditorHome = () => {
           </div>
         </>
       )}
+
+      <TransactionDetailDrawer
+        transactionId={drawerTx?.id ?? null}
+        initialTab={drawerTx?.tab ?? 'summary'}
+        onClose={() => setDrawerTx(null)}
+        onUpdated={() => void overviewQuery.refetch()}
+      />
     </div>
   );
 };

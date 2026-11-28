@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../utils/api';
-import { enabledChainIds, ZAKAT_CONTRACT_ADDRESS } from '../../web3';
 
 export interface BackendNetworkStatus {
   rpc?: string;
@@ -11,6 +10,18 @@ export interface BackendNetworkStatus {
   contractAddress?: string;
   blockNumber?: number | null;
 }
+
+const DEFAULT_CHAIN_ID = 31337;
+const parsedChainIds = String(import.meta.env.VITE_CHAIN_ID ?? '')
+  .split(',')
+  .map((value) => Number(value.trim()))
+  .filter((value) => Number.isInteger(value) && value > 0);
+const CONFIGURED_CHAIN_ID = parsedChainIds[0] ?? DEFAULT_CHAIN_ID;
+const FALLBACK_CONTRACT_ADDRESS =
+  (import.meta.env.VITE_ZAKAT_CONTRACT_ADDRESS as string | undefined) ||
+  (import.meta.env.DEV
+    ? '0x5FbDB2315678afecb367f032d93F642f64180aa3'
+    : '0x0000000000000000000000000000000000000000');
 
 export const chainLabelFromId = (chainId: number | null | undefined): string => {
   if (chainId === 31337) return 'Localhost / Hardhat';
@@ -35,6 +46,21 @@ export interface PublicTransparencyPayload {
     verifiedReports: number;
     pendingReports: number;
     activeCampaigns: number;
+  };
+  governancePolicy?: {
+    amilShareMaxPercent: number;
+    netProgramMinPercent: number;
+    gatewayFeeNote: string;
+    allocationBasis: string;
+    shariaReference: string;
+  };
+  integrityScorecard?: {
+    approvedProofCount: number;
+    revokedOrRejectedCount: number;
+    resolvedAnomalyCount: number;
+    openAnomalyCount: number;
+    lastReconciliationStatus: string;
+    lastReconciliationDate: string | null;
   };
   categoryDistribution: { category: string | null; total: number; count: number }[];
   recentTransactions: {
@@ -77,7 +103,7 @@ export const usePublicNetworkStatus = () =>
 
 export const useNetworkInfo = () => {
   const query = usePublicNetworkStatus();
-  const configuredChainId = enabledChainIds[0] ?? 31337;
+  const configuredChainId = CONFIGURED_CHAIN_ID;
   const backendNet = query.data?.networkStatus;
 
   const isLoading = query.isPending;
@@ -100,7 +126,7 @@ export const useNetworkInfo = () => {
     configuredChainId,
     configuredLabel: chainLabelFromId(configuredChainId),
     label,
-    contractAddress: backendNet?.contractAddress || ZAKAT_CONTRACT_ADDRESS,
+    contractAddress: backendNet?.contractAddress || FALLBACK_CONTRACT_ADDRESS,
     blockNumber: backendNet?.blockNumber ?? null,
     explorerBaseUrl: explorerBaseForChain(activeChainId),
     refetch: query.refetch,

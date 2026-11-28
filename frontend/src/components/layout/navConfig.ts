@@ -161,5 +161,3 @@ export const canAccessPath = (role: Role | null, rawTarget: string | null | unde
     pathname === '/verify'
   );
 };
-
-export const UNUSED_ICON_REF = ClipboardList;

@@ -1,18 +1,27 @@
 import type { ReactNode } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
-import { Card } from '../ui';
-import { toRole, type Role, type SessionUser } from './navConfig';
+import { Card, Skeleton } from '../ui';
+import { ROLE_LABELS, toRole, type Role, type SessionUser } from './navConfig';
 
 interface RequireRoleProps {
   user: SessionUser | null;
   roles: Role[];
+  isHydrating?: boolean;
   children: ReactNode;
 }
 
 /** Redirects anonymous users to /login (preserving destination) and shows a clear 403 for unauthorized roles. */
-const RequireRole = ({ user, roles, children }: RequireRoleProps) => {
+const RequireRole = ({ user, roles, isHydrating = false, children }: RequireRoleProps) => {
   const location = useLocation();
+
+  if (isHydrating && !user) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <Skeleton lines={6} />
+      </div>
+    );
+  }
 
   if (!user) {
     if (sessionStorage.getItem('zakat_manual_logout') === '1') {
@@ -35,8 +44,8 @@ const RequireRole = ({ user, roles, children }: RequireRoleProps) => {
           </div>
           <h1 className="text-2xl font-extrabold text-forest-dark">Akses Dibatasi (403)</h1>
           <p className="text-sm text-slate-600 leading-relaxed">
-            Menu ini tidak tersedia untuk peran Anda (<strong>{user.role || 'Tanpa Peran'}</strong>).
-            Gunakan menu di sidebar sesuai hak akses Anda atau hubungi Administrator.
+            Menu ini tidak tersedia untuk peran Anda (<strong>{role ? ROLE_LABELS[role] : (user.role || 'Tanpa Peran')}</strong>).
+            Gunakan menu di navigasi sesuai hak akses Anda atau hubungi Administrator.
           </p>
           <div className="pt-2">
             <Link

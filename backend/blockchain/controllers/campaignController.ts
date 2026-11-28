@@ -27,6 +27,7 @@ export const createCampaign = async (req: Request, res: Response) => {
       'INSERT INTO campaigns (title, description, target_amount, deadline) VALUES (?, ?, ?, ?)',
       [title, description ?? '', target_amount, deadline ?? null]
     );
+    await logActivity(req, 'CREATE_CAMPAIGN', 'CAMPAIGN', Number(result.lastID), null, title);
     res.status(201).json({ message: 'Campaign created successfully', id: result.lastID });
   } catch (error: any) {
     console.error('[CREATE CAMPAIGN ERROR]', error?.message);

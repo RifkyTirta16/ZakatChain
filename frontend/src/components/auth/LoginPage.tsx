@@ -15,6 +15,10 @@ const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const redirectTarget = typeof window !== 'undefined' ? sessionStorage.getItem('zakat_redirect') || '' : '';
+  const isPaymentIntentRedirect =
+    redirectTarget.startsWith('/donate') || redirectTarget.startsWith('/campaigns/');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -48,6 +52,12 @@ const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
             <PoweredByEthereum />
           </div>
         </div>
+
+        {isPaymentIntentRedirect && (
+          <div className="p-3.5 rounded-xl border border-primary/25 bg-mint text-xs sm:text-sm text-forest leading-relaxed">
+            Masuk ke akun Muzakki Anda (atau daftar gratis) untuk melanjutkan pembayaran zakat via QRIS dan menerima Bukti Setor Zakat resmi.
+          </div>
+        )}
 
         {error && (
           <div

@@ -24,11 +24,16 @@ export const updateProofStatus = async (req: Request, res: Response) => {
 
   try {
     const oldRecord = await (db as any).get(
-      'SELECT proof_status, proof_url FROM transactions WHERE id = ?',
+      'SELECT proof_status, proof_url, blockchain_status FROM transactions WHERE id = ?',
       [numericId]
     );
     if (!oldRecord) {
       return res.status(404).json({ error: 'Transaction not found' });
+    }
+    if (oldRecord.blockchain_status === 'REVOKED') {
+      return res.status(409).json({
+        error: 'Laporan yang telah dicabut di blockchain tidak dapat diubah status buktinya.',
+      });
     }
     if (status === 'APPROVED' && !oldRecord.proof_url) {
       return res.status(409).json({

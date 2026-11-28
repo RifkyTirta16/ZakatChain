@@ -231,6 +231,13 @@ export const initDb = async (filename = process.env.DATABASE_PATH || path.join(b
   await db.exec('CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_payment_events_provider_tx ON payment_events(provider_tx_id)');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_payments_session ON payments(payment_session_id)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_donations_donor ON donations(donor_id)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_donations_payment_ref ON donations(payment_reference)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_donations_status ON donations(status)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_proof_status ON transactions(proof_status)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_reconciled ON transactions(is_reconciled)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_anomalies_status ON anomalies(status)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id)');
 
   // `provider_tx_id` is the webhook idempotency key. SQLite treats NULLs as
   // distinct, so INTENT_CREATED rows without a provider reference are unaffected.

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
-import { ChevronRight, LogOut, Menu, X } from 'lucide-react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronRight, LogOut, Menu, Search, X } from 'lucide-react';
 import zakatChainLogo from '../../../assets/zakatchain-logo.png';
 import { Badge } from '../../ui';
 import { NetworkBadge, PoweredByEthereum } from '../../ethereum';
@@ -61,7 +61,21 @@ const ROLE_ACCENT_DOT: Record<Exclude<ShellTheme, 'public'>, string> = {
  */
 const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [quickQuery, setQuickQuery] = useState('');
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleQuickLookup = (event: React.FormEvent) => {
+    event.preventDefault();
+    const cleaned = quickQuery.trim();
+    if (!cleaned) return;
+    setQuickQuery('');
+    if (/^(BSZ-|0x|#?\d+$)/i.test(cleaned)) {
+      navigate(`/verify?query=${encodeURIComponent(cleaned)}`);
+    } else {
+      navigate(`/explorer?search=${encodeURIComponent(cleaned)}`);
+    }
+  };
   const role = toRole(user.role);
   const items = itemsForRole(role);
   const grouped = groupItems(items);
@@ -208,6 +222,17 @@ const ShellFrame = ({ theme, user, onLogout, children }: ShellFrameProps) => {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
+            <form onSubmit={handleQuickLookup} className="hidden md:flex items-center relative">
+              <Search size={14} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+              <input
+                type="search"
+                aria-label="Cari ID laporan, BSZ, atau hash"
+                placeholder="Cari #ID, BSZ, atau hash…"
+                value={quickQuery}
+                onChange={(e) => setQuickQuery(e.target.value)}
+                className="w-48 lg:w-56 h-9 rounded-[10px] border border-slate-200 bg-cream/70 pl-8 pr-3 text-xs text-forest-dark placeholder:text-slate-400 outline-none focus:bg-white focus:border-primary"
+              />
+            </form>
             {theme !== 'muzakki' && <NetworkBadge compact />}
             <Link
               to="/profile"

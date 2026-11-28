@@ -46,21 +46,28 @@ export const clearSessionCookie = (res: Response) => {
   });
 };
 
-export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+const extractToken = (req: Request): string | null => {
+  const cookieToken = readSessionCookie(req);
+  if (cookieToken) return cookieToken;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring('Bearer '.length).trim() || null;
+  }
+  return null;
+};
+
+type VerifyTokenResult =
+  | { ok: true; user: { id: number; username: string; role: Role } }
+  | { ok: false; status: 401 | 503; error: string };
+
+const verifyActiveUserToken = async (req: Request): Promise<VerifyTokenResult> => {
   const jwtSecret = getJwtSecret();
   if (!jwtSecret) {
-    return res.status(503).json({ error: 'Authentication is not configured' });
+    return { ok: false, status: 503, error: 'Authentication is not configured' };
   }
-
-  let token = readSessionCookie(req);
+  const token = extractToken(req);
   if (!token) {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring('Bearer '.length).trim() || null;
-    }
-  }
-  if (!token) {
-    return res.status(401).json({ error: 'Authentication token required' });
+    return { ok: false, status: 401, error: 'Authentication token required' };
   }
 
   try {
@@ -73,12 +80,12 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       typeof decoded.role !== 'string' ||
       !ALLOWED_ROLES.includes(decoded.role as Role)
     ) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
+      return { ok: false, status: 401, error: 'Invalid or expired token' };
     }
 
     const db = (req as any).db;
     if (!db) {
-      return res.status(503).json({ error: 'Database is unavailable' });
+      return { ok: false, status: 503, error: 'Database is unavailable' };
     }
     const userRow = await db.get(
       'SELECT id, username, role, COALESCE(token_version, 1) AS token_version FROM users WHERE id = ?',
@@ -90,14 +97,31 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       !ALLOWED_ROLES.includes(userRow.role as Role) ||
       Number(userRow.token_version) !== decoded.tv
     ) {
-      return res.status(401).json({ error: 'Session expired or revoked' });
+      return { ok: false, status: 401, error: 'Session expired or revoked' };
     }
 
-    req.user = { id: userRow.id, username: userRow.username, role: userRow.role as Role };
-    next();
+    return { ok: true, user: { id: userRow.id, username: userRow.username, role: userRow.role as Role } };
   } catch {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return { ok: false, status: 401, error: 'Invalid or expired token' };
   }
+};
+
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const outcome = await verifyActiveUserToken(req);
+  if (!outcome.ok) {
+    return res.status(outcome.status).json({ error: outcome.error });
+  }
+  req.user = outcome.user;
+  next();
+};
+
+/** Populates `req.user` when a valid session exists without rejecting anonymous callers. */
+export const optionalAuthenticate = async (req: AuthRequest, _res: Response, next: NextFunction) => {
+  const outcome = await verifyActiveUserToken(req);
+  if (outcome.ok) {
+    req.user = outcome.user;
+  }
+  next();
 };
 
 export const authorize = (roles: Role[]) => {

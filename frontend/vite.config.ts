@@ -22,7 +22,14 @@ export default defineConfig({
       output: {
         manualChunks: (id) => {
           if (!id.includes('node_modules')) return undefined
-          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router')) {
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react-router') ||
+            id.includes('/scheduler/') ||
+            id.includes('/react-is/') ||
+            id.includes('/use-sync-external-store/')
+          ) {
             return 'vendor-react'
           }
           if (id.includes('/viem/')) {
@@ -37,10 +44,13 @@ export default defineConfig({
           if (id.includes('/leaflet/') || id.includes('/react-leaflet/')) {
             return 'vendor-map'
           }
-          if (id.includes('/recharts/') || id.includes('/d3-') || id.includes('/victory-vendor/')) {
-            return 'vendor-charts'
+          if (id.includes('/axios/')) {
+            return 'vendor-http'
           }
-          return 'vendor-misc'
+          if (id.includes('/qrcode.react/')) {
+            return 'vendor-qr'
+          }
+          return undefined
         },
       },
     },
